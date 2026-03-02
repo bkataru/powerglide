@@ -1,108 +1,299 @@
+<div align="center">
+
+<img src="assets/logo.svg" alt="powerglide logo" width="200" height="200" />
+
 # powerglide
 
 **The CLI coding agent that slides**
 
-[![build](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/bkataru/powerglide)
-[![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![Zig](https://img.shields.io/badge/Zig-0.15.2-F7A41D?logo=zig&logoColor=white)](https://ziglang.org/)
+[![Build](https://github.com/bkataru/powerglide/actions/workflows/ci.yml/badge.svg)](https://github.com/bkataru/powerglide/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![GitHub Stars](https://img.shields.io/github/stars/bkataru/powerglide?style=social)](https://github.com/bkataru/powerglide)
 
-<p align="center">
-  <img src=".github/logo.png" alt="powerglide logo" width="400">
-</p>
+*Zig-powered multi-agent harness for extreme coding workflows. Named after the Rae Sremmurd track and its namesake Lamborghini transmission. Built for Barvis.*
 
-powerglide is a multi-agent CLI coding harness inspired by [oh-my-pi](https://github.com/ohmy pi) and [forge code](https://github.com/forgeai/forge-code). It orchestrates swarms of SWE agents with configurable velocity, reliable exit-code capture, fault-tolerant state machines, and multi-model support.
+</div>
 
-Like a finely tuned engine, powerglide slides through your codebase with precision and grace.
+---
 
-## Key Features
+## What is powerglide?
 
-- **Multi-Agent Orchestration** — Coordinate multiple SWE agents working in parallel
-- **Velocity Control** — Tune agent response speed with configurable delays
-- **Multi-Model Support** — Switch between Anthropic, OpenAI, and OpenAI-compatible providers
-- **Fault-Tolerant State Machines** — Resilient agent loops that recover from failures
-- **Reliable Exit-Code Capture** — Properly capture and propagate subprocess exit codes
-- **PTY Management** — Full terminal emulation for interactive agent sessions
-- **Terminal Pooling** — Efficient resource management for multiple terminal sessions
+powerglide is a high-performance CLI coding agent runtime built in [Zig 0.15](https://ziglang.org/). It orchestrates swarms of SWE agents (like [oh-my-opencode](https://github.com/can1357/oh-my-pi), [opencode](https://github.com/sst/opencode), [Claude Code](https://claude.ai/code), and [Cursor](https://cursor.com)) with precise velocity control, reliable PTY management, and multi-model routing — all from a single fast binary with no runtime dependencies.
+
+Like the Lamborghini Powerglide transmission it's named after, powerglide is designed for one thing: **maximum throughput**.
+
+```
+$ powerglide run --agent hephaestus --velocity 2.0 "implement a binary search tree in Zig"
+```
+
+---
+
+## Features
+
+- **Multi-Agent Swarms** — Orchestrate N agents in parallel with independent workspaces, task queues, and health monitoring. Rogue agents are auto-killed via heartbeat timeouts and step limits.
+- **Velocity Control** — Tune agent speed dynamically: `--velocity 2.0` (fast), `0.5` (conservative). Agents can self-tune via session config files.
+- **Ralph Loop State Machine** — Fault-tolerant `idle → thinking → acting → observing → commit` loop with explicit `POWERGLIDE_DONE` stop signals and configurable max steps.
+- **Reliable PTY Management** — Full pseudoterminal support with `waitpid`-based exit-code capture, WNOHANG polling, and `/proc/<pid>/status` fallback.
+- **Multi-Model Routing** — Route to Anthropic (Claude), OpenAI-compatible APIs (Ollama, NVIDIA NIM, Together AI), or any local provider. Automatic fallback chains.
+- **SSE Streaming** — Real-time token streaming from model APIs with incremental output.
+- **Persistent Memory** — JSONL-based session memory with context windowing and semantic search triggers.
+- **MCP-style Tools** — Tool registry with bash, read, write, edit, grep, glob — the same tools Claude Code uses.
+- **Terminal TUI** — Multi-panel vxfw dashboard: agent status, log streaming, live velocity display.
+- **doctor command** — One-shot system health check for zig, oh-my-opencode, git, and API keys.
+
+---
 
 ## Quick Start
 
+### Prerequisites
+
+- [Zig 0.15.2](https://ziglang.org/download/) — `mise install zig@0.15.2` or from the official site
+- An API key for your model provider (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, etc.)
+
+### Build
+
 ```bash
-# Build the project
+git clone https://github.com/bkataru/powerglide
+cd powerglide
 zig build
-
-# Run with help
-zig build run -- --help
-
-# Run with version
-zig build run -- --version
-
-# Run tests
-zig build test
 ```
+
+The binary lands at `./zig-out/bin/powerglide`.
+
+### Run
+
+```bash
+# Health check — verify all dependencies are set up
+./zig-out/bin/powerglide doctor
+
+# Run an agent session
+./zig-out/bin/powerglide run "refactor this function to be more idiomatic"
+
+# Run with specific agent and velocity
+./zig-out/bin/powerglide run --agent hephaestus --velocity 2.0 "add unit tests"
+
+# Resume a session
+./zig-out/bin/powerglide run --session-id abc123 "continue from where we left off"
+
+# Open TUI dashboard
+./zig-out/bin/powerglide tui
+
+# Full help
+./zig-out/bin/powerglide --help
+```
+
+---
+
+## CLI Reference
+
+```
+powerglide — the CLI coding agent that slides
+
+USAGE:
+  powerglide [command] [options] [args...]
+
+COMMANDS:
+  run       Launch an agent coding session
+  session   Manage agent sessions (list, show, resume, delete, export)
+  agent     Manage agent configurations (list, add, remove, show)
+  swarm     Manage agent swarms (list, create, add, remove, run, status, stop)
+  config    Manage powerglide configuration (show, set, get, reset, edit)
+  tools     List and test available tools (list, show, test)
+  tui       Open the interactive multi-agent dashboard
+  doctor    Run system health checks
+  version   Show version information
+
+Run 'powerglide [command] --help' for command-specific help.
+```
+
+### `powerglide run`
+
+```
+USAGE:
+  powerglide run [options] [message]
+
+OPTIONS:
+  --agent, -a <name>        Agent to use (default: hephaestus)
+  --velocity, -v <ms>       Delay between steps in ms (default: 500)
+  --session-id, -s <id>     Resume or create session with given ID
+  --model, -m <model>       Model override (e.g. claude-opus-4-6)
+  --help, -h                Show this help
+```
+
+### `powerglide doctor`
+
+Checks:
+- `zig` — version and PATH
+- `oh-my-opencode` — npx availability
+- `git` — version
+- API keys — `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`
+- Config dir — `~/.config/powerglide/`
+
+---
 
 ## Architecture
 
 ### The Ralph Loop
 
-At the heart of powerglide is the **Ralph Loop** — a state machine that drives agent behavior:
+At the heart of powerglide is the **Ralph Loop** — a state machine inspired by [ralph](https://github.com/snarktank/ralph) that drives every agent session:
 
 ```
-idle → thinking → acting → observing → (repeat or finish)
+IDLE
+  │
+  ▼
+LOAD_TASKS ──(all done?)──► COMPLETE
+  │
+  ▼
+PICK_TASK (highest priority, passes == false)
+  │
+  ▼
+THINKING ──(tool_call)──► ACTING ──(result)──► OBSERVING
+  │                                               │
+  ▼                                               │
+VERIFY (run checks)                               │
+  │                                               │
+  ▼                                               │
+COMMIT ──► update task status ──► back to LOAD_TASKS
+  │
+  ▼
+FAILED (error recovery / retry)
 ```
 
-Each iteration represents one thinking-acting-observing cycle, with configurable velocity (delay between iterations).
+The loop emits `<POWERGLIDE_DONE>` when all tasks are complete, which the orchestrator detects as a clean stop signal.
 
-### Module Structure
+### Velocity Control
+
+Velocity controls how fast the ralph loop progresses:
+
+```
+powerglide run --velocity 2.0  # 2x speed: 500ms between steps
+powerglide run --velocity 0.5  # 0.5x speed: 2000ms between steps
+```
+
+Agents can self-adjust velocity by writing `VELOCITY=<value>` to their session config file at `~/.config/powerglide/session-<id>.json`. The orchestrator polls this file every N steps.
+
+### Rogue Agent Prevention
+
+powerglide includes multi-layer rogue agent prevention:
+
+| Mechanism | Default | Description |
+|-----------|---------|-------------|
+| Step limit | 200 | Kill after N steps regardless |
+| Heartbeat | 30s | Worker must write heartbeat; monitor kills if missed |
+| Circuit breaker | 3 repeats | Kill if same tool called with same args 3+ times |
+| Budget tracking | configurable | Stop if token/cost budget exceeded |
+| Explicit done signal | required | Agent must emit `POWERGLIDE_DONE` to terminate cleanly |
+
+### Multi-Agent Swarm Architecture
+
+```
+Orchestrator (slow, powerful model)
+  ├── assigns tasks via task-queue.json
+  ├── monitors worker heartbeats
+  └── aggregates results
+
+Workers (fast models) × N
+  ├── each has isolated workspace
+  ├── pulls tasks from queue
+  ├── writes progress to worker-{id}.json
+  └── signals completion via done-{id}.json
+```
+
+Inter-agent communication is file-based at `~/.powerglide/teams/{team-id}/messages/`.
+
+---
+
+## Module Structure
 
 ```
 src/
-├── main.zig              # Entry point and CLI dispatch
+├── main.zig               # Entry point, CLI dispatch
 ├── agent/
-│   ├── loop.zig          # Ralph loop state machine
-│   └── session.zig       # Session management
+│   ├── loop.zig           # Ralph loop state machine
+│   └── session.zig        # Session persistence (JSON)
 ├── terminal/
-│   ├── pty.zig           # PTY management
-│   ├── exit_code.zig     # Exit code capture
-│   ├── session.zig       # Terminal session CRUD
-│   └── pool.zig          # Multi-terminal pool
+│   ├── pty.zig            # PTY allocation, process spawning
+│   ├── exit_code.zig      # Reliable exit code capture (waitpid + /proc)
+│   ├── session.zig        # Terminal session CRUD
+│   └── pool.zig           # Multi-terminal pool
 ├── models/
-│   ├── http.zig          # HTTP client
-│   ├── anthropic.zig     # Anthropic API
-│   ├── openai.zig        # OpenAI-compatible API
-│   ├── router.zig        # Multi-model router
-│   └── stream.zig        # SSE streaming
+│   ├── http.zig           # HTTP client (std.http)
+│   ├── anthropic.zig      # Anthropic Messages API (Claude)
+│   ├── openai.zig         # OpenAI-compatible API
+│   ├── router.zig         # Multi-model routing + fallback chains
+│   └── stream.zig         # SSE streaming response handling
 ├── memory/
-│   ├── store.zig         # Memory store
-│   └── context.zig       # Context management
+│   ├── store.zig          # Persistent JSONL memory store
+│   └── context.zig        # Context windowing, summarization triggers
 ├── config/
-│   └── config.zig        # Configuration
+│   └── config.zig         # Config schema + file/env loading
 ├── tools/
-│   ├── tool.zig          # Tool interface
-│   └── registry.zig      # Tool registry
+│   ├── tool.zig           # Tool interface (bash, read, write, edit, grep, glob)
+│   └── registry.zig       # Tool registry (StringHashMap)
 ├── tui/
-│   └── app.zig           # TUI app
+│   └── app.zig            # vxfw TUI — multi-agent dashboard
 └── orchestrator/
-    ├── worker.zig        # Worker agent
-    ├── monitor.zig       # Monitor
-    └── swarm.zig         # Swarm coordinator
+    ├── worker.zig         # Worker agent spawning + lifecycle
+    ├── monitor.zig        # Worker health monitoring + events
+    └── swarm.zig          # Swarm coordinator, task queue dispatch
 ```
+
+---
 
 ## Configuration
 
-powerglide can be configured via environment variables:
+### Environment Variables
 
 ```bash
-export ANTHROPIC_API_KEY="sk-ant-..."
-export OPENAI_API_KEY="sk-..."
+export ANTHROPIC_API_KEY="sk-ant-..."      # Anthropic / Claude models
+export OPENAI_API_KEY="sk-..."             # OpenAI-compatible providers
+export POWERGLIDE_MODEL="claude-opus-4-6"  # Default model
+export POWERGLIDE_VELOCITY="1.0"           # Default velocity multiplier
+export POWERGLIDE_MAX_STEPS="200"          # Max steps per session
 ```
 
-Or programmatically through the `Config` struct.
+### Config File
 
-## Documentation
+powerglide reads `~/.config/powerglide/config.json`:
 
-For more details, see:
+```json
+{
+  "default_agent": "hephaestus",
+  "velocity": 1.0,
+  "max_steps": 200,
+  "model": {
+    "provider": "anthropic",
+    "model": "claude-opus-4-6"
+  }
+}
+```
 
-- [CLAUDE.md](CLAUDE.md) — Guide for Claude Code
-- [AGENTS.md](AGENTS.md) — Guide for AI agents
+---
+
+## Inspiration
+
+powerglide is inspired by the best ideas from the AI coding agent ecosystem:
+
+| Project | Inspiration |
+|---------|------------|
+| [oh-my-pi](https://github.com/can1357/oh-my-pi) | Multi-agent harness patterns, orchestration |
+| [ralph](https://github.com/snarktank/ralph) | Ralph loop state machine, explicit done signals |
+| [gastown](https://github.com/steveyegge/gastown) | Multi-agent workspace isolation, task queues |
+| [loki](https://github.com/Dark-Alex-17/loki) | Tool registry, provider abstraction, session persistence |
+| [plandex](https://github.com/plandex-ai/plandex) | Plan+execute pattern, diff-based application |
+| [opencode](https://github.com/sst/opencode) | CLI UX, multi-model routing |
+| [aichat](https://github.com/sigoden/aichat) | SSE streaming, config schema |
+
+---
+
+## For AI Agents
+
+See [AGENTS.md](AGENTS.md) for comprehensive guidance on using powerglide as a tool or building on top of it.
+
+See [CLAUDE.md](CLAUDE.md) for Claude Code-specific instructions for this repository.
+
+---
 
 ## License
 
@@ -110,4 +301,8 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 ---
 
-Built with 🔥 and precision in Zig 0.15.2
+<div align="center">
+
+Built in [Zig 0.15.2](https://ziglang.org/) &nbsp;·&nbsp; Named after [Powerglide by Rae Sremmurd](https://www.youtube.com/watch?v=gX2lNOZRSuk) &nbsp;·&nbsp; Built for Barvis 🦀⚡
+
+</div>
