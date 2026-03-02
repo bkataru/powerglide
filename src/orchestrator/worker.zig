@@ -219,6 +219,78 @@ pub const Worker = struct {
     }
 };
 
-test "placeholder" {
-    try std.testing.expect(true);
+test "Worker.init creates worker with config" {
+    const allocator = std.testing.allocator;
+    const config = WorkerConfig{
+        .id = 42,
+        .task_description = "Test task",
+        .working_dir = "/tmp",
+        .max_steps = 100,
+        .velocity_ms = 500,
+        .timeout_ms = 600_000,
+        .agent_name = "hephaestus",
+    };
+
+    const worker = try Worker.init(allocator, config);
+    defer worker.deinit();
+
+    try std.testing.expectEqual(@as(u32, 42), worker.config.id);
+    try std.testing.expectEqual(WorkerStatus.idle, worker.status);
+    try std.testing.expect(worker.pid == null);
+    try std.testing.expect(worker.output_file.len > 0);
 }
+
+test "Worker status transitions work correctly" {
+    const allocator = std.testing.allocator;
+    const config = WorkerConfig{
+        .id = 1,
+        .task_description = "Test task",
+        .working_dir = "/tmp",
+    };
+
+    var worker = try Worker.init(allocator, config);
+    defer worker.deinit();
+
+    // Initial status should be idle
+    try std.testing.expectEqual(WorkerStatus.idle, worker.status);
+
+    // Manually set status to running for testing
+    worker.status = .running;
+    try std.testing.expectEqual(WorkerStatus.running, worker.status);
+
+    // Set to done
+    worker.status = .done;
+    try std.testing.expectEqual(WorkerStatus.done, worker.status);
+
+    // Set to failed
+    worker.status = .failed;
+    try std.testing.expectEqual(WorkerStatus.failed, worker.status);
+
+    // Set to killed
+    worker.status = .killed;
+    try std.testing.expectEqual(WorkerStatus.killed, worker.status);
+}
+
+test "Worker.isStale detects stale worker" {
+    const allocator = std.testing.allocator;
+    const config = WorkerConfig{
+        .id = 1,
+        .task_description = "Test task",
+        .working_dir = "/tmp",
+    };
+
+    var worker = try Worker.init(allocator, config);
+    defer worker.deinit();
+
+    // Worker just started, should not be stale
+    const not_stale = worker.isStale(60_000);
+    try std.testing.expect(!not_stale);
+
+    // Manually set heartbeat to far in the past
+    worker.last_heartbeat_ms = std.time.milliTimestamp() - 120_000;
+
+    // Should now be stale with 60s timeout
+    const is_stale = worker.isStale(60_000);
+    try std.testing.expect(is_stale);
+}
+

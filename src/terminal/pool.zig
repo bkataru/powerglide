@@ -85,6 +85,47 @@ pub const PoolError = error{
     SessionNotFound,
 };
 
-test "placeholder" {
+test "Pool.init creates pool with default config" {
+    const allocator = std.testing.allocator;
+    const pool = Pool.init(allocator, 10);
+
+    try std.testing.expectEqual(@as(usize, 10), pool.max_sessions);
+    try std.testing.expectEqual(@as(SessionId, 1), pool.next_id);
+    try std.testing.expectEqual(@as(usize, 0), pool.sessions.size);
+
+    pool.deinit();
+}
+
+test "Pool.create adds new session" {
+    const allocator = std.testing.allocator;
+    var pool = Pool.init(allocator, 10);
+    defer pool.deinit();
+
+    const id = try pool.create();
+    try std.testing.expectEqual(@as(SessionId, 1), id);
+    try std.testing.expectEqual(@as(usize, 1), pool.sessions.size);
+}
+
+test "Pool.get retrieves session by id" {
+    const allocator = std.testing.allocator;
+    var pool = Pool.init(allocator, 10);
+    defer pool.deinit();
+
+    const id = try pool.create();
+    const session = pool.get(id);
+    try std.testing.expect(session != null);
+    try std.testing.expectEqual(id, session.?.id);
+
+    const not_found = pool.get(999);
+    try std.testing.expect(not_found == null);
+}
+
+test "Pool.activeCount returns zero for empty pool" {
+    const allocator = std.testing.allocator;
+    const pool = Pool.init(allocator, 10);
+    defer pool.deinit();
+
+    try std.testing.expectEqual(@as(usize, 0), pool.activeCount());
+}
     try std.testing.expect(true);
 }

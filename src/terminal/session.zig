@@ -114,6 +114,37 @@ pub const TerminalSession = struct {
     }
 };
 
-test "placeholder" {
+test "TerminalSession.init creates session with correct id" {
+    const allocator = std.testing.allocator;
+    const session = TerminalSession.init(allocator, 42);
+
+    try std.testing.expectEqual(@as(SessionId, 42), session.id);
+    try std.testing.expectEqual(allocator, session.allocator);
+    try std.testing.expect(session.process == null);
+
+    session.deinit();
+}
+
+test "TerminalSession.isAlive returns false for uninitialized session" {
+    const allocator = std.testing.allocator;
+    const session = TerminalSession.init(allocator, 1);
+    defer session.deinit();
+
+    const alive = session.isAlive();
+    try std.testing.expect(!alive);
+}
+
+test "CommandResult struct fields are accessible" {
+    const allocator = std.testing.allocator;
+    const result = CommandResult{
+        .output = try allocator.alloc(u8, 0),
+        .exit_code = 0,
+        .timed_out = false,
+    };
+    allocator.free(result.output);
+
+    try std.testing.expectEqual(@as(u8, 0), result.exit_code);
+    try std.testing.expect(!result.timed_out);
+}
     try std.testing.expect(true);
 }
