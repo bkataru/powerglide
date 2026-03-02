@@ -19,7 +19,7 @@
 
 ## What is powerglide?
 
-powerglide is a high-performance CLI coding agent runtime built in [Zig 0.15](https://ziglang.org/). It orchestrates swarms of SWE agents (like [oh-my-opencode](https://github.com/can1357/oh-my-pi), [opencode](https://github.com/sst/opencode), [Claude Code](https://claude.ai/code), and [Cursor](https://cursor.com)) with precise velocity control, reliable PTY management, and multi-model routing — all from a single fast binary with no runtime dependencies.
+powerglide is a high-performance CLI coding agent runtime built in [Zig 0.15](https://ziglang.org/). It orchestrates swarms of SWE agents (like [oh-my-opencode](https://github.com/code-yeongyu/oh-my-opencode), [opencode](https://github.com/anomalyco/opencode), [Claude Code](https://claude.ai/code), and [Cursor](https://cursor.com)) with precise velocity control, reliable PTY management, and multi-model routing — all from a single fast binary with no runtime dependencies.
 
 Like the Lamborghini Powerglide transmission it's named after, powerglide is designed for one thing: **maximum throughput**.
 
@@ -277,13 +277,20 @@ powerglide is inspired by the best ideas from the AI coding agent ecosystem:
 
 | Project | Inspiration |
 |---------|------------|
-| [oh-my-pi](https://github.com/can1357/oh-my-pi) | Multi-agent harness patterns, orchestration |
+| [oh-my-pi](https://github.com/can1357/oh-my-pi) | Multi-agent harness patterns, agent orchestration |
+| [oh-my-opencode](https://github.com/code-yeongyu/oh-my-opencode) | Ralph Wiggum loop, autonomous agent control |
 | [ralph](https://github.com/snarktank/ralph) | Ralph loop state machine, explicit done signals |
+| [The Ralph Playbook](https://github.com/ghuntley/how-to-ralph-wiggum) | Ralph Wiggum methodology, autonomous loops |
 | [gastown](https://github.com/steveyegge/gastown) | Multi-agent workspace isolation, task queues |
 | [loki](https://github.com/Dark-Alex-17/loki) | Tool registry, provider abstraction, session persistence |
 | [plandex](https://github.com/plandex-ai/plandex) | Plan+execute pattern, diff-based application |
-| [opencode](https://github.com/sst/opencode) | CLI UX, multi-model routing |
+| [opencode](https://github.com/anomalyco/opencode) | CLI UX, multi-model routing |
 | [aichat](https://github.com/sigoden/aichat) | SSE streaming, config schema |
+| [goose](https://github.com/block/goose) | Agent extensibility, MCP integration |
+| [crush](https://github.com/charmbracelet/crush) | Terminal UX, TUI design |
+| [mem0](https://github.com/mem0ai/mem0) | Persistent memory layer for AI agents |
+| [pi-mono](https://github.com/badlogic/pi-mono) | Multi-agent coordination patterns |
+| [forge code](https://forgecode.dev) | Agentic coding workflow design |
 
 ---
 
