@@ -770,10 +770,8 @@ test "VERSION constant is defined" {
 }
 
 test "VERSION matches expected format" {
-    // Version should be in format X.Y.Z
-    const parts = std.mem.split(u8, VERSION, ".");
-    const major = parts.first();
-    try std.testing.expectEqualStrings("0", major);
-}
-    try std.testing.expect(true);
+    // Version should start with a number followed by dot
+    try std.testing.expect(VERSION.len >= 3);
+    try std.testing.expect(VERSION[0] == '0');
+    try std.testing.expect(VERSION[1] == '.');
 }

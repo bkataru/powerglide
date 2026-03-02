@@ -325,6 +325,26 @@ pub const TUIApp = struct {
     }
 };
 
-test "placeholder" {
-    try std.testing.expect(true);
+test "TUIApp.init creates app with default state" {
+    const allocator = std.testing.allocator;
+    const app = TUIApp.init(allocator);
+
+    try std.testing.expectEqual(allocator, app.allocator);
+    try std.testing.expect(!app.running);
+}
+
+test "TUIApp.stop sets running to false" {
+    const allocator = std.testing.allocator;
+    var app = TUIApp.init(allocator);
+
+    app.running = true;
+    app.stop();
+
+    try std.testing.expect(!app.running);
+}
+
+test "Agent state enum has expected values" {
+    try std.testing.expectEqual(@as(usize, 0), @intFromEnum(AgentState.idle));
+    try std.testing.expectEqual(@as(usize, 1), @intFromEnum(AgentState.running));
+    try std.testing.expectEqual(@as(usize, 2), @intFromEnum(AgentState.done));
 }

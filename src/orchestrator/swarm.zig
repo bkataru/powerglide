@@ -241,6 +241,76 @@ pub const Swarm = struct {
     }
 };
 
-test "placeholder" {
-    try std.testing.expect(true);
+test "Swarm.init creates swarm with default config" {
+    const allocator = std.testing.allocator;
+    const config = SwarmConfig{
+        .working_dir = "/tmp",
+    };
+    const swarm = Swarm.init(allocator, config);
+
+    try std.testing.expectEqual(@as(u32, 8), swarm.config.max_workers);
+    try std.testing.expectEqual(@as(u64, 60_000), swarm.config.heartbeat_timeout_ms);
+    try std.testing.expectEqual(@as(u32, 0), swarm.next_worker_id);
+    try std.testing.expectEqual(@as(usize, 0), swarm.workers.items.len);
+    try std.testing.expectEqual(@as(usize, 0), swarm.tasks.items.len);
+
+    swarm.deinit();
+}
+
+test "Swarm.addTask adds task to queue" {
+    const allocator = std.testing.allocator;
+    const config = SwarmConfig{
+        .working_dir = "/tmp",
+    };
+    var swarm = Swarm.init(allocator, config);
+    defer swarm.deinit();
+
+    try swarm.addTask("task-1", "First task", 5);
+    try swarm.addTask("task-2", "Second task", 10);
+
+    try std.testing.expectEqual(@as(usize, 2), swarm.tasks.items.len);
+    try std.testing.expectEqualStrings("task-1", swarm.tasks.items[0].task_id);
+    try std.testing.expectEqualStrings("task-2", swarm.tasks.items[1].task_id);
+    try std.testing.expectEqual(@as(u8, 10), swarm.tasks.items[1].priority); // Higher priority
+}
+
+test "Swarm.pendingCount returns correct count" {
+    const allocator = std.testing.allocator;
+    const config = SwarmConfig{
+        .working_dir = "/tmp",
+    };
+    var swarm = Swarm.init(allocator, config);
+    defer swarm.deinit();
+
+    try swarm.addTask("task-1", "First task", 5);
+    try swarm.addTask("task-2", "Second task", 3);
+
+    try std.testing.expectEqual(@as(usize, 2), swarm.pendingCount());
+
+    // Mark first task as done
+    swarm.tasks.items[0].done = true;
+    try std.testing.expectEqual(@as(usize, 1), swarm.pendingCount());
+
+    // Assign second task to a worker
+    swarm.tasks.items[1].assigned_worker = 1;
+    try std.testing.expectEqual(@as(usize, 0), swarm.pendingCount());
+}
+
+test "Swarm.getTask finds task by ID" {
+    const allocator = std.testing.allocator;
+    const config = SwarmConfig{
+        .working_dir = "/tmp",
+    };
+    var swarm = Swarm.init(allocator, config);
+    defer swarm.deinit();
+
+    try swarm.addTask("task-1", "First task", 5);
+    try swarm.addTask("task-2", "Second task", 3);
+
+    const found = swarm.getTask("task-1");
+    try std.testing.expect(found != null);
+    try std.testing.expectEqualStrings("First task", found.?.description);
+
+    const not_found = swarm.getTask("nonexistent");
+    try std.testing.expect(not_found == null);
 }
