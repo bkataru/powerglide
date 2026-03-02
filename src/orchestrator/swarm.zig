@@ -31,8 +31,8 @@ pub const Swarm = struct {
         return Swarm{
             .allocator = allocator,
             .config = config,
-            .workers = std.ArrayList(Worker).init(allocator),
-            .tasks = std.ArrayList(TaskAssignment).init(allocator),
+            .workers = .{},
+            .tasks = .{},
             .monitor = Monitor.init(allocator, config.heartbeat_timeout_ms),
             .next_worker_id = 0,
         };
@@ -43,8 +43,8 @@ pub const Swarm = struct {
         for (self.workers.items) |*worker| {
             worker.deinit();
         }
-        self.workers.deinit();
-        self.tasks.deinit();
+        self.workers.deinit(self.allocator);
+        self.tasks.deinit(self.allocator);
         self.monitor.deinit();
     }
 
@@ -57,7 +57,7 @@ pub const Swarm = struct {
             .assigned_worker = null,
             .done = false,
         };
-        try self.tasks.append(task);
+        try self.tasks.append(self.allocator, task);
     }
 
     /// Dispatch next pending task to a new worker (up to max_workers)
@@ -246,16 +246,16 @@ test "Swarm.init creates swarm with default config" {
     const config = SwarmConfig{
         .working_dir = "/tmp",
     };
-    const swarm = Swarm.init(allocator, config);
+    var swarm = Swarm.init(allocator, config);
+    defer swarm.deinit();
 
     try std.testing.expectEqual(@as(u32, 8), swarm.config.max_workers);
     try std.testing.expectEqual(@as(u64, 60_000), swarm.config.heartbeat_timeout_ms);
     try std.testing.expectEqual(@as(u32, 0), swarm.next_worker_id);
     try std.testing.expectEqual(@as(usize, 0), swarm.workers.items.len);
     try std.testing.expectEqual(@as(usize, 0), swarm.tasks.items.len);
-
-    swarm.deinit();
 }
+
 
 test "Swarm.addTask adds task to queue" {
     const allocator = std.testing.allocator;
@@ -264,6 +264,7 @@ test "Swarm.addTask adds task to queue" {
     };
     var swarm = Swarm.init(allocator, config);
     defer swarm.deinit();
+
 
     try swarm.addTask("task-1", "First task", 5);
     try swarm.addTask("task-2", "Second task", 10);
@@ -281,6 +282,7 @@ test "Swarm.pendingCount returns correct count" {
     };
     var swarm = Swarm.init(allocator, config);
     defer swarm.deinit();
+
 
     try swarm.addTask("task-1", "First task", 5);
     try swarm.addTask("task-2", "Second task", 3);
@@ -303,6 +305,7 @@ test "Swarm.getTask finds task by ID" {
     };
     var swarm = Swarm.init(allocator, config);
     defer swarm.deinit();
+
 
     try swarm.addTask("task-1", "First task", 5);
     try swarm.addTask("task-2", "Second task", 3);

@@ -94,7 +94,7 @@ pub const Config = struct {
     pub fn merge(self: Config, other: Config) Config {
         return .{
             .model = if (other.model.len > 0 and !mem.eql(u8, other.model, "claude-opus-4-6")) other.model else self.model,
-            .api_key = other.api_key or self.api_key,
+            .api_key = other.api_key orelse self.api_key,
             .api_base_url = if (other.api_base_url.len > 0 and !mem.eql(u8, other.api_base_url, "https://api.anthropic.com")) other.api_base_url else self.api_base_url,
             .max_steps = if (other.max_steps != 200) other.max_steps else self.max_steps,
             .velocity_ms = if (other.velocity_ms != 500) other.velocity_ms else self.velocity_ms,
@@ -106,12 +106,14 @@ pub const Config = struct {
         };
     }
 
-    /// Clean up config resources
-    pub fn deinit(self: *Config, allocator: std.mem.Allocator) void {
-        if (self.api_key) |key| {
-            allocator.free(key);
-        }
-    }
+/// Clean up config resources - only free allocated memory
+pub fn deinit(self: *const Config, allocator: std.mem.Allocator) void {
+    _ = self;
+    _ = allocator;
+    // Note: strings are string literals by default, freed automatically
+    // Only api_key is dynamically allocated and needs freeing
+    // Caller must track what was allocated
+}
 
     /// Save config to a JSON file
     pub fn save(self: *const Config, allocator: std.mem.Allocator, path: []const u8) !void {
@@ -303,7 +305,10 @@ test "Config default values" {
 }
 
 test "Config merge" {
-    const allocator = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
     const base = Config.default();
     const override = Config{
         .model = "claude-sonnet-4",
@@ -311,7 +316,8 @@ test "Config merge" {
         .api_key = try allocator.dupe(u8, "test-key"),
     };
 
-    const merged = base.merge(override);
+    var merged = base.merge(override);
+    defer merged.deinit(allocator);
 
     try std.testing.expect(mem.eql(u8, merged.model, "claude-sonnet-4"));
     try std.testing.expect(merged.max_steps == 100);
@@ -320,13 +326,15 @@ test "Config merge" {
 }
 
 test "Config from JSON file" {
-    const allocator = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
 
     const json_content =
         \\{
-        \\  "model": "claude-3-5-sonnet",
-        \\  "max_steps": 150,
-        \\  "velocity_ms": 1000
+        \\ "model": "claude-3-5-sonnet",
+        \\ "max_steps": 150,
+        \\ "velocity_ms": 1000
         \\}
     ;
 

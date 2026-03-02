@@ -147,18 +147,17 @@ pub const Monitor = struct {
 
 test "Monitor.init creates monitor with default config" {
     const allocator = std.testing.allocator;
-    const monitor = Monitor.init(allocator, 60_000);
+    var monitor = Monitor.init(allocator, 60_000);
+    defer monitor.deinit();
 
     try std.testing.expectEqual(@as(u64, 60_000), monitor.heartbeat_timeout_ms);
     try std.testing.expectEqual(@as(u64, 5000), monitor.poll_interval_ms);
     try std.testing.expectEqual(@as(usize, 0), monitor.workers.count());
-
-    monitor.deinit();
 }
 
 test "Monitor.activeCount returns zero for empty monitor" {
     const allocator = std.testing.allocator;
-    const monitor = Monitor.init(allocator, 60_000);
+    var monitor = Monitor.init(allocator, 60_000);
     defer monitor.deinit();
 
     try std.testing.expectEqual(@as(usize, 0), monitor.activeCount());
@@ -166,7 +165,7 @@ test "Monitor.activeCount returns zero for empty monitor" {
 
 test "Monitor.allDone returns true for empty monitor" {
     const allocator = std.testing.allocator;
-    const monitor = Monitor.init(allocator, 60_000);
+    var monitor = Monitor.init(allocator, 60_000);
     defer monitor.deinit();
 
     try std.testing.expect(monitor.allDone());
@@ -174,7 +173,7 @@ test "Monitor.allDone returns true for empty monitor" {
 
 test "Monitor.getWorker returns null for nonexistent worker" {
     const allocator = std.testing.allocator;
-    const monitor = Monitor.init(allocator, 60_000);
+    var monitor = Monitor.init(allocator, 60_000);
     defer monitor.deinit();
 
     const worker = monitor.getWorker(999);

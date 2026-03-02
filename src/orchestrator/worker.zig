@@ -163,12 +163,12 @@ pub const Worker = struct {
     /// Kill the worker process
     pub fn kill(self: *Worker) void {
         if (self.pid) |pid| {
-            _ = std.posix.kill(pid, std.posix.SIGTERM) catch {};
+            _ = std.posix.kill(pid, std.posix.SIG.TERM) catch {};
             // Give it a moment to terminate gracefully
-            std.time.sleep(100_000_000); // 100ms
+            std.Thread.sleep(100_000_000); // 100ms
 
             // Force kill if still alive
-            _ = std.posix.kill(pid, std.posix.SIGKILL) catch {};
+            _ = std.posix.kill(pid, std.posix.SIG.KILL) catch {};
             self.pid = null;
         }
         self.status = .killed;
@@ -231,7 +231,7 @@ test "Worker.init creates worker with config" {
         .agent_name = "hephaestus",
     };
 
-    const worker = try Worker.init(allocator, config);
+    var worker = Worker.init(allocator, config) catch unreachable;
     defer worker.deinit();
 
     try std.testing.expectEqual(@as(u32, 42), worker.config.id);

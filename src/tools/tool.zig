@@ -61,7 +61,7 @@ pub const ToolResult = struct {
 pub const BuiltinTools = struct {
     /// Get list of all built-in tools
     pub fn all() []const Tool {
-        return &.{
+        return &[_]Tool{
             bash_tool(),
             read_tool(),
             write_tool(),
@@ -128,27 +128,22 @@ pub const BuiltinTools = struct {
 
 /// Run a shell command, return combined stdout+stderr output
 fn runCommand(allocator: std.mem.Allocator, argv: []const []const u8) ![]u8 {
-    var child = std.process.Child.init(argv, allocator);
-    child.stdout_behavior = .Pipe;
-    child.stderr_behavior = .Pipe;
-    try child.spawn();
+    const result = try std.process.Child.run(.{
+        .argv = argv,
+        .allocator = allocator,
+        .max_output_bytes = 4 * 1024 * 1024,
+    });
+    defer allocator.free(result.stdout);
+    defer allocator.free(result.stderr);
 
-    const stdout = try child.stdout.?.reader().readAllAlloc(allocator, 4 * 1024 * 1024);
-    errdefer allocator.free(stdout);
-    const stderr = try child.stderr.?.reader().readAllAlloc(allocator, 512 * 1024);
-    defer allocator.free(stderr);
-
-    _ = try child.wait();
-
-    if (stderr.len > 0 and stdout.len > 0) {
-        const combined = try std.fmt.allocPrint(allocator, "{s}\n--- stderr ---\n{s}", .{ stdout, stderr });
-        allocator.free(stdout);
+    if (result.stderr.len > 0 and result.stdout.len > 0) {
+        const combined = try std.fmt.allocPrint(allocator, "{s}\n--- stderr ---\n{s}", .{ result.stdout, result.stderr });
         return combined;
-    } else if (stderr.len > 0) {
-        const out = try allocator.dupe(u8, stderr);
+    } else if (result.stderr.len > 0) {
+        const out = try allocator.dupe(u8, result.stderr);
         return out;
     }
-    return stdout;
+    return result.stdout;
 }
 
 fn bash_handler(allocator: std.mem.Allocator, input: ToolInput) !ToolOutput {

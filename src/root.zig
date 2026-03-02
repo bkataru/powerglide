@@ -13,6 +13,10 @@ pub const tools = @import("tools/tool.zig");
 pub const tui = @import("tui/app.zig");
 pub const orchestrator = @import("orchestrator/swarm.zig");
 
+test {
+    std.testing.refAllDecls(@This());
+}
+
 pub fn bufferedPrint() !void {
     var stdout_buffer: [1024]u8 = undefined;
     var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);

@@ -74,6 +74,9 @@ The binary lands at `./zig-out/bin/powerglide`.
 ./zig-out/bin/powerglide run --agent hephaestus --velocity 2.0 "add unit tests"
 
 # Resume a session
+# Demo script to see all features
+./demo.sh
+
 ./zig-out/bin/powerglide run --session-id abc123 "continue from where we left off"
 
 # Open TUI dashboard

@@ -31,7 +31,9 @@
       "Bash(/tmp/test_arraylist2.zig:*)",
       "Bash(/tmp/test_arraylist3.zig:*)",
       "Bash(/root/.local/share/mise/installs/zig/0.15.2/zig build-lib:*)",
-      "Bash(/root/.local/share/mise/installs/zig/0.15.2/zig test:*)"
+      "Bash(/root/.local/share/mise/installs/zig/0.15.2/zig test:*)",
+      "Bash(xxd:*)",
+      "Bash(/tmp/prompt_phase10_fix.txt:*)"
     ]
   }
 }

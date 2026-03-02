@@ -4,17 +4,17 @@ const vxfw = vaxis.vxfw;
 
 // ── Agent data ────────────────────────────────────────────────────────────────
 
-const AgentState = enum { idle, running, done };
+const AgentState = enum { idle, running, done, failed };
 
 const Agent = struct {
     name: []const u8,
     state: AgentState,
     step: u32,
+    total_steps: u32,
 };
 
 // ── Dashboard widget ──────────────────────────────────────────────────────────
 
-/// Root dashboard widget — owns all app state.
 const Dashboard = struct {
     allocator: std.mem.Allocator,
     agents: []const Agent,
@@ -69,15 +69,15 @@ const Dashboard = struct {
 
         const header = vxfw.Text{
             .text = header_text,
-            .style = .{ .bold = true, .fg = .{ .index = 6 } }, // cyan
+            .style = .{ .bold = true, .fg = .{ .index = 6 } },
             .softwrap = false,
             .width_basis = .parent,
         };
 
         // ── Status bar (1 row) ──────────────────────────────────────────
         const statusbar = vxfw.Text{
-            .text = "q/Ctrl+C: quit  r: refresh  h: help",
-            .style = .{ .bg = .{ .index = 0 }, .fg = .{ .index = 3 } }, // yellow on black
+            .text = " q/Ctrl+C: quit  r: refresh  h: help ",
+            .style = .{ .bg = .{ .index = 0 }, .fg = .{ .index = 3 } },
             .softwrap = false,
             .width_basis = .parent,
         };
@@ -88,7 +88,7 @@ const Dashboard = struct {
 
         const agents_widget = vxfw.Text{
             .text = agents_text,
-            .style = .{ .fg = .{ .index = 2 } }, // green
+            .style = .{ .fg = .{ .index = 2 } },
             .softwrap = false,
             .width_basis = .parent,
         };
@@ -99,17 +99,14 @@ const Dashboard = struct {
 
         const logs_widget = vxfw.Text{
             .text = logs_text,
-            .style = .{ .fg = .{ .index = 7 } }, // white/light-grey
+            .style = .{ .fg = .{ .index = 7 } },
             .softwrap = false,
             .width_basis = .parent,
         };
 
         // ── Layout ──────────────────────────────────────────────────────
-        // We'll build the layout manually using SubSurfaces so we can control
-        // the exact dimensions (header=1 row, statusbar=1 row, content=rest).
-
         const content_height: u16 = if (max.height > 2) max.height - 2 else 0;
-        const left_width: u16 = @intCast(max.width * 2 / 5); // ~40 %
+        const left_width: u16 = @intCast(max.width * 2 / 5);
         const right_width: u16 = if (max.width > left_width + 1) max.width - left_width - 1 else 0;
 
         var children = std.ArrayList(vxfw.SubSurface){};
@@ -170,7 +167,7 @@ const Dashboard = struct {
             });
         }
 
-        // Root surface — draw the vertical separator between the two panels
+        // Root surface
         var surface = try vxfw.Surface.initWithChildren(
             ctx.arena,
             self.widget(),
@@ -184,7 +181,7 @@ const Dashboard = struct {
             while (row < 1 + content_height) : (row += 1) {
                 surface.writeCell(left_width, row, .{
                     .char = .{ .grapheme = "│", .width = 1 },
-                    .style = .{ .fg = .{ .index = 8 } }, // dark grey
+                    .style = .{ .fg = .{ .index = 8 } },
                 });
             }
         }
@@ -214,7 +211,7 @@ fn buildHeaderText(arena: std.mem.Allocator, refresh_count: u32) ![]const u8 {
     const seconds = secs % 60;
     return std.fmt.allocPrint(
         arena,
-        "powerglide v0.1.0 — multi-agent coding dashboard  [{d:0>2}:{d:0>2}:{d:0>2} UTC]  [refreshes: {d}]",
+        "powerglide v0.1.0 — multi-agent coding dashboard [{d:0>2}:{d:0>2}:{d:0>2} UTC] [refreshes: {d}]",
         .{ hours, minutes, seconds, refresh_count },
     );
 }
@@ -225,18 +222,32 @@ fn buildAgentsText(arena: std.mem.Allocator, agents: []const Agent) ![]const u8 
     var buf = std.ArrayList(u8){};
     defer buf.deinit(arena);
 
-    try buf.appendSlice(arena, "=== Agents ===\n");
+    try buf.appendSlice(arena, "═══ Agents Status ═══\n\n");
     for (agents) |ag| {
         const state_str: []const u8 = switch (ag.state) {
-            .idle => "idle",
-            .running => "running",
-            .done => "done",
+            .idle => "⏸  idle    ",
+            .running => "▶ running ",
+            .done => "✓ done    ",
+            .failed => "✗ failed  ",
         };
+        
         if (ag.state == .running) {
-            const line = try std.fmt.allocPrint(arena, "{s}: {s} (step {d})\n", .{ ag.name, state_str, ag.step });
+            const progress = if (ag.total_steps > 0) 
+                @as(f32, @floatFromInt(ag.step)) / @as(f32, @floatFromInt(ag.total_steps))
+            else 0.0;
+            const bar_len: u32 = @intFromFloat(progress * 10.0);
+            var bar: [12]u8 = undefined;
+            @memset(bar[0..bar_len], '█');
+            @memset(bar[bar_len..10], '░');
+            bar[10] = ' ';
+            bar[11] = 0;
+            
+            const line = try std.fmt.allocPrint(arena, "{s} {s} |{s}| {d}/{d}\n", .{ 
+                state_str, ag.name, bar, ag.step, ag.total_steps 
+            });
             try buf.appendSlice(arena, line);
         } else {
-            const line = try std.fmt.allocPrint(arena, "{s}: {s}\n", .{ ag.name, state_str });
+            const line = try std.fmt.allocPrint(arena, "{s} {s}\n", .{ state_str, ag.name });
             try buf.appendSlice(arena, line);
         }
     }
@@ -249,7 +260,7 @@ fn buildLogsText(arena: std.mem.Allocator, lines: []const []const u8) ![]const u
     var buf = std.ArrayList(u8){};
     defer buf.deinit(arena);
 
-    try buf.appendSlice(arena, "=== Log Output ===\n");
+    try buf.appendSlice(arena, "═══ Log Output ═══\n\n");
     for (lines) |line| {
         try buf.appendSlice(arena, line);
         try buf.append(arena, '\n');
@@ -273,27 +284,25 @@ pub const TUIApp = struct {
         _ = self;
     }
 
-    /// Launches the full vxfw TUI event loop.
-    /// If there is no TTY (e.g. CI), prints a message and returns gracefully.
     pub fn start(self: *TUIApp) !void {
         self.running = true;
         defer self.running = false;
 
         const placeholder_agents = [_]Agent{
-            .{ .name = "agent-1", .state = .idle, .step = 0 },
-            .{ .name = "agent-2", .state = .running, .step = 42 },
-            .{ .name = "agent-3", .state = .done, .step = 100 },
+            .{ .name = "sisyphus", .state = .running, .step = 42, .total_steps = 100 },
+            .{ .name = "hephaestus", .state = .idle, .step = 0, .total_steps = 50 },
+            .{ .name = "oracle", .state = .done, .step = 15, .total_steps = 15 },
         };
 
         const placeholder_logs = [_][]const u8{
-            "[INFO]  powerglide v0.1.0 started",
-            "[INFO]  loading configuration",
-            "[INFO]  agent-1 initialised (idle)",
-            "[INFO]  agent-2 initialised (running, step 42)",
-            "[INFO]  agent-3 completed successfully",
+            "[INFO] powerglide v0.1.0 started",
+            "[INFO] loading configuration",
+            "[INFO] agent sisyphus initialised (running)",
+            "[INFO] agent hephaestus initialised (idle)",
+            "[INFO] agent oracle completed successfully",
             "[DEBUG] memory store ready",
             "[DEBUG] tool registry: 12 tools loaded",
-            "[INFO]  dashboard ready — press 'r' to refresh",
+            "[INFO] dashboard ready — press 'r' to refresh",
         };
 
         var dashboard = Dashboard{
@@ -347,4 +356,5 @@ test "Agent state enum has expected values" {
     try std.testing.expectEqual(@as(usize, 0), @intFromEnum(AgentState.idle));
     try std.testing.expectEqual(@as(usize, 1), @intFromEnum(AgentState.running));
     try std.testing.expectEqual(@as(usize, 2), @intFromEnum(AgentState.done));
+    try std.testing.expectEqual(@as(usize, 3), @intFromEnum(AgentState.failed));
 }
