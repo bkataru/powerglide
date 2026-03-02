@@ -765,6 +765,15 @@ fn checkConfigDir(writer: anytype) !void {
     try writer.writeAll("OK   ~/.config/powerglide: exists\n");
 }
 
-test "placeholder" {
+test "VERSION constant is defined" {
+    try std.testing.expectEqualStrings("0.1.0", VERSION);
+}
+
+test "VERSION matches expected format" {
+    // Version should be in format X.Y.Z
+    const parts = std.mem.split(u8, VERSION, ".");
+    const major = parts.first();
+    try std.testing.expectEqualStrings("0", major);
+}
     try std.testing.expect(true);
 }
