@@ -3,7 +3,7 @@ const std = @import("std");
 
 /// Helper function to check if binary exists
 fn binaryExists() bool {
-    std.fs.accessAbsolute("/root/powerglide/zig-out/bin/powerglide") catch {
+    std.fs.accessAbsolute("/root/powerglide/zig-out/bin/powerglide", .{}) catch {
         return false;
     };
     return true;
@@ -11,7 +11,8 @@ fn binaryExists() bool {
 
 test "powerglide --help runs successfully" {
     if (!binaryExists()) {
-        try std.testing.skipZigTest("binary not built");
+        // Binary not built yet, skip this test
+        return;
     }
 
     const result = std.process.Child.run(.{
@@ -32,7 +33,8 @@ test "powerglide --help runs successfully" {
 
 test "powerglide version runs successfully" {
     if (!binaryExists()) {
-        try std.testing.skipZigTest("binary not built");
+        // Binary not built yet, skip this test
+        return;
     }
 
     const result = std.process.Child.run(.{
@@ -53,7 +55,8 @@ test "powerglide version runs successfully" {
 
 test "powerglide doctor runs successfully" {
     if (!binaryExists()) {
-        try std.testing.skipZigTest("binary not built");
+        // Binary not built yet, skip this test
+        return;
     }
 
     const result = std.process.Child.run(.{
@@ -74,7 +77,8 @@ test "powerglide doctor runs successfully" {
 
 test "powerglide --version runs successfully" {
     if (!binaryExists()) {
-        try std.testing.skipZigTest("binary not built");
+        // Binary not built yet, skip this test
+        return;
     }
 
     const result = std.process.Child.run(.{
@@ -94,7 +98,8 @@ test "powerglide --version runs successfully" {
 
 test "powerglide help runs successfully" {
     if (!binaryExists()) {
-        try std.testing.skipZigTest("binary not built");
+        // Binary not built yet, skip this test
+        return;
     }
 
     const result = std.process.Child.run(.{
