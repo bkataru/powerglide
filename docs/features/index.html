@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Features</title>
+    <meta name="description" :content="Explore powerglide&apos;s powerful features for multi-agent coding workflows">
+    <link rel="icon" type="image/x-icon" href="/powerglide/favicon.ico">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        'pg-bg': '#0a0a0f',
+                        'pg-surface': '#12121a',
+                        'pg-primary': '#F7A41D',
+                        'pg-cyan': '#06b6d4',
+                        'pg-purple': '#7c3aed',
+                        'pg-text': '#e5e5e5',
+                        'pg-text-muted': '#a0a0a0',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background: #0a0a0f; color: #e5e5e5; font-family: 'Inter', sans-serif; }
+        h1, h2, h3, h4, h5, h6 { font-family: 'Inter', sans-serif; }
+        code, pre, kbd, samp { font-family: 'JetBrains Mono', monospace; }
+        .cyber-grid {
+            background-image: linear-gradient(rgba(6, 182, 212, 0.1) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(6, 182, 212, 0.1) 1px, transparent 1px);
+            background-size: 50px 50px;
+        }
+    </style>
+</head>
+<body class="bg-pg-bg text-pg-text">
+    <nav class="p-4 bg-pg-surface border-b border-pg-primary/30">
+        <div class="container mx-auto flex flex-wrap items-center justify-between max-w-7xl">
+            <div class="flex items-center">
+                <a href="/powerglide/" class="text-2xl font-bold text-pg-primary">powerglide</a>
+            </div>
+            <div class="hidden md:flex md:gap-6">
+                <a href="/powerglide/" class="text-pg-text hover:text-pg-cyan transition-colors">Home</a>
+                <a href="/powerglide/features/" class="text-pg-text hover:text-pg-cyan transition-colors">Features</a>
+                <a href="/powerglide/architecture/" class="text-pg-text hover:text-pg-cyan transition-colors">Architecture</a>
+                <a href="/powerglide/cli-reference/" class="text-pg-text hover:text-pg-cyan transition-colors">CLI Reference</a>
+                <a href="/powerglide/configuration/" class="text-pg-text hover:text-pg-cyan transition-colors">Configuration</a>
+            </div>
+        </div>
+    </nav>
+    
+    <main class="container mx-auto p-8 cyber-grid min-h-screen">
+        <article class="py-12">
+            <div class="max-w-4xl mx-auto">
+                <h1 class="text-4xl font-bold mb-8">Features</h1>
+                <div class="prose prose-invert prose-lg max-w-none"><h1>Features</h1><p>powerglide is packed with features designed for <strong>maximum throughput</strong> in AI-assisted coding workflows.</p><h2>Multi-Agent Swarms 🐜</h2><p>Orchestrate N agents in parallel with:</p><ul><li>Independent workspaces per agent</li><li>Task queues with priority scheduling</li><li>Health monitoring with heartbeat timeouts</li><li>Automatic rogue agent termination</li><li>Step limits to prevent runaway execution</li></ul><pre><code class="bash"><span class="constant function">powerglide</span> <span class="constant">swarm</span> <span class="constant">create</span> <span class="constant">my-team</span> <span class="constant">--agents</span> <span class="constant">3</span>
+<span class="constant function">powerglide</span> <span class="constant">swarm</span> <span class="constant">run</span> <span class="constant">my-team</span> <span class="string constant">&quot;implement the authentication module&quot;</span>
+</code></pre>
+<h2>Velocity Control 🚀</h2><p>Tune agent speed dynamically to match your needs:</p><pre><code class="bash"><span class="comment"># Fast execution (2x speed, 500ms between steps)</span>
+<span class="constant function">powerglide</span> <span class="constant">run</span> <span class="constant">--velocity</span> <span class="constant">2.0</span> <span class="string constant">&quot;quick refactor&quot;</span>
+
+<span class="comment"># Conservative pace (0.5x speed, 2000ms between steps)</span>
+<span class="constant function">powerglide</span> <span class="constant">run</span> <span class="constant">--velocity</span> <span class="constant">0.5</span> <span class="string constant">&quot;careful review&quot;</span>
+
+<span class="comment"># Agents can self-adjust via session config</span>
+<span class="constant function">echo</span> <span class="string constant">&quot;VELOCITY=1.5&quot;</span> <span class="operator">&gt;&gt;</span> ~/.config/powerglide/session-abc123.json
+</code></pre>
+<h2>Ralph Loop State Machine 🔄</h2><p>The fault-tolerant state machine at the core:</p><ol><li><strong>IDLE</strong> - Waiting for tasks</li><li><strong>LOAD_TASKS</strong> - Fetch next task from queue</li><li><strong>THINKING</strong> - Process and plan</li><li><strong>ACTING</strong> - Execute tool calls</li><li><strong>OBSERVING</strong> - Gather results</li><li><strong>VERIFY</strong> - Run validation checks</li><li><strong>COMMIT</strong> - Update task status</li><li><strong>FAILED</strong> - Error recovery / retry</li></ol><p>The loop emits <code>&lt;POWERGLIDE_DONE&gt;</code> when complete, providing a clean stop signal.</p><h2>Reliable PTY Management 💻</h2><p>Full pseudoterminal support ensures accurate command execution:</p><ul><li><code>waitpid</code>-based exit code capture</li><li>WNOHANG polling for non-blocking operation</li><li><code>/proc/&lt;pid&gt;/status</code> fallback for edge cases</li><li>Proper signal handling and cleanup</li></ul><h2>Multi-Model Routing 🤖</h2><p>Route to any LLM provider with automatic fallbacks:</p><pre><code class="bash"><span class="comment"># Anthropic Claude</span>
+<span class="keyword">export</span> <span class="property">ANTHROPIC_API_KEY</span>=<span class="string">&quot;sk-ant-...&quot;</span>
+<span class="constant function">powerglide</span> <span class="constant">run</span> <span class="constant">--model</span> <span class="string constant">&quot;claude-opus-4-6&quot;</span> <span class="string constant">&quot;...&quot;</span>
+
+<span class="comment"># OpenAI-compatible (Ollama, NVIDIA NIM, Together AI)</span>
+<span class="keyword">export</span> <span class="property">OPENAI_API_KEY</span>=<span class="string">&quot;sk-...&quot;</span>
+<span class="constant function">powerglide</span> <span class="constant">run</span> <span class="constant">--model</span> <span class="string constant">&quot;gpt-4&quot;</span> <span class="string constant">&quot;...&quot;</span>
+
+<span class="comment"># Automatic fallback chain configured in config.json</span>
+</code></pre>
+<h2>Terminal TUI 📊</h2><p>Multi-panel dashboard for monitoring:</p><ul><li>Real-time agent status</li><li>Live log streaming</li><li>Velocity display</li><li>Task progress tracking</li><li>Resource usage metrics</li></ul><pre><code class="bash"><span class="constant function">powerglide</span> <span class="constant">tui</span>
+</code></pre>
+<h2>MCP-style Tools 🔧</h2><p>Full tool registry with the same tools Claude Code uses:</p><ul><li><code>bash</code> - Execute shell commands</li><li><code>read</code> - Read file contents</li><li><code>write</code> - Write files</li><li><code>edit</code> - Edit files with precision</li><li><code>grep</code> - Search code</li><li><code>glob</code> - Find files by pattern</li></ul><h2>Doctor Command 🩺</h2><p>One-shot system health check:</p><pre><code class="bash"><span class="constant function">powerglide</span> <span class="constant">doctor</span>
+</code></pre>
+<p>Checks:</p><ul><li>Zig version and PATH</li><li>oh-my-opencode availability</li><li>Git installation</li><li>API keys (ANTHROPIC, OPENAI)</li><li>Config directory structure</li></ul><h2>Persistent Memory 🧠</h2><p>JSONL-based session memory with:</p><ul><li>Context windowing</li><li>Semantic search triggers</li><li>Automatic summarization</li><li>Cross-session persistence</li></ul><h2>SSE Streaming ⚡</h2><p>Real-time token streaming from model APIs:</p><ul><li>Incremental output display</li><li>Lower latency perception</li><li>Better UX for long responses</li><li>Cancellable generation</li></ul><hr><p><a href="/powerglide/">Back to Home</a> · <a href="/powerglide/architecture/">Architecture</a> · <a href="/powerglide/cli-reference/">CLI Reference</a></p></div>
+            </div>
+        </article>
+    </main>
+    
+    <footer class="p-8 bg-pg-surface border-t border-pg-purple/30 mt-12">
+        <div class="container mx-auto text-center text-pg-text-muted text-sm">
+            <p>Built with <span class="text-pg-primary">❤</span> using <a href="https://zine-ssg.io" class="text-pg-cyan">Zine</a> and <a href="https://ziglang.org" class="text-pg-cyan">Zig</a></p>
+            <p class="mt-2">© 2026 powerglide - The CLI coding agent that slides</p>
+        </div>
+    </footer>
+</body>
+</html>

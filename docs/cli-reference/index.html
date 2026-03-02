@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CLI Reference</title>
+    <meta name="description" :content="Complete CLI reference for powerglide commands and options">
+    <link rel="icon" type="image/x-icon" href="/powerglide/favicon.ico">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        'pg-bg': '#0a0a0f',
+                        'pg-surface': '#12121a',
+                        'pg-primary': '#F7A41D',
+                        'pg-cyan': '#06b6d4',
+                        'pg-purple': '#7c3aed',
+                        'pg-text': '#e5e5e5',
+                        'pg-text-muted': '#a0a0a0',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background: #0a0a0f; color: #e5e5e5; font-family: 'Inter', sans-serif; }
+        h1, h2, h3, h4, h5, h6 { font-family: 'Inter', sans-serif; }
+        code, pre, kbd, samp { font-family: 'JetBrains Mono', monospace; }
+        .cyber-grid {
+            background-image: linear-gradient(rgba(6, 182, 212, 0.1) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(6, 182, 212, 0.1) 1px, transparent 1px);
+            background-size: 50px 50px;
+        }
+    </style>
+</head>
+<body class="bg-pg-bg text-pg-text">
+    <nav class="p-4 bg-pg-surface border-b border-pg-primary/30">
+        <div class="container mx-auto flex flex-wrap items-center justify-between max-w-7xl">
+            <div class="flex items-center">
+                <a href="/powerglide/" class="text-2xl font-bold text-pg-primary">powerglide</a>
+            </div>
+            <div class="hidden md:flex md:gap-6">
+                <a href="/powerglide/" class="text-pg-text hover:text-pg-cyan transition-colors">Home</a>
+                <a href="/powerglide/features/" class="text-pg-text hover:text-pg-cyan transition-colors">Features</a>
+                <a href="/powerglide/architecture/" class="text-pg-text hover:text-pg-cyan transition-colors">Architecture</a>
+                <a href="/powerglide/cli-reference/" class="text-pg-text hover:text-pg-cyan transition-colors">CLI Reference</a>
+                <a href="/powerglide/configuration/" class="text-pg-text hover:text-pg-cyan transition-colors">Configuration</a>
+            </div>
+        </div>
+    </nav>
+    
+    <main class="container mx-auto p-8 cyber-grid min-h-screen">
+        <article class="py-12">
+            <div class="max-w-4xl mx-auto">
+                <h1 class="text-4xl font-bold mb-8">CLI Reference</h1>
+                <div class="prose prose-invert prose-lg max-w-none"><h1>CLI Reference</h1><p>Complete reference for all powerglide commands and options.</p><h2>Main Command</h2><pre><code>powerglide — the CLI coding agent that slides
+
+USAGE:
+    powerglide [command] [options] [args...]
+
+COMMANDS:
+    run         Launch an agent coding session
+    session     Manage agent sessions (list, show, resume, delete, export)
+    agent       Manage agent configurations (list, add, remove, show)
+    swarm       Manage agent swarms (list, create, add, remove, run, status, stop)
+    config      Manage powerglide configuration (show, set, get, reset, edit)
+    tools       List and test available tools (list, show, test)
+    tui         Open the interactive multi-agent dashboard
+    doctor      Run system health checks
+    version     Show version information
+
+Run &apos;powerglide [command] --help&apos; for command-specific help.
+</code></pre><h2>powerglide run</h2><p>Launch an agent coding session.</p><pre><code>USAGE:
+    powerglide run [options] [message]
+
+OPTIONS:
+    --agent, -a &lt;name&gt;      Agent to use (default: hephaestus)
+    --velocity, -v &lt;ms&gt;     Delay between steps in ms (default: 500)
+    --session-id, -s &lt;id&gt;   Resume or create session with given ID
+    --model, -m &lt;model&gt;     Model override (e.g. claude-opus-4-6)
+    --help, -h              Show this help
+</code></pre><h3>Examples</h3><pre><code class="bash"><span class="comment"># Basic run</span>
+<span class="constant function">powerglide</span> <span class="constant">run</span> <span class="string constant">&quot;refactor this function&quot;</span>
+
+<span class="comment"># With specific agent</span>
+<span class="constant function">powerglide</span> <span class="constant">run</span> <span class="constant">--agent</span> <span class="constant">hephaestus</span> <span class="string constant">&quot;add tests&quot;</span>
+
+<span class="comment"># With velocity control</span>
+<span class="constant function">powerglide</span> <span class="constant">run</span> <span class="constant">--velocity</span> <span class="constant">2.0</span> <span class="string constant">&quot;quick fix&quot;</span>
+
+<span class="comment"># Resume session</span>
+<span class="constant function">powerglide</span> <span class="constant">run</span> <span class="constant">--session-id</span> <span class="constant">abc123</span> <span class="string constant">&quot;continue&quot;</span>
+</code></pre>
+<h2>powerglide session</h2><p>Manage agent sessions.</p><pre><code>USAGE:
+    powerglide session [subcommand] [options]
+
+SUBCOMMANDS:
+    list        List all sessions
+    show        Show session details
+    resume      Resume a session
+    delete      Delete a session
+    export      Export session to file
+</code></pre><h3>Examples</h3><pre><code class="bash"><span class="comment"># List sessions</span>
+<span class="constant function">powerglide</span> <span class="constant">session</span> <span class="constant">list</span>
+
+<span class="comment"># Show session</span>
+<span class="constant function">powerglide</span> <span class="constant">session</span> <span class="constant">show</span> <span class="constant">abc123</span>
+
+<span class="comment"># Resume session</span>
+<span class="constant function">powerglide</span> <span class="constant">session</span> <span class="constant">resume</span> <span class="constant">abc123</span>
+
+<span class="comment"># Delete session</span>
+<span class="constant function">powerglide</span> <span class="constant">session</span> <span class="constant">delete</span> <span class="constant">abc123</span>
+
+<span class="comment"># Export session</span>
+<span class="constant function">powerglide</span> <span class="constant">session</span> <span class="constant">export</span> <span class="constant">abc123</span> <span class="operator">&gt;</span> session.json
+</code></pre>
+<h2>powerglide agent</h2><p>Manage agent configurations.</p><pre><code>USAGE:
+    powerglide agent [subcommand] [options]
+
+SUBCOMMANDS:
+    list        List all agents
+    add         Add a new agent
+    remove      Remove an agent
+    show        Show agent details
+</code></pre><h3>Examples</h3><pre><code class="bash"><span class="comment"># List agents</span>
+<span class="constant function">powerglide</span> <span class="constant">agent</span> <span class="constant">list</span>
+
+<span class="comment"># Add agent</span>
+<span class="constant function">powerglide</span> <span class="constant">agent</span> <span class="constant">add</span> <span class="constant">my-agent</span> <span class="constant">--model</span> <span class="string constant">&quot;claude-sonnet-4&quot;</span>
+
+<span class="comment"># Show agent</span>
+<span class="constant function">powerglide</span> <span class="constant">agent</span> <span class="constant">show</span> <span class="constant">my-agent</span>
+
+<span class="comment"># Remove agent</span>
+<span class="constant function">powerglide</span> <span class="constant">agent</span> <span class="constant">remove</span> <span class="constant">my-agent</span>
+</code></pre>
+<h2>powerglide swarm</h2><p>Manage agent swarms.</p><pre><code>USAGE:
+    powerglide swarm [subcommand] [options]
+
+SUBCOMMANDS:
+    list        List all swarms
+    create      Create a new swarm
+    add         Add agent to swarm
+    remove      Remove agent from swarm
+    run         Run a swarm task
+    status      Show swarm status
+    stop        Stop a running swarm
+</code></pre><h3>Examples</h3><pre><code class="bash"><span class="comment"># Create swarm</span>
+<span class="constant function">powerglide</span> <span class="constant">swarm</span> <span class="constant">create</span> <span class="constant">my-team</span> <span class="constant">--agents</span> <span class="constant">3</span>
+
+<span class="comment"># Add agent to swarm</span>
+<span class="constant function">powerglide</span> <span class="constant">swarm</span> <span class="constant">add</span> <span class="constant">my-team</span> <span class="constant">--agent</span> <span class="constant">hephaestus</span>
+
+<span class="comment"># Run swarm task</span>
+<span class="constant function">powerglide</span> <span class="constant">swarm</span> <span class="constant">run</span> <span class="constant">my-team</span> <span class="string constant">&quot;implement authentication&quot;</span>
+
+<span class="comment"># Check status</span>
+<span class="constant function">powerglide</span> <span class="constant">swarm</span> <span class="constant">status</span> <span class="constant">my-team</span>
+
+<span class="comment"># Stop swarm</span>
+<span class="constant function">powerglide</span> <span class="constant">swarm</span> <span class="constant">stop</span> <span class="constant">my-team</span>
+</code></pre>
+<h2>powerglide config</h2><p>Manage powerglide configuration.</p><pre><code>USAGE:
+    powerglide config [subcommand] [options]
+
+SUBCOMMANDS:
+    show        Show current configuration
+    set         Set a configuration value
+    get         Get a configuration value
+    reset       Reset configuration to defaults
+    edit        Edit configuration file
+</code></pre><h3>Examples</h3><pre><code class="bash"><span class="comment"># Show config</span>
+<span class="constant function">powerglide</span> <span class="constant">config</span> <span class="constant">show</span>
+
+<span class="comment"># Set value</span>
+<span class="constant function">powerglide</span> <span class="constant">config</span> <span class="constant">set</span> <span class="constant">default_agent</span> <span class="constant">hephaestus</span>
+
+<span class="comment"># Get value</span>
+<span class="constant function">powerglide</span> <span class="constant">config</span> <span class="constant">get</span> <span class="constant">default_agent</span>
+
+<span class="comment"># Reset to defaults</span>
+<span class="constant function">powerglide</span> <span class="constant">config</span> <span class="constant">reset</span>
+
+<span class="comment"># Edit config file</span>
+<span class="constant function">powerglide</span> <span class="constant">config</span> <span class="constant">edit</span>
+</code></pre>
+<h2>powerglide tools</h2><p>List and test available tools.</p><pre><code>USAGE:
+    powerglide tools [subcommand] [options]
+
+SUBCOMMANDS:
+    list        List all tools
+    show        Show tool details
+    test        Test a tool
+</code></pre><h3>Examples</h3><pre><code class="bash"><span class="comment"># List tools</span>
+<span class="constant function">powerglide</span> <span class="constant">tools</span> <span class="constant">list</span>
+
+<span class="comment"># Show tool</span>
+<span class="constant function">powerglide</span> <span class="constant">tools</span> <span class="constant">show</span> <span class="constant">bash</span>
+
+<span class="comment"># Test tool</span>
+<span class="constant function">powerglide</span> <span class="constant">tools</span> <span class="constant">test</span> <span class="constant">bash</span> <span class="constant">--args</span> <span class="string constant">&quot;echo hello&quot;</span>
+</code></pre>
+<h2>powerglide tui</h2><p>Open the interactive multi-agent dashboard.</p><pre><code>USAGE:
+    powerglide tui [options]
+
+OPTIONS:
+    --refresh, -r &lt;ms&gt;    Refresh rate in ms (default: 1000)
+    --help, -h            Show this help
+</code></pre><h2>powerglide doctor</h2><p>Run system health checks.</p><pre><code>USAGE:
+    powerglide doctor
+
+Checks:
+    - zig              Version and PATH
+    - oh-my-opencode   npx availability
+    - git              Version
+    - API keys         ANTHROPIC_API_KEY, OPENAI_API_KEY
+    - Config dir       ~/.config/powerglide/
+</code></pre><h3>Example Output</h3><pre><code>$ powerglide doctor
+✓ zig 0.15.2 found at /usr/local/bin/zig
+✓ oh-my-opencode found
+✓ git 2.40.1 found
+✓ ANTHROPIC_API_KEY set
+✗ OPENAI_API_KEY not set
+✓ Config directory exists
+</code></pre><h2>powerglide version</h2><p>Show version information.</p><pre><code>USAGE:
+    powerglide version
+
+Output:
+    powerglide 0.1.0
+    Zig 0.15.2
+    Target: x86_64-linux
+</code></pre><h2>Environment Variables</h2><table><tr><th>Variable</th><th>Description</th></tr><tr><td><code>ANTHROPIC_API_KEY</code></td><td>Anthropic API key</td></tr><tr><td><code>OPENAI_API_KEY</code></td><td>OpenAI-compatible API key</td></tr><tr><td><code>POWERGLIDE_MODEL</code></td><td>Default model</td></tr><tr><td><code>POWERGLIDE_VELOCITY</code></td><td>Default velocity multiplier</td></tr><tr><td><code>POWERGLIDE_MAX_STEPS</code></td><td>Max steps per session</td></tr></table><hr><p><a href="/powerglide/">Back to Home</a> · <a href="/powerglide/features/">Features</a> · <a href="/powerglide/configuration/">Configuration</a></p></div>
+            </div>
+        </article>
+    </main>
+    
+    <footer class="p-8 bg-pg-surface border-t border-pg-purple/30 mt-12">
+        <div class="container mx-auto text-center text-pg-text-muted text-sm">
+            <p>Built with <span class="text-pg-primary">❤</span> using <a href="https://zine-ssg.io" class="text-pg-cyan">Zine</a> and <a href="https://ziglang.org" class="text-pg-cyan">Zig</a></p>
+            <p class="mt-2">© 2026 powerglide - The CLI coding agent that slides</p>
+        </div>
+    </footer>
+</body>
+</html>

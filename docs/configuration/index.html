@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuration</title>
+    <meta name="description" :content="Configure powerglide with environment variables and config files">
+    <link rel="icon" type="image/x-icon" href="/powerglide/favicon.ico">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        'pg-bg': '#0a0a0f',
+                        'pg-surface': '#12121a',
+                        'pg-primary': '#F7A41D',
+                        'pg-cyan': '#06b6d4',
+                        'pg-purple': '#7c3aed',
+                        'pg-text': '#e5e5e5',
+                        'pg-text-muted': '#a0a0a0',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background: #0a0a0f; color: #e5e5e5; font-family: 'Inter', sans-serif; }
+        h1, h2, h3, h4, h5, h6 { font-family: 'Inter', sans-serif; }
+        code, pre, kbd, samp { font-family: 'JetBrains Mono', monospace; }
+        .cyber-grid {
+            background-image: linear-gradient(rgba(6, 182, 212, 0.1) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(6, 182, 212, 0.1) 1px, transparent 1px);
+            background-size: 50px 50px;
+        }
+    </style>
+</head>
+<body class="bg-pg-bg text-pg-text">
+    <nav class="p-4 bg-pg-surface border-b border-pg-primary/30">
+        <div class="container mx-auto flex flex-wrap items-center justify-between max-w-7xl">
+            <div class="flex items-center">
+                <a href="/powerglide/" class="text-2xl font-bold text-pg-primary">powerglide</a>
+            </div>
+            <div class="hidden md:flex md:gap-6">
+                <a href="/powerglide/" class="text-pg-text hover:text-pg-cyan transition-colors">Home</a>
+                <a href="/powerglide/features/" class="text-pg-text hover:text-pg-cyan transition-colors">Features</a>
+                <a href="/powerglide/architecture/" class="text-pg-text hover:text-pg-cyan transition-colors">Architecture</a>
+                <a href="/powerglide/cli-reference/" class="text-pg-text hover:text-pg-cyan transition-colors">CLI Reference</a>
+                <a href="/powerglide/configuration/" class="text-pg-text hover:text-pg-cyan transition-colors">Configuration</a>
+            </div>
+        </div>
+    </nav>
+    
+    <main class="container mx-auto p-8 cyber-grid min-h-screen">
+        <article class="py-12">
+            <div class="max-w-4xl mx-auto">
+                <h1 class="text-4xl font-bold mb-8">Configuration</h1>
+                <div class="prose prose-invert prose-lg max-w-none"><h1>Configuration</h1><p>powerglide supports multiple configuration methods with a clear precedence order.</p><h2>Configuration Precedence</h2><p>Configuration is loaded in the following order (highest to lowest priority):</p><ol><li><strong>Command-line arguments</strong> - Override everything</li><li><strong>Environment variables</strong> - System-wide settings</li><li><strong>Config file</strong> - <code>~/.config/powerglide/config.json</code></li><li><strong>Built-in defaults</strong> - Fallback values</li></ol><h2>Environment Variables</h2><p>Set these in your shell profile (<code>~/.bashrc</code>, <code>~/.zshrc</code>, etc.):</p><pre><code class="bash"><span class="comment"># API Keys</span>
+<span class="keyword">export</span> <span class="property">ANTHROPIC_API_KEY</span>=<span class="string">&quot;sk-ant-...&quot;</span>
+<span class="keyword">export</span> <span class="property">OPENAI_API_KEY</span>=<span class="string">&quot;sk-...&quot;</span>
+
+<span class="comment"># Default Settings</span>
+<span class="keyword">export</span> <span class="property">POWERGLIDE_MODEL</span>=<span class="string">&quot;claude-opus-4-6&quot;</span>
+<span class="keyword">export</span> <span class="property">POWERGLIDE_VELOCITY</span>=<span class="string">&quot;1.0&quot;</span>
+<span class="keyword">export</span> <span class="property">POWERGLIDE_MAX_STEPS</span>=<span class="string">&quot;200&quot;</span>
+</code></pre>
+<h3>Available Variables</h3><table><tr><th>Variable</th><th>Type</th><th>Default</th><th>Description</th></tr><tr><td><code>ANTHROPIC_API_KEY</code></td><td>string</td><td>-</td><td>Anthropic API key</td></tr><tr><td><code>OPENAI_API_KEY</code></td><td>string</td><td>-</td><td>OpenAI-compatible API key</td></tr><tr><td><code>POWERGLIDE_MODEL</code></td><td>string</td><td><code>claude-sonnet-4</code></td><td>Default model</td></tr><tr><td><code>POWERGLIDE_VELOCITY</code></td><td>float</td><td><code>1.0</code></td><td>Velocity multiplier</td></tr><tr><td><code>POWERGLIDE_MAX_STEPS</code></td><td>integer</td><td><code>200</code></td><td>Max steps per session</td></tr><tr><td><code>POWERGLIDE_CONFIG_DIR</code></td><td>string</td><td><code>~/.config/powerglide</code></td><td>Config directory</td></tr></table><h2>Config File</h2><p>Location: <code>~/.config/powerglide/config.json</code></p><pre><code class="json">{
+  <span class="string_special_key string">&quot;default_agent&quot;</span>: <span class="string">&quot;hephaestus&quot;</span>,
+  <span class="string_special_key string">&quot;velocity&quot;</span>: <span class="number">1.0</span>,
+  <span class="string_special_key string">&quot;max_steps&quot;</span>: <span class="number">200</span>,
+  <span class="string_special_key string">&quot;model&quot;</span>: {
+    <span class="string_special_key string">&quot;provider&quot;</span>: <span class="string">&quot;anthropic&quot;</span>,
+    <span class="string_special_key string">&quot;model&quot;</span>: <span class="string">&quot;claude-opus-4-6&quot;</span>
+  },
+  <span class="string_special_key string">&quot;fallback_chain&quot;</span>: [
+    { <span class="string_special_key string">&quot;provider&quot;</span>: <span class="string">&quot;anthropic&quot;</span>, <span class="string_special_key string">&quot;model&quot;</span>: <span class="string">&quot;claude-sonnet-4&quot;</span> },
+    { <span class="string_special_key string">&quot;provider&quot;</span>: <span class="string">&quot;openai&quot;</span>, <span class="string_special_key string">&quot;model&quot;</span>: <span class="string">&quot;gpt-4&quot;</span> }
+  ],
+  <span class="string_special_key string">&quot;tools&quot;</span>: {
+    <span class="string_special_key string">&quot;bash&quot;</span>: {
+      <span class="string_special_key string">&quot;timeout&quot;</span>: <span class="number">30000</span>,
+      <span class="string_special_key string">&quot;max_output&quot;</span>: <span class="number">10000</span>
+    },
+    <span class="string_special_key string">&quot;read&quot;</span>: {
+      <span class="string_special_key string">&quot;max_size&quot;</span>: <span class="number">1048576</span>
+    }
+  }
+}
+</code></pre>
+<h3>Configuration Schema</h3><pre><code class="json">{
+  <span class="string_special_key string">&quot;default_agent&quot;</span>: <span class="string">&quot;string (agent name)&quot;</span>,
+  <span class="string_special_key string">&quot;velocity&quot;</span>: <span class="string">&quot;float (multiplier)&quot;</span>,
+  <span class="string_special_key string">&quot;max_steps&quot;</span>: <span class="string">&quot;integer&quot;</span>,
+  <span class="string_special_key string">&quot;model&quot;</span>: {
+    <span class="string_special_key string">&quot;provider&quot;</span>: <span class="string">&quot;anthropic | openai | openai_compatible&quot;</span>,
+    <span class="string_special_key string">&quot;model&quot;</span>: <span class="string">&quot;string (model name)&quot;</span>,
+    <span class="string_special_key string">&quot;base_url&quot;</span>: <span class="string">&quot;string (optional, for OpenAI-compatible)&quot;</span>
+  },
+  <span class="string_special_key string">&quot;fallback_chain&quot;</span>: <span class="string">&quot;array of model configs&quot;</span>,
+  <span class="string_special_key string">&quot;tools&quot;</span>: {
+    <span class="string_special_key string">&quot;bash&quot;</span>: { <span class="string_special_key string">&quot;timeout&quot;</span>: <span class="string">&quot;ms&quot;</span>, <span class="string_special_key string">&quot;max_output&quot;</span>: <span class="string">&quot;bytes&quot;</span> },
+    <span class="string_special_key string">&quot;read&quot;</span>: { <span class="string_special_key string">&quot;max_size&quot;</span>: <span class="string">&quot;bytes&quot;</span> },
+    <span class="string_special_key string">&quot;edit&quot;</span>: { <span class="string_special_key string">&quot;max_edits&quot;</span>: <span class="string">&quot;integer&quot;</span> }
+  },
+  <span class="string_special_key string">&quot;rogue_prevention&quot;</span>: {
+    <span class="string_special_key string">&quot;step_limit&quot;</span>: <span class="string">&quot;integer&quot;</span>,
+    <span class="string_special_key string">&quot;heartbeat_timeout&quot;</span>: <span class="string">&quot;ms&quot;</span>,
+    <span class="string_special_key string">&quot;circuit_breaker_threshold&quot;</span>: <span class="string">&quot;integer&quot;</span>
+  }
+}
+</code></pre>
+<h2>Session Configuration</h2><p>Sessions store their configuration at <code>~/.config/powerglide/session-&lt;id&gt;.json</code>:</p><pre><code class="json">{
+  <span class="string_special_key string">&quot;id&quot;</span>: <span class="string">&quot;abc123&quot;</span>,
+  <span class="string_special_key string">&quot;agent&quot;</span>: <span class="string">&quot;hephaestus&quot;</span>,
+  <span class="string_special_key string">&quot;velocity&quot;</span>: <span class="number">1.5</span>,
+  <span class="string_special_key string">&quot;model&quot;</span>: <span class="string">&quot;claude-opus-4-6&quot;</span>,
+  <span class="string_special_key string">&quot;created_at&quot;</span>: <span class="string">&quot;2026-03-02T10:00:00Z&quot;</span>,
+  <span class="string_special_key string">&quot;last_activity&quot;</span>: <span class="string">&quot;2026-03-02T10:30:00Z&quot;</span>,
+  <span class="string_special_key string">&quot;steps_completed&quot;</span>: <span class="number">42</span>,
+  <span class="string_special_key string">&quot;status&quot;</span>: <span class="string">&quot;active&quot;</span>
+}
+</code></pre>
+<h2>Model Providers</h2><h3>Anthropic (Claude)</h3><pre><code class="bash"><span class="keyword">export</span> <span class="property">ANTHROPIC_API_KEY</span>=<span class="string">&quot;sk-ant-...&quot;</span>
+<span class="keyword">export</span> <span class="property">POWERGLIDE_MODEL</span>=<span class="string">&quot;claude-opus-4-6&quot;</span>
+</code></pre>
+<h3>OpenAI</h3><pre><code class="bash"><span class="keyword">export</span> <span class="property">OPENAI_API_KEY</span>=<span class="string">&quot;sk-...&quot;</span>
+<span class="keyword">export</span> <span class="property">POWERGLIDE_MODEL</span>=<span class="string">&quot;gpt-4&quot;</span>
+</code></pre>
+<h3>OpenAI-Compatible (Ollama, NVIDIA NIM, Together AI)</h3><pre><code class="bash"><span class="keyword">export</span> <span class="property">OPENAI_API_KEY</span>=<span class="string">&quot;...&quot;</span>
+<span class="keyword">export</span> <span class="property">POWERGLIDE_MODEL</span>=<span class="string">&quot;ollama/llama3&quot;</span>
+
+<span class="comment"># Config file</span>
+{
+  <span class="string constant function">&quot;model&quot;</span><span class="constant function">:</span> <span class="constant">{</span>
+    <span class="string constant function">&quot;provider&quot;</span><span class="constant function">:</span> <span class="string constant">&quot;openai_compatible&quot;</span><span class="constant">,</span>
+    <span class="string constant function">&quot;base_url&quot;</span><span class="constant function">:</span> <span class="string constant">&quot;http://localhost:11434/v1&quot;</span><span class="constant">,</span>
+    <span class="string constant function">&quot;model&quot;</span><span class="constant function">:</span> <span class="string constant">&quot;llama3&quot;</span>
+  }
+<span class="constant function">}</span>
+</code></pre>
+<h2>Tool Configuration</h2><h3>Bash Tool</h3><pre><code class="json">{
+  <span class="string_special_key string">&quot;tools&quot;</span>: {
+    <span class="string_special_key string">&quot;bash&quot;</span>: {
+      <span class="string_special_key string">&quot;timeout&quot;</span>: <span class="number">30000</span>,
+      <span class="string_special_key string">&quot;max_output&quot;</span>: <span class="number">10000</span>,
+      <span class="string_special_key string">&quot;allowed_commands&quot;</span>: [<span class="string">&quot;*&quot;</span>],
+      <span class="string_special_key string">&quot;blocked_commands&quot;</span>: [<span class="string">&quot;rm -rf /&quot;</span>, <span class="string">&quot;dd if=/dev/zero&quot;</span>]
+    }
+  }
+}
+</code></pre>
+<h3>Read Tool</h3><pre><code class="json">{
+  <span class="string_special_key string">&quot;tools&quot;</span>: {
+    <span class="string_special_key string">&quot;read&quot;</span>: {
+      <span class="string_special_key string">&quot;max_size&quot;</span>: <span class="number">1048576</span>,
+      <span class="string_special_key string">&quot;allowed_patterns&quot;</span>: [<span class="string">&quot;*&quot;</span>],
+      <span class="string_special_key string">&quot;blocked_patterns&quot;</span>: [<span class="string">&quot;/etc/passwd&quot;</span>, <span class="string">&quot;~/.ssh/*&quot;</span>]
+    }
+  }
+}
+</code></pre>
+<h2>Rogue Prevention</h2><p>Configure safety limits:</p><pre><code class="json">{
+  <span class="string_special_key string">&quot;rogue_prevention&quot;</span>: {
+    <span class="string_special_key string">&quot;step_limit&quot;</span>: <span class="number">200</span>,
+    <span class="string_special_key string">&quot;heartbeat_timeout&quot;</span>: <span class="number">30000</span>,
+    <span class="string_special_key string">&quot;circuit_breaker_threshold&quot;</span>: <span class="number">3</span>,
+    <span class="string_special_key string">&quot;budget&quot;</span>: {
+      <span class="string_special_key string">&quot;max_tokens&quot;</span>: <span class="number">100000</span>,
+      <span class="string_special_key string">&quot;max_cost_usd&quot;</span>: <span class="number">10.00</span>
+    }
+  }
+}
+</code></pre>
+<h2>Editing Configuration</h2><p>Use the CLI to manage configuration:</p><pre><code class="bash"><span class="comment"># Show current config</span>
+<span class="constant function">powerglide</span> <span class="constant">config</span> <span class="constant">show</span>
+
+<span class="comment"># Set a value</span>
+<span class="constant function">powerglide</span> <span class="constant">config</span> <span class="constant">set</span> <span class="constant">default_agent</span> <span class="constant">hephaestus</span>
+
+<span class="comment"># Get a value</span>
+<span class="constant function">powerglide</span> <span class="constant">config</span> <span class="constant">get</span> <span class="constant">velocity</span>
+
+<span class="comment"># Reset to defaults</span>
+<span class="constant function">powerglide</span> <span class="constant">config</span> <span class="constant">reset</span>
+
+<span class="comment"># Edit config file directly</span>
+<span class="constant function">powerglide</span> <span class="constant">config</span> <span class="constant">edit</span>
+</code></pre>
+<hr><p><a href="/powerglide/">Back to Home</a> · <a href="/powerglide/cli-reference/">CLI Reference</a> · <a href="/powerglide/for-ai-agents/">For AI Agents</a></p></div>
+            </div>
+        </article>
+    </main>
+    
+    <footer class="p-8 bg-pg-surface border-t border-pg-purple/30 mt-12">
+        <div class="container mx-auto text-center text-pg-text-muted text-sm">
+            <p>Built with <span class="text-pg-primary">❤</span> using <a href="https://zine-ssg.io" class="text-pg-cyan">Zine</a> and <a href="https://ziglang.org" class="text-pg-cyan">Zig</a></p>
+            <p class="mt-2">© 2026 powerglide - The CLI coding agent that slides</p>
+        </div>
+    </footer>
+</body>
+</html>

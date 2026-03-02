@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>For AI Agents</title>
+    <meta name="description" :content="Guidelines for AI agents working with powerglide">
+    <link rel="icon" type="image/x-icon" href="/powerglide/favicon.ico">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        'pg-bg': '#0a0a0f',
+                        'pg-surface': '#12121a',
+                        'pg-primary': '#F7A41D',
+                        'pg-cyan': '#06b6d4',
+                        'pg-purple': '#7c3aed',
+                        'pg-text': '#e5e5e5',
+                        'pg-text-muted': '#a0a0a0',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background: #0a0a0f; color: #e5e5e5; font-family: 'Inter', sans-serif; }
+        h1, h2, h3, h4, h5, h6 { font-family: 'Inter', sans-serif; }
+        code, pre, kbd, samp { font-family: 'JetBrains Mono', monospace; }
+        .cyber-grid {
+            background-image: linear-gradient(rgba(6, 182, 212, 0.1) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(6, 182, 212, 0.1) 1px, transparent 1px);
+            background-size: 50px 50px;
+        }
+    </style>
+</head>
+<body class="bg-pg-bg text-pg-text">
+    <nav class="p-4 bg-pg-surface border-b border-pg-primary/30">
+        <div class="container mx-auto flex flex-wrap items-center justify-between max-w-7xl">
+            <div class="flex items-center">
+                <a href="/powerglide/" class="text-2xl font-bold text-pg-primary">powerglide</a>
+            </div>
+            <div class="hidden md:flex md:gap-6">
+                <a href="/powerglide/" class="text-pg-text hover:text-pg-cyan transition-colors">Home</a>
+                <a href="/powerglide/features/" class="text-pg-text hover:text-pg-cyan transition-colors">Features</a>
+                <a href="/powerglide/architecture/" class="text-pg-text hover:text-pg-cyan transition-colors">Architecture</a>
+                <a href="/powerglide/cli-reference/" class="text-pg-text hover:text-pg-cyan transition-colors">CLI Reference</a>
+                <a href="/powerglide/configuration/" class="text-pg-text hover:text-pg-cyan transition-colors">Configuration</a>
+            </div>
+        </div>
+    </nav>
+    
+    <main class="container mx-auto p-8 cyber-grid min-h-screen">
+        <article class="py-12">
+            <div class="max-w-4xl mx-auto">
+                <h1 class="text-4xl font-bold mb-8">For AI Agents</h1>
+                <div class="prose prose-invert prose-lg max-w-none"><h1>For AI Agents</h1><p>Comprehensive guidance for AI agents using powerglide as a tool or building on top of it.</p><h2>Overview</h2><p>powerglide is designed to be agent-friendly, with:</p><ul><li>Clear stop signals (<code>&lt;POWERGLIDE_DONE&gt;</code>)</li><li>Structured output formats</li><li>Reliable exit code capture</li><li>Session persistence for recovery</li><li>Configurable safety limits</li></ul><h2>Using powerglide as a Tool</h2><h3>Basic Invocation</h3><pre><code class="bash"><span class="constant function">powerglide</span> <span class="constant">run</span> <span class="string constant">&quot;implement a binary search tree in Zig&quot;</span>
+</code></pre>
+<h3>With Parameters</h3><pre><code class="bash"><span class="constant function">powerglide</span> <span class="constant">run</span> \
+  <span class="constant">--agent</span> <span class="constant">hephaestus</span> \
+  <span class="constant">--velocity</span> <span class="constant">2.0</span> \
+  <span class="constant">--model</span> <span class="string constant">&quot;claude-opus-4-6&quot;</span> \
+  <span class="string constant">&quot;add unit tests for the authentication module&quot;</span>
+</code></pre>
+<h3>Expected Output</h3><p>Agents should parse for:</p><ol><li><code>&lt;POWERGLIDE_DONE&gt;</code> - Clean completion signal</li><li><code>&lt;POWERGLIDE_ERROR&gt;</code> - Error condition</li><li>Tool call results in structured format</li></ol><h2>Building on powerglide</h2><h3>Session Management</h3><pre><code class="bash"><span class="comment"># Create new session</span>
+<span class="constant function">powerglide</span> <span class="constant">run</span> <span class="constant">--session-id</span> <span class="constant">my-session</span> <span class="string constant">&quot;task 1&quot;</span>
+
+<span class="comment"># Continue session</span>
+<span class="constant function">powerglide</span> <span class="constant">run</span> <span class="constant">--session-id</span> <span class="constant">my-session</span> <span class="string constant">&quot;task 2&quot;</span>
+
+<span class="comment"># List sessions</span>
+<span class="constant function">powerglide</span> <span class="constant">session</span> <span class="constant">list</span>
+</code></pre>
+<h3>Swarm Orchestration</h3><pre><code class="bash"><span class="comment"># Create swarm</span>
+<span class="constant function">powerglide</span> <span class="constant">swarm</span> <span class="constant">create</span> <span class="constant">dev-team</span> <span class="constant">--agents</span> <span class="constant">3</span>
+
+<span class="comment"># Assign task</span>
+<span class="constant function">powerglide</span> <span class="constant">swarm</span> <span class="constant">run</span> <span class="constant">dev-team</span> <span class="string constant">&quot;implement the API layer&quot;</span>
+
+<span class="comment"># Monitor progress</span>
+<span class="constant function">powerglide</span> <span class="constant">swarm</span> <span class="constant">status</span> <span class="constant">dev-team</span>
+</code></pre>
+<h2>Tool Interface</h2><p>All powerglide tools follow a consistent interface:</p><pre><code class="zig"><span class="keyword_modifier">pub</span> <span class="keyword">const</span> <span class="constant variable_builtin type variable">Tool</span> <span class="operator">=</span> <span class="keyword_type">struct</span> <span class="punctuation_bracket">{</span>
+    <span class="constant variable_builtin type variable_member variable">name</span><span class="punctuation_delimiter">:</span> <span class="punctuation_bracket">[</span><span class="punctuation_bracket">]</span><span class="keyword">const</span> <span class="type_builtin">u8</span><span class="punctuation_delimiter">,</span>
+    <span class="constant variable_builtin type variable_member variable">description</span><span class="punctuation_delimiter">:</span> <span class="punctuation_bracket">[</span><span class="punctuation_bracket">]</span><span class="keyword">const</span> <span class="type_builtin">u8</span><span class="punctuation_delimiter">,</span>
+    <span class="constant variable_builtin type variable_member variable">parameters</span><span class="punctuation_delimiter">:</span> <span class="operator">?</span><span class="punctuation_bracket">[</span><span class="punctuation_bracket">]</span><span class="keyword">const</span> <span class="type_builtin">u8</span> <span class="operator">=</span> <span class="constant_builtin">null</span><span class="punctuation_delimiter">,</span>
+    
+    <span class="keyword_modifier">pub</span> <span class="keyword_function">fn</span> <span class="constant variable_builtin type variable function">execute</span><span class="punctuation_bracket">(</span><span class="constant variable_builtin variable_parameter variable type">self</span><span class="punctuation_delimiter">:</span> <span class="operator">*</span><span class="constant variable_builtin type variable">Tool</span><span class="punctuation_delimiter">,</span> <span class="constant variable_builtin variable_parameter variable type">args</span><span class="punctuation_delimiter">:</span> <span class="punctuation_bracket">[</span><span class="punctuation_bracket">]</span><span class="keyword">const</span> <span class="type_builtin">u8</span><span class="punctuation_bracket">)</span> <span class="operator">!</span><span class="constant variable_builtin type variable">ToolResult</span> <span class="punctuation_bracket">{</span>
+        <span class="comment_documentation comment spell">// Implementation</span>
+    <span class="punctuation_bracket">}</span>
+<span class="punctuation_bracket">}</span><span class="punctuation_delimiter">;</span>
+
+<span class="keyword_modifier">pub</span> <span class="keyword">const</span> <span class="constant variable_builtin type variable">ToolResult</span> <span class="operator">=</span> <span class="keyword_type">struct</span> <span class="punctuation_bracket">{</span>
+    <span class="constant variable_builtin type variable_member variable">success</span><span class="punctuation_delimiter">:</span> <span class="type_builtin">bool</span><span class="punctuation_delimiter">,</span>
+    <span class="constant variable_builtin type variable_member variable">output</span><span class="punctuation_delimiter">:</span> <span class="punctuation_bracket">[</span><span class="punctuation_bracket">]</span><span class="keyword">const</span> <span class="type_builtin">u8</span><span class="punctuation_delimiter">,</span>
+    <span class="constant variable_builtin type variable_member variable">err</span><span class="punctuation_delimiter">:</span> <span class="operator">?</span><span class="punctuation_bracket">[</span><span class="punctuation_bracket">]</span><span class="keyword">const</span> <span class="type_builtin">u8</span> <span class="operator">=</span> <span class="constant_builtin">null</span><span class="punctuation_delimiter">,</span>
+<span class="punctuation_bracket">}</span><span class="punctuation_delimiter">;</span>
+</code></pre>
+<h3>Available Tools</h3><table><tr><th>Tool</th><th>Description</th></tr><tr><td><code>bash</code></td><td>Execute shell commands</td></tr><tr><td><code>read</code></td><td>Read file contents</td></tr><tr><td><code>write</code></td><td>Write files</td></tr><tr><td><code>edit</code></td><td>Edit files with precision</td></tr><tr><td><code>grep</code></td><td>Search code</td></tr><tr><td><code>glob</code></td><td>Find files by pattern</td></tr></table><h2>Best Practices</h2><h3>For Agent Developers</h3><ol><li><strong>Use explicit stop signals</strong> - Emit <code>&lt;POWERGLIDE_DONE&gt;</code> when complete</li><li><strong>Respect velocity settings</strong> - Don’t bypass rate limits</li><li><strong>Handle errors gracefully</strong> - Use the failed state for recovery</li><li><strong>Log progress</strong> - Write to session files for monitoring</li><li><strong>Honor step limits</strong> - Don’t exceed configured max steps</li></ol><h3>For Agent Consumers</h3><ol><li><strong>Set appropriate limits</strong> - Configure max_steps and timeouts</li><li><strong>Monitor heartbeats</strong> - Watch for stalled sessions</li><li><strong>Use sessions</strong> - Enable recovery from failures</li><li><strong>Review tool calls</strong> - Audit agent actions regularly</li></ol><h2>Integration Examples</h2><h3>Python Integration</h3><pre><code class="python"><span class="keyword">import</span> <span class="constructor constant variable">subprocess</span>
+
+<span class="keyword">def</span> <span class="constructor constant variable function">run_powerglide</span>(<span class="constructor constant variable">task</span>: <span class="constructor constant type variable">str</span>, <span class="constructor constant variable">agent</span>: <span class="constructor constant type variable">str</span> <span class="operator">=</span> <span class="string">&quot;hephaestus&quot;</span>):
+    <span class="constructor constant variable">result</span> <span class="operator">=</span> <span class="constructor constant variable">subprocess</span>.<span class="constructor property constant function_method variable">run</span>([
+        <span class="string">&quot;powerglide&quot;</span>, <span class="string">&quot;run&quot;</span>,
+        <span class="string">&quot;--agent&quot;</span>, <span class="constructor constant variable">agent</span>,
+        <span class="constructor constant variable">task</span>
+    ], <span class="constructor constant variable">capture_output</span><span class="operator">=</span><span class="constant_builtin">True</span>, <span class="constructor constant variable">text</span><span class="operator">=</span><span class="constant_builtin">True</span>)
+    <span class="keyword">return</span> <span class="constructor constant variable">result</span>.<span class="constructor property constant variable">stdout</span>
+</code></pre>
+<h3>Node.js Integration</h3><pre><code class="javascript"><span class="keyword">import</span> <span class="punctuation_bracket">{</span> <span class="constructor constant variable_builtin function_builtin variable">execSync</span> <span class="punctuation_bracket">}</span> <span class="keyword">from</span> <span class="string">&apos;child_process&apos;</span><span class="punctuation_delimiter">;</span>
+
+<span class="keyword">function</span> <span class="constructor constant variable_builtin function_builtin variable function">runPowerglide</span><span class="punctuation_bracket">(</span><span class="constructor constant variable_builtin function_builtin variable">task</span><span class="punctuation_delimiter">,</span> <span class="constructor constant variable_builtin function_builtin variable">options</span> <span class="operator">=</span> <span class="punctuation_bracket">{</span><span class="punctuation_bracket">}</span><span class="punctuation_bracket">)</span> <span class="punctuation_bracket">{</span>
+    <span class="keyword">const</span> <span class="constructor constant variable_builtin function_builtin variable">args</span> <span class="operator">=</span> <span class="punctuation_bracket">[</span><span class="string">&apos;powerglide&apos;</span><span class="punctuation_delimiter">,</span> <span class="string">&apos;run&apos;</span><span class="punctuation_bracket">]</span><span class="punctuation_delimiter">;</span>
+    <span class="keyword">if</span> <span class="punctuation_bracket">(</span><span class="constructor constant variable_builtin function_builtin variable">options</span><span class="punctuation_delimiter">.</span><span class="property">agent</span><span class="punctuation_bracket">)</span> <span class="constructor constant variable_builtin function_builtin variable">args</span><span class="punctuation_delimiter">.</span><span class="property function_method">push</span><span class="punctuation_bracket">(</span><span class="string">&apos;--agent&apos;</span><span class="punctuation_delimiter">,</span> <span class="constructor constant variable_builtin function_builtin variable">options</span><span class="punctuation_delimiter">.</span><span class="property">agent</span><span class="punctuation_bracket">)</span><span class="punctuation_delimiter">;</span>
+    <span class="keyword">if</span> <span class="punctuation_bracket">(</span><span class="constructor constant variable_builtin function_builtin variable">options</span><span class="punctuation_delimiter">.</span><span class="property">velocity</span><span class="punctuation_bracket">)</span> <span class="constructor constant variable_builtin function_builtin variable">args</span><span class="punctuation_delimiter">.</span><span class="property function_method">push</span><span class="punctuation_bracket">(</span><span class="string">&apos;--velocity&apos;</span><span class="punctuation_delimiter">,</span> <span class="constructor constant variable_builtin function_builtin variable">options</span><span class="punctuation_delimiter">.</span><span class="property">velocity</span><span class="punctuation_bracket">)</span><span class="punctuation_delimiter">;</span>
+    <span class="constructor constant variable_builtin function_builtin variable">args</span><span class="punctuation_delimiter">.</span><span class="property function_method">push</span><span class="punctuation_bracket">(</span><span class="constructor constant variable_builtin function_builtin variable">task</span><span class="punctuation_bracket">)</span><span class="punctuation_delimiter">;</span>
+    
+    <span class="keyword">return</span> <span class="constructor constant variable_builtin function_builtin variable function">execSync</span><span class="punctuation_bracket">(</span><span class="constructor constant variable_builtin function_builtin variable">args</span><span class="punctuation_delimiter">.</span><span class="property function_method">join</span><span class="punctuation_bracket">(</span><span class="string">&apos; &apos;</span><span class="punctuation_bracket">)</span><span class="punctuation_delimiter">,</span> <span class="punctuation_bracket">{</span> <span class="property">encoding</span>: <span class="string">&apos;utf8&apos;</span> <span class="punctuation_bracket">}</span><span class="punctuation_bracket">)</span><span class="punctuation_delimiter">;</span>
+<span class="punctuation_bracket">}</span>
+</code></pre>
+<h3>Zig Integration</h3><pre><code class="zig"><span class="keyword">const</span> <span class="module constant variable_builtin type variable">std</span> <span class="operator">=</span> <span class="function_builtin keyword_import">@import</span><span class="punctuation_bracket">(</span><span class="string">&quot;std&quot;</span><span class="punctuation_bracket">)</span><span class="punctuation_delimiter">;</span>
+
+<span class="keyword_function">fn</span> <span class="constant variable_builtin type variable function">runPowerglide</span><span class="punctuation_bracket">(</span><span class="constant variable_builtin variable_parameter variable type">allocator</span><span class="punctuation_delimiter">:</span> <span class="constant variable_builtin type variable">std</span><span class="punctuation_delimiter">.</span><span class="constant variable_builtin type variable_member variable">mem</span><span class="punctuation_delimiter">.</span><span class="constant variable_builtin type variable_member variable">Allocator</span><span class="punctuation_delimiter">,</span> <span class="constant variable_builtin variable_parameter variable type">task</span><span class="punctuation_delimiter">:</span> <span class="punctuation_bracket">[</span><span class="punctuation_bracket">]</span><span class="keyword">const</span> <span class="type_builtin">u8</span><span class="punctuation_bracket">)</span> <span class="operator">!</span><span class="type_builtin">void</span> <span class="punctuation_bracket">{</span>
+    <span class="keyword">const</span> <span class="constant variable_builtin type variable">result</span> <span class="operator">=</span> <span class="keyword_exception">try</span> <span class="constant variable_builtin type variable">std</span><span class="punctuation_delimiter">.</span><span class="constant variable_builtin type variable_member variable">process</span><span class="punctuation_delimiter">.</span><span class="constant variable_builtin type variable_member variable">Child</span><span class="punctuation_delimiter">.</span><span class="type constant variable_builtin function_call variable_member variable">run</span><span class="punctuation_bracket">(</span><span class="punctuation_delimiter">.</span><span class="punctuation_bracket">{</span>
+        <span class="punctuation_delimiter">.</span><span class="constant variable_builtin type variable_member variable">allocator</span> <span class="operator">=</span> <span class="constant variable_builtin type variable">allocator</span><span class="punctuation_delimiter">,</span>
+        <span class="punctuation_delimiter">.</span><span class="constant variable_builtin type variable_member variable">argv</span> <span class="operator">=</span> <span class="operator">&amp;</span><span class="punctuation_bracket">[</span><span class="constant variable_builtin type variable">_</span><span class="punctuation_bracket">]</span><span class="punctuation_bracket">[</span><span class="punctuation_bracket">]</span><span class="keyword">const</span> <span class="type_builtin">u8</span><span class="punctuation_bracket">{</span>
+            <span class="string">&quot;powerglide&quot;</span><span class="punctuation_delimiter">,</span>
+            <span class="string">&quot;run&quot;</span><span class="punctuation_delimiter">,</span>
+            <span class="constant variable_builtin type variable">task</span><span class="punctuation_delimiter">,</span>
+        <span class="punctuation_bracket">}</span><span class="punctuation_delimiter">,</span>
+    <span class="punctuation_bracket">}</span><span class="punctuation_bracket">)</span><span class="punctuation_delimiter">;</span>
+    <span class="keyword">defer</span> <span class="constant variable_builtin type variable">result</span><span class="punctuation_delimiter">.</span><span class="type constant variable_builtin function_call variable_member variable">deinit</span><span class="punctuation_bracket">(</span><span class="punctuation_bracket">)</span><span class="punctuation_delimiter">;</span>
+    
+    <span class="constant variable_builtin type variable">std</span><span class="punctuation_delimiter">.</span><span class="constant variable_builtin type variable_member variable">debug</span><span class="punctuation_delimiter">.</span><span class="type constant variable_builtin function_call variable_member variable">print</span><span class="punctuation_bracket">(</span><span class="string">&quot;Output: {s}</span><span class="string string_escape">\n</span><span class="string">&quot;</span><span class="punctuation_delimiter">,</span> <span class="punctuation_delimiter">.</span><span class="punctuation_bracket">{</span><span class="constant variable_builtin type variable">result</span><span class="punctuation_delimiter">.</span><span class="constant variable_builtin type variable_member variable">stdout</span><span class="punctuation_bracket">}</span><span class="punctuation_bracket">)</span><span class="punctuation_delimiter">;</span>
+<span class="punctuation_bracket">}</span>
+</code></pre>
+<h2>API Reference</h2><h3>LoopState (src/agent/loop.zig)</h3><pre><code class="zig"><span class="keyword_modifier">pub</span> <span class="keyword">const</span> <span class="constant variable_builtin type variable">LoopState</span> <span class="operator">=</span> <span class="keyword_type">enum</span> <span class="punctuation_bracket">{</span>
+    <span class="constant variable_builtin type variable">idle</span><span class="punctuation_delimiter">,</span>
+    <span class="constant variable_builtin type variable">thinking</span><span class="punctuation_delimiter">,</span>
+    <span class="constant variable_builtin type variable">acting</span><span class="punctuation_delimiter">,</span>
+    <span class="constant variable_builtin type variable">observing</span><span class="punctuation_delimiter">,</span>
+    <span class="constant variable_builtin type variable">finished</span><span class="punctuation_delimiter">,</span>
+    <span class="constant variable_builtin type variable">failed</span><span class="punctuation_delimiter">,</span>
+<span class="punctuation_bracket">}</span><span class="punctuation_delimiter">;</span>
+</code></pre>
+<h3>ModelProvider (src/models/router.zig)</h3><pre><code class="zig"><span class="keyword_modifier">pub</span> <span class="keyword">const</span> <span class="constant variable_builtin type variable">ModelProvider</span> <span class="operator">=</span> <span class="keyword_type">enum</span> <span class="punctuation_bracket">{</span>
+    <span class="constant variable_builtin type variable">anthropic</span><span class="punctuation_delimiter">,</span>
+    <span class="constant variable_builtin type variable">openai</span><span class="punctuation_delimiter">,</span>
+    <span class="constant variable_builtin type variable">openai_compatible</span><span class="punctuation_delimiter">,</span>
+<span class="punctuation_bracket">}</span><span class="punctuation_delimiter">;</span>
+</code></pre>
+<h2>Debugging</h2><h3>Enable Debug Logging</h3><pre><code class="bash"><span class="keyword">export</span> <span class="property">POWERGLIDE_DEBUG</span>=1
+<span class="constant function">powerglide</span> <span class="constant">run</span> <span class="string constant">&quot;task&quot;</span>
+</code></pre>
+<h3>Session Logs</h3><pre><code class="bash"><span class="comment"># View session logs</span>
+<span class="constant function">powerglide</span> <span class="constant">session</span> <span class="constant">show</span> <span class="constant">abc123</span> <span class="constant">--logs</span>
+
+<span class="comment"># Export logs</span>
+<span class="constant function">powerglide</span> <span class="constant">session</span> <span class="constant">export</span> <span class="constant">abc123</span> <span class="constant">--logs</span> <span class="operator">&gt;</span> session.log
+</code></pre>
+<h3>Common Issues</h3><table><tr><th>Issue</th><th>Solution</th></tr><tr><td>Agent stuck</td><td>Check heartbeat timeout, increase if needed</td></tr><tr><td>Step limit hit</td><td>Increase <code>max_steps</code> config</td></tr><tr><td>Tool timeout</td><td>Increase tool timeout in config</td></tr><tr><td>API errors</td><td>Check API key, rate limits</td></tr></table><h2>Security Considerations</h2><ol><li><strong>API Keys</strong> - Store in environment variables, not config files</li><li><strong>Tool Permissions</strong> - Restrict bash commands when possible</li><li><strong>Session Data</strong> - Review before sharing/exporting</li><li><strong>Network Access</strong> - Monitor outbound connections</li></ol><hr><p><a href="/powerglide/">Back to Home</a> · <a href="/powerglide/configuration/">Configuration</a> · <a href="/powerglide/architecture/">Architecture</a></p></div>
+            </div>
+        </article>
+    </main>
+    
+    <footer class="p-8 bg-pg-surface border-t border-pg-purple/30 mt-12">
+        <div class="container mx-auto text-center text-pg-text-muted text-sm">
+            <p>Built with <span class="text-pg-primary">❤</span> using <a href="https://zine-ssg.io" class="text-pg-cyan">Zine</a> and <a href="https://ziglang.org" class="text-pg-cyan">Zig</a></p>
+            <p class="mt-2">© 2026 powerglide - The CLI coding agent that slides</p>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title></title>
+    <meta name="description" :content="The CLI coding agent that slides - Zig-powered multi-agent harness for extreme coding workflows">
+    <link rel="icon" type="image/x-icon" href="/powerglide/favicon.ico">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        'pg-bg': '#0a0a0f',
+                        'pg-surface': '#12121a',
+                        'pg-primary': '#F7A41D',
+                        'pg-cyan': '#06b6d4',
+                        'pg-purple': '#7c3aed',
+                        'pg-text': '#e5e5e5',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background: #0a0a0f; color: #e5e5e5; font-family: 'Inter', sans-serif; }
+        h1, h2, h3, h4, h5, h6 { font-family: 'Inter', sans-serif; }
+        code, pre { font-family: 'JetBrains Mono', monospace; }
+        .cyber-grid {
+            background-image: linear-gradient(rgba(6, 182, 212, 0.1) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(6, 182, 212, 0.1) 1px, transparent 1px);
+            background-size: 50px 50px;
+        }
+    </style>
+</head>
+<body class="bg-pg-bg text-pg-text">
+    <nav class="p-4 bg-pg-surface border-b border-pg-primary/30">
+        <div class="container mx-auto flex flex-wrap items-center justify-between max-w-7xl">
+            <div class="flex items-center">
+                <a href="/powerglide/" class="text-2xl font-bold text-pg-primary">powerglide</a>
+            </div>
+            <div class="hidden md:flex md:gap-6">
+                <a href="/powerglide/" class="text-pg-text hover:text-pg-cyan transition-colors">Home</a>
+                <a href="/powerglide/features/" class="text-pg-text hover:text-pg-cyan transition-colors">Features</a>
+                <a href="/powerglide/architecture/" class="text-pg-text hover:text-pg-cyan transition-colors">Architecture</a>
+                <a href="/powerglide/cli-reference/" class="text-pg-text hover:text-pg-cyan transition-colors">CLI Reference</a>
+                <a href="/powerglide/configuration/" class="text-pg-text hover:text-pg-cyan transition-colors">Configuration</a>
+            </div>
+        </div>
+    </nav>
+    
+    <main class="container mx-auto p-8 cyber-grid min-h-screen">
+        <article class="py-12">
+            <div class="max-w-4xl mx-auto">
+                <h1 class="text-4xl font-bold mb-8"></h1>
+                <div class="prose prose-invert prose-lg max-w-none"><div class="hero-logo-container">
+    <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" class="hero-logo">
+        <defs>
+            <linearGradient id="pg-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#F7A41D;stop-opacity:1"/>
+                <stop offset="100%" style="stop-color:#d97706;stop-opacity:1"/>
+            </linearGradient>
+            <filter id="neon-glow" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur1"/>
+                <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur2"/>
+                <feGaussianBlur in="SourceGraphic" stdDeviation="9" result="blur3"/>
+                <feMerge>
+                    <feMergeNode in="blur3"/>
+                    <feMergeNode in="blur2"/>
+                    <feMergeNode in="blur1"/>
+                    <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+            </filter>
+        </defs>
+        
+        <!-- Background circle -->
+        <circle cx="100" cy="100" r="95" fill="#0a0a0f" stroke="#F7A41D" stroke-width="2">
+            <animate attributeName="stroke" values="#F7A41D;#06b6d4;#7c3aed;#F7A41D" dur="4s" repeatCount="indefinite"/>
+        </circle>
+        
+        <!-- Speed lines -->
+        <g stroke="#F7A41D" stroke-width="2" fill="none" filter="url(#neon-glow)">
+            <path d="M60 80 L80 100 L60 120"/>
+            <path d="M140 80 L120 100 L140 120"/>
+            <path d="M80 60 L100 80 L120 60"/>
+        </g>
+        
+        <!-- Central power symbol -->
+        <g filter="url(#neon-glow)">
+            <circle cx="100" cy="100" r="40" fill="none" stroke="url(#pg-gradient)" stroke-width="4"/>
+            <path d="M100 70 L100 100 L130 110" stroke="url(#pg-gradient)" stroke-width="4" fill="none" stroke-linecap="round"/>
+            <circle cx="100" cy="100" r="4" fill="#F7A41D"/>
+            <circle cx="100" cy="70" r="3" fill="#F7A41D"/>
+            <circle cx="130" cy="110" r="3" fill="#F7A41D"/>
+        </g>
+        
+        <!-- Corner accents -->
+        <g stroke="#7c3aed" stroke-width="2" fill="none">
+            <path d="M30 30 L40 30 L40 40"/>
+            <path d="M170 30 L160 30 L160 40"/>
+            <path d="M30 170 L40 170 L40 160"/>
+            <path d="M170 170 L160 170 L160 160"/>
+        </g>
+        
+        <!-- Text -->
+        <text x="100" y="180" text-anchor="middle" fill="#F7A41D" font-size="14" font-weight="bold" font-family="monospace" filter="url(#neon-glow)">POWERGLIDE</text>
+    </svg>
+</div>
+<p>Welcome to <strong>powerglide</strong> ⚡ - the CLI coding agent that slides.</p><blockquote><p><strong>Why powerglide?</strong> Built in <a href="https://ziglang.org/" target="_blank">Zig 0.15.2</a>, powerglide orchestrates swarms of SWE (Software Engineering) agents with precise velocity control, reliable PTY management, and multi-model routing — all from a single fast binary with no runtime dependencies.</p></blockquote><p>Like the Lamborghini Powerglide transmission it’s named after, powerglide is designed for one thing: <strong>maximum throughput</strong>.</p><pre><code class="bash"><span class="constant operator function">$</span><span class="constant function"> </span><span class="constant property function">powerglide</span> <span class="constant">run</span> <span class="constant">--agent</span> <span class="constant">hephaestus</span> <span class="constant">--velocity</span> <span class="constant">2.0</span> <span class="string constant">&quot;implement a binary search tree in Zig&quot;</span>
+</code></pre>
+<h2>Key Features</h2><ul><li><p><strong>Multi-Agent Swarms</strong> 🐜 — Orchestrate N agents in parallel with independent workspaces, task queues, and health monitoring. Rogue agents are auto-killed via heartbeat timeouts and step limits.</p></li><li><p><strong>Velocity Control</strong> 🚀 — Tune agent speed dynamically: <code>--velocity 2.0</code> (fast), <code>0.5</code> (conservative). Agents can self-tune via session config files.</p></li><li><p><strong>Ralph Loop State Machine</strong> 🔄 — Fault-tolerant <code>idle → thinking → acting → observing → commit</code> loop with explicit <code>POWERGLIDE_DONE</code> stop signals and configurable max steps.</p></li><li><p><strong>Reliable PTY Management</strong> 💻 — Full pseudoterminal support with <code>waitpid</code>-based exit-code capture, WNOHANG polling, and <code>/proc/&lt;pid&gt;/status</code> fallback.</p></li><li><p><strong>Multi-Model Routing</strong> 🤖 — Route to Anthropic (Claude), OpenAI-compatible APIs (Ollama, NVIDIA NIM, Together AI), or any local provider. Automatic fallback chains.</p></li><li><p><strong>Terminal TUI</strong> 📊 — Multi-panel vxfw dashboard: agent status, log streaming, live velocity display.</p></li></ul><h2>Quick Start</h2><h3>Prerequisites</h3><ul><li><a href="https://ziglang.org/download/" target="_blank">Zig 0.15.2</a> — <code>mise install zig@0.15.2</code> or from the official site</li><li>An API key for your model provider (<code>ANTHROPIC_API_KEY</code>, <code>OPENAI_API_KEY</code>, etc.)</li></ul><h3>Build</h3><pre><code class="bash"><span class="constant function">git</span> <span class="constant">clone</span> <span class="constant">https://github.com/bkataru/powerglide</span>
+<span class="constant function">cd</span> <span class="constant">powerglide</span>
+<span class="constant function">zig</span> <span class="constant">build</span>
+</code></pre>
+<p>The binary lands at <code>./zig-out/bin/powerglide</code>.</p><h3>Run</h3><pre><code class="bash"><span class="comment"># Health check — verify all dependencies are set up</span>
+<span class="constant function">./zig-out/bin/powerglide</span> <span class="constant">doctor</span>
+
+<span class="comment"># Run an agent session</span>
+<span class="constant function">./zig-out/bin/powerglide</span> <span class="constant">run</span> <span class="string constant">&quot;refactor this function to be more idiomatic&quot;</span>
+
+<span class="comment"># Run with specific agent and velocity</span>
+<span class="constant function">./zig-out/bin/powerglide</span> <span class="constant">run</span> <span class="constant">--agent</span> <span class="constant">hephaestus</span> <span class="constant">--velocity</span> <span class="constant">2.0</span> <span class="string constant">&quot;add unit tests&quot;</span>
+
+<span class="comment"># Open TUI dashboard</span>
+<span class="constant function">./zig-out/bin/powerglide</span> <span class="constant">tui</span>
+</code></pre>
+<h2>CLI Commands</h2><table><tr><th>Command</th><th>Description</th></tr><tr><td><code>powerglide run</code></td><td>Launch an agent coding session</td></tr><tr><td><code>powerglide session</code></td><td>Manage agent sessions (list, show, resume, delete, export)</td></tr><tr><td><code>powerglide agent</code></td><td>Manage agent configurations (list, add, remove, show)</td></tr><tr><td><code>powerglide swarm</code></td><td>Manage agent swarms (list, create, add, remove, run, status, stop)</td></tr><tr><td><code>powerglide config</code></td><td>Manage powerglide configuration (show, set, get, reset, edit)</td></tr><tr><td><code>powerglide tools</code></td><td>List and test available tools (list, show, test)</td></tr><tr><td><code>powerglide tui</code></td><td>Open the interactive multi-agent dashboard</td></tr><tr><td><code>powerglide doctor</code></td><td>Run system health checks</td></tr><tr><td><code>powerglide version</code></td><td>Show version information</td></tr></table><h2>The Ralph Loop</h2><p>At the heart of powerglide is the <strong>Ralph Loop</strong> — a state machine inspired by <a href="https://github.com/snarktank/ralph" target="_blank">ralph</a> that drives every agent session:</p><pre><code>IDLE
+ │
+ ▼
+LOAD_TASKS ──(all done?)──► COMPLETE
+ │
+ ▼
+PICK_TASK (highest priority, passes == false)
+ │
+ ▼
+THINKING ──(tool_call)──► ACTING ──(result)──► OBSERVING
+ │                              │
+ ▼                              │
+VERIFY (run checks)             │
+ │                              │
+ ▼                              │
+COMMIT ──► update task status ──┘
+ │
+ ▼
+FAILED (error recovery / retry)
+</code></pre><p>The loop emits <code>&lt;POWERGLIDE_DONE&gt;</code> when all tasks are complete, which the orchestrator detects as a clean stop signal.</p><h2>Inspiration</h2><p>powerglide is inspired by the best ideas from the AI coding agent ecosystem:</p><table><tr><th>Project</th><th>Inspiration</th></tr><tr><td><a href="https://github.com/can1357/oh-my-pi" target="_blank">oh-my-pi</a></td><td>Multi-agent harness patterns, agent orchestration</td></tr><tr><td><a href="https://github.com/code-yeongyu/oh-my-opencode" target="_blank">oh-my-opencode</a></td><td>Ralph Wiggum loop, autonomous agent control</td></tr><tr><td><a href="https://github.com/snarktank/ralph" target="_blank">ralph</a></td><td>Ralph loop state machine, explicit done signals</td></tr><tr><td><a href="https://github.com/steveyegge/gastown" target="_blank">gastown</a></td><td>Multi-agent workspace isolation, task queues</td></tr><tr><td><a href="https://github.com/anomalyco/opencode" target="_blank">opencode</a></td><td>CLI UX, multi-model routing</td></tr><tr><td><a href="https://github.com/charmbracelet/crush" target="_blank">crush</a></td><td>Terminal UX, TUI design</td></tr></table><hr></div>
+            </div>
+        </article>
+    </main>
+    
+    <footer class="p-8 bg-pg-surface border-t border-pg-purple/30 mt-12">
+        <div class="container mx-auto text-center text-pg-text-muted text-sm">
+            <p>Built with <span class="text-pg-primary">❤</span> using <a href="https://zine-ssg.io" class="text-pg-cyan">Zine</a> and <a href="https://ziglang.org" class="text-pg-cyan">Zig</a></p>
+            <p class="mt-2">© 2026 powerglide - The CLI coding agent that slides</p>
+        </div>
+    </footer>
+</body>
+</html>

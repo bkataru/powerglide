@@ -1,0 +1,49 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="powerglide-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F7A41D;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#d97706;stop-opacity:1"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3"/>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="200" height="200" fill="transparent"/>
+  
+  <!-- Outer circle -->
+  <circle cx="100" cy="100" r="90" fill="none" stroke="url(#powerglide-gradient)" stroke-width="3"/>
+  
+  <!-- Speed lines -->
+  <g stroke="#F7A41D" stroke-width="2" fill="none" filter="url(#glow)">
+    <path d="M60 80 L80 100 L60 120"/>
+    <path d="M140 80 L120 100 L140 120"/>
+    <path d="M80 60 L100 80 L120 60"/>
+    <path d="M80 140 L100 120 L120 140"/>
+  </g>
+  
+  <!-- Central power/speed symbol -->
+  <g filter="url(#glow)">
+    <!-- Circle -->
+    <circle cx="100" cy="100" r="35" fill="none" stroke="url(#powerglide-gradient)" stroke-width="4"/>
+    <!-- Lightning bolt / speed indicator -->
+    <path d="M100 75 L100 95 L125 105" stroke="url(#powerglide-gradient)" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- Dots at endpoints -->
+    <circle cx="100" cy="75" r="3" fill="#F7A41D"/>
+    <circle cx="100" cy="95" r="3" fill="#F7A41D"/>
+    <circle cx="125" cy="105" r="3" fill="#F7A41D"/>
+  </g>
+  
+  <!-- Corner accents -->
+  <g stroke="#7c3aed" stroke-width="2" fill="none">
+    <path d="M30 30 L40 30 L40 40"/>
+    <path d="M170 30 L160 30 L160 40"/>
+    <path d="M30 170 L40 170 L40 160"/>
+    <path d="M170 170 L160 170 L160 160"/>
+  </g>
+</svg>
