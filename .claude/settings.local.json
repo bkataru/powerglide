@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(zig version:*)",
+      "Bash(npx oh-my-opencode:*)",
+      "Bash(npx repomix:*)",
+      "Bash(gh repo:*)",
+      "Bash(gh:*)",
+      "Bash(gh api:*)",
+      "Bash(git config:*)",
+      "Bash(opencode:*)",
+      "Bash(git:*)",
+      "Bash(forge:*)",
+      "Bash(mkdir:*)",
+      "Bash(python3:*)",
+      "Bash(/tmp/prompt_phase1b.txt:*)",
+      "Bash(zig build:*)",
+      "Bash(/tmp/prompt_phase5.txt:*)",
+      "Bash(pkill:*)",
+      "Bash(/tmp/prompt_phase4_v2.txt:*)",
+      "Bash(/tmp/prompt_phase5_v2.txt:*)",
+      "Bash(/tmp/prompt_phase6_v2.txt:*)",
+      "Bash(wc:*)"
+    ]
+  }
+}
