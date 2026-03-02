@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title :text="$page.title"></title>
+    <meta name="description" :content="$page.description">
+    <link rel="icon" type="image/x-icon" href="/powerglide/favicon.ico">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        'pg-bg': '#0a0a0f',
+                        'pg-surface': '#12121a',
+                        'pg-primary': '#F7A41D',
+                        'pg-cyan': '#06b6d4',
+                        'pg-purple': '#7c3aed',
+                        'pg-text': '#e5e5e5',
+                        'pg-text-muted': '#a0a0a0',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background: #0a0a0f; color: #e5e5e5; font-family: 'Inter', sans-serif; }
+        h1, h2, h3, h4, h5, h6 { font-family: 'Inter', sans-serif; }
+        code, pre, kbd, samp { font-family: 'JetBrains Mono', monospace; }
+        .cyber-grid {
+            background-image: linear-gradient(rgba(6, 182, 212, 0.1) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(6, 182, 212, 0.1) 1px, transparent 1px);
+            background-size: 50px 50px;
+        }
+    </style>
+</head>
+<body class="bg-pg-bg text-pg-text">
+    <nav class="p-4 bg-pg-surface border-b border-pg-primary/30">
+        <div class="container mx-auto flex flex-wrap items-center justify-between max-w-7xl">
+            <div class="flex items-center">
+                <a href="/powerglide/" class="text-2xl font-bold text-pg-primary">powerglide</a>
+            </div>
+            <div class="hidden md:flex md:gap-6">
+                <a href="/powerglide/" class="text-pg-text hover:text-pg-cyan transition-colors">Home</a>
+                <a href="/powerglide/features/" class="text-pg-text hover:text-pg-cyan transition-colors">Features</a>
+                <a href="/powerglide/architecture/" class="text-pg-text hover:text-pg-cyan transition-colors">Architecture</a>
+                <a href="/powerglide/cli-reference/" class="text-pg-text hover:text-pg-cyan transition-colors">CLI Reference</a>
+                <a href="/powerglide/configuration/" class="text-pg-text hover:text-pg-cyan transition-colors">Configuration</a>
+            </div>
+        </div>
+    </nav>
+    
+    <main class="container mx-auto p-8 cyber-grid min-h-screen">
+        <article class="py-12">
+            <div class="max-w-4xl mx-auto">
+                <h1 class="text-4xl font-bold mb-8" :text="$page.title"></h1>
+                <div class="prose prose-invert prose-lg max-w-none" :html="$page.content()"></div>
+            </div>
+        </article>
+    </main>
+    
+    <footer class="p-8 bg-pg-surface border-t border-pg-purple/30 mt-12">
+        <div class="container mx-auto text-center text-pg-text-muted text-sm">
+            <p>Built with <span class="text-pg-primary">❤</span> using <a href="https://zine-ssg.io" class="text-pg-cyan">Zine</a> and <a href="https://ziglang.org" class="text-pg-cyan">Zig</a></p>
+            <p class="mt-2">© 2026 powerglide - The CLI coding agent that slides</p>
+        </div>
+    </footer>
+</body>
+</html>

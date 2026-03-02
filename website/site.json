@@ -1,0 +1,55 @@
+{
+  "title": "powerglide",
+  "description": "The CLI coding agent that slides - Zig-powered multi-agent harness for extreme coding workflows",
+  "baseUrl": "https://bkataru.github.io/powerglide",
+  "language": "en",
+  "author": {
+    "name": "powerglide team",
+    "url": "https://github.com/bkataru/powerglide"
+  },
+  "social": {
+    "github": "https://github.com/bkataru/powerglide",
+    "twitter": null
+  },
+  "theme": {
+    "colors": {
+      "primary": "#F7A41D",
+      "secondary": "#1a1a2e",
+      "accent": "#7c3aed",
+      "background": "#0a0a0f",
+      "surface": "#12121a",
+      "text": "#e5e5e5",
+      "textMuted": "#a0a0a0"
+    },
+    "fonts": {
+      "body": "Inter, system-ui, sans-serif",
+      "code": "JetBrains Mono, monospace"
+    }
+  },
+  "navigation": [
+    {
+      "title": "Home",
+      "url": "/"
+    },
+    {
+      "title": "Features",
+      "url": "/features/"
+    },
+    {
+      "title": "Architecture",
+      "url": "/architecture/"
+    },
+    {
+      "title": "CLI Reference",
+      "url": "/cli-reference/"
+    },
+    {
+      "title": "Configuration",
+      "url": "/configuration/"
+    },
+    {
+      "title": "For AI Agents",
+      "url": "/for-ai-agents/"
+    }
+  ]
+}

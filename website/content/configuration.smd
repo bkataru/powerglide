@@ -1,0 +1,224 @@
+---
+.title = "Configuration",
+.layout = "page.shtml",
+.description = "Configure powerglide with environment variables and config files",
+.author = "powerglide team",
+.date = @date("2026-03-02"),
+---
+
+# Configuration
+
+powerglide supports multiple configuration methods with a clear precedence order.
+
+## Configuration Precedence
+
+Configuration is loaded in the following order (highest to lowest priority):
+
+1. **Command-line arguments** - Override everything
+2. **Environment variables** - System-wide settings
+3. **Config file** - `~/.config/powerglide/config.json`
+4. **Built-in defaults** - Fallback values
+
+## Environment Variables
+
+Set these in your shell profile (`~/.bashrc`, `~/.zshrc`, etc.):
+
+```bash
+# API Keys
+export ANTHROPIC_API_KEY="sk-ant-..."
+export OPENAI_API_KEY="sk-..."
+
+# Default Settings
+export POWERGLIDE_MODEL="claude-opus-4-6"
+export POWERGLIDE_VELOCITY="1.0"
+export POWERGLIDE_MAX_STEPS="200"
+```
+
+### Available Variables
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `ANTHROPIC_API_KEY` | string | - | Anthropic API key |
+| `OPENAI_API_KEY` | string | - | OpenAI-compatible API key |
+| `POWERGLIDE_MODEL` | string | `claude-sonnet-4` | Default model |
+| `POWERGLIDE_VELOCITY` | float | `1.0` | Velocity multiplier |
+| `POWERGLIDE_MAX_STEPS` | integer | `200` | Max steps per session |
+| `POWERGLIDE_CONFIG_DIR` | string | `~/.config/powerglide` | Config directory |
+
+## Config File
+
+Location: `~/.config/powerglide/config.json`
+
+```json
+{
+  "default_agent": "hephaestus",
+  "velocity": 1.0,
+  "max_steps": 200,
+  "model": {
+    "provider": "anthropic",
+    "model": "claude-opus-4-6"
+  },
+  "fallback_chain": [
+    { "provider": "anthropic", "model": "claude-sonnet-4" },
+    { "provider": "openai", "model": "gpt-4" }
+  ],
+  "tools": {
+    "bash": {
+      "timeout": 30000,
+      "max_output": 10000
+    },
+    "read": {
+      "max_size": 1048576
+    }
+  }
+}
+```
+
+### Configuration Schema
+
+```json
+{
+  "default_agent": "string (agent name)",
+  "velocity": "float (multiplier)",
+  "max_steps": "integer",
+  "model": {
+    "provider": "anthropic | openai | openai_compatible",
+    "model": "string (model name)",
+    "base_url": "string (optional, for OpenAI-compatible)"
+  },
+  "fallback_chain": "array of model configs",
+  "tools": {
+    "bash": { "timeout": "ms", "max_output": "bytes" },
+    "read": { "max_size": "bytes" },
+    "edit": { "max_edits": "integer" }
+  },
+  "rogue_prevention": {
+    "step_limit": "integer",
+    "heartbeat_timeout": "ms",
+    "circuit_breaker_threshold": "integer"
+  }
+}
+```
+
+## Session Configuration
+
+Sessions store their configuration at `~/.config/powerglide/session-<id>.json`:
+
+```json
+{
+  "id": "abc123",
+  "agent": "hephaestus",
+  "velocity": 1.5,
+  "model": "claude-opus-4-6",
+  "created_at": "2026-03-02T10:00:00Z",
+  "last_activity": "2026-03-02T10:30:00Z",
+  "steps_completed": 42,
+  "status": "active"
+}
+```
+
+## Model Providers
+
+### Anthropic (Claude)
+
+```bash
+export ANTHROPIC_API_KEY="sk-ant-..."
+export POWERGLIDE_MODEL="claude-opus-4-6"
+```
+
+### OpenAI
+
+```bash
+export OPENAI_API_KEY="sk-..."
+export POWERGLIDE_MODEL="gpt-4"
+```
+
+### OpenAI-Compatible (Ollama, NVIDIA NIM, Together AI)
+
+```bash
+export OPENAI_API_KEY="..."
+export POWERGLIDE_MODEL="ollama/llama3"
+
+# Config file
+{
+  "model": {
+    "provider": "openai_compatible",
+    "base_url": "http://localhost:11434/v1",
+    "model": "llama3"
+  }
+}
+```
+
+## Tool Configuration
+
+### Bash Tool
+
+```json
+{
+  "tools": {
+    "bash": {
+      "timeout": 30000,
+      "max_output": 10000,
+      "allowed_commands": ["*"],
+      "blocked_commands": ["rm -rf /", "dd if=/dev/zero"]
+    }
+  }
+}
+```
+
+### Read Tool
+
+```json
+{
+  "tools": {
+    "read": {
+      "max_size": 1048576,
+      "allowed_patterns": ["*"],
+      "blocked_patterns": ["/etc/passwd", "~/.ssh/*"]
+    }
+  }
+}
+```
+
+## Rogue Prevention
+
+Configure safety limits:
+
+```json
+{
+  "rogue_prevention": {
+    "step_limit": 200,
+    "heartbeat_timeout": 30000,
+    "circuit_breaker_threshold": 3,
+    "budget": {
+      "max_tokens": 100000,
+      "max_cost_usd": 10.00
+    }
+  }
+}
+```
+
+## Editing Configuration
+
+Use the CLI to manage configuration:
+
+```bash
+# Show current config
+powerglide config show
+
+# Set a value
+powerglide config set default_agent hephaestus
+
+# Get a value
+powerglide config get velocity
+
+# Reset to defaults
+powerglide config reset
+
+# Edit config file directly
+powerglide config edit
+```
+
+---
+
+[Back to Home](/) · [CLI Reference](/cli-reference/) · [For AI Agents](/for-ai-agents/)

@@ -1,0 +1,299 @@
+---
+.title = "CLI Reference",
+.layout = "page.shtml",
+.description = "Complete CLI reference for powerglide commands and options",
+.author = "powerglide team",
+.date = @date("2026-03-02"),
+---
+
+# CLI Reference
+
+Complete reference for all powerglide commands and options.
+
+## Main Command
+
+```
+powerglide — the CLI coding agent that slides
+
+USAGE:
+    powerglide [command] [options] [args...]
+
+COMMANDS:
+    run         Launch an agent coding session
+    session     Manage agent sessions (list, show, resume, delete, export)
+    agent       Manage agent configurations (list, add, remove, show)
+    swarm       Manage agent swarms (list, create, add, remove, run, status, stop)
+    config      Manage powerglide configuration (show, set, get, reset, edit)
+    tools       List and test available tools (list, show, test)
+    tui         Open the interactive multi-agent dashboard
+    doctor      Run system health checks
+    version     Show version information
+
+Run 'powerglide [command] --help' for command-specific help.
+```
+
+## powerglide run
+
+Launch an agent coding session.
+
+```
+USAGE:
+    powerglide run [options] [message]
+
+OPTIONS:
+    --agent, -a <name>      Agent to use (default: hephaestus)
+    --velocity, -v <ms>     Delay between steps in ms (default: 500)
+    --session-id, -s <id>   Resume or create session with given ID
+    --model, -m <model>     Model override (e.g. claude-opus-4-6)
+    --help, -h              Show this help
+```
+
+### Examples
+
+```bash
+# Basic run
+powerglide run "refactor this function"
+
+# With specific agent
+powerglide run --agent hephaestus "add tests"
+
+# With velocity control
+powerglide run --velocity 2.0 "quick fix"
+
+# Resume session
+powerglide run --session-id abc123 "continue"
+```
+
+## powerglide session
+
+Manage agent sessions.
+
+```
+USAGE:
+    powerglide session [subcommand] [options]
+
+SUBCOMMANDS:
+    list        List all sessions
+    show        Show session details
+    resume      Resume a session
+    delete      Delete a session
+    export      Export session to file
+```
+
+### Examples
+
+```bash
+# List sessions
+powerglide session list
+
+# Show session
+powerglide session show abc123
+
+# Resume session
+powerglide session resume abc123
+
+# Delete session
+powerglide session delete abc123
+
+# Export session
+powerglide session export abc123 > session.json
+```
+
+## powerglide agent
+
+Manage agent configurations.
+
+```
+USAGE:
+    powerglide agent [subcommand] [options]
+
+SUBCOMMANDS:
+    list        List all agents
+    add         Add a new agent
+    remove      Remove an agent
+    show        Show agent details
+```
+
+### Examples
+
+```bash
+# List agents
+powerglide agent list
+
+# Add agent
+powerglide agent add my-agent --model "claude-sonnet-4"
+
+# Show agent
+powerglide agent show my-agent
+
+# Remove agent
+powerglide agent remove my-agent
+```
+
+## powerglide swarm
+
+Manage agent swarms.
+
+```
+USAGE:
+    powerglide swarm [subcommand] [options]
+
+SUBCOMMANDS:
+    list        List all swarms
+    create      Create a new swarm
+    add         Add agent to swarm
+    remove      Remove agent from swarm
+    run         Run a swarm task
+    status      Show swarm status
+    stop        Stop a running swarm
+```
+
+### Examples
+
+```bash
+# Create swarm
+powerglide swarm create my-team --agents 3
+
+# Add agent to swarm
+powerglide swarm add my-team --agent hephaestus
+
+# Run swarm task
+powerglide swarm run my-team "implement authentication"
+
+# Check status
+powerglide swarm status my-team
+
+# Stop swarm
+powerglide swarm stop my-team
+```
+
+## powerglide config
+
+Manage powerglide configuration.
+
+```
+USAGE:
+    powerglide config [subcommand] [options]
+
+SUBCOMMANDS:
+    show        Show current configuration
+    set         Set a configuration value
+    get         Get a configuration value
+    reset       Reset configuration to defaults
+    edit        Edit configuration file
+```
+
+### Examples
+
+```bash
+# Show config
+powerglide config show
+
+# Set value
+powerglide config set default_agent hephaestus
+
+# Get value
+powerglide config get default_agent
+
+# Reset to defaults
+powerglide config reset
+
+# Edit config file
+powerglide config edit
+```
+
+## powerglide tools
+
+List and test available tools.
+
+```
+USAGE:
+    powerglide tools [subcommand] [options]
+
+SUBCOMMANDS:
+    list        List all tools
+    show        Show tool details
+    test        Test a tool
+```
+
+### Examples
+
+```bash
+# List tools
+powerglide tools list
+
+# Show tool
+powerglide tools show bash
+
+# Test tool
+powerglide tools test bash --args "echo hello"
+```
+
+## powerglide tui
+
+Open the interactive multi-agent dashboard.
+
+```
+USAGE:
+    powerglide tui [options]
+
+OPTIONS:
+    --refresh, -r <ms>    Refresh rate in ms (default: 1000)
+    --help, -h            Show this help
+```
+
+## powerglide doctor
+
+Run system health checks.
+
+```
+USAGE:
+    powerglide doctor
+
+Checks:
+    - zig              Version and PATH
+    - oh-my-opencode   npx availability
+    - git              Version
+    - API keys         ANTHROPIC_API_KEY, OPENAI_API_KEY
+    - Config dir       ~/.config/powerglide/
+```
+
+### Example Output
+
+```
+$ powerglide doctor
+✓ zig 0.15.2 found at /usr/local/bin/zig
+✓ oh-my-opencode found
+✓ git 2.40.1 found
+✓ ANTHROPIC_API_KEY set
+✗ OPENAI_API_KEY not set
+✓ Config directory exists
+```
+
+## powerglide version
+
+Show version information.
+
+```
+USAGE:
+    powerglide version
+
+Output:
+    powerglide 0.1.0
+    Zig 0.15.2
+    Target: x86_64-linux
+```
+
+## Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `ANTHROPIC_API_KEY` | Anthropic API key |
+| `OPENAI_API_KEY` | OpenAI-compatible API key |
+| `POWERGLIDE_MODEL` | Default model |
+| `POWERGLIDE_VELOCITY` | Default velocity multiplier |
+| `POWERGLIDE_MAX_STEPS` | Max steps per session |
+
+---
+
+[Back to Home](/) · [Features](/features/) · [Configuration](/configuration/)

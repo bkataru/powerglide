@@ -1,0 +1,1 @@
+Site { .title = "powerglide", .host_url = "https://bkataru.github.io", .url_path_prefix = "powerglide", .content_dir_path = "content", .layouts_dir_path = "layouts", .assets_dir_path = "static", .static_assets = ["svg/logo.svg"], }

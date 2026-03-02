@@ -1,0 +1,177 @@
+---
+.title = "",
+.layout = "home.shtml",
+.description = "The CLI coding agent that slides - Zig-powered multi-agent harness for extreme coding workflows",
+.author = "powerglide team",
+.date = @date("2026-03-02"),
+---
+
+```=html
+<div class="hero-logo-container">
+    <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" class="hero-logo">
+        <defs>
+            <linearGradient id="pg-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#F7A41D;stop-opacity:1"/>
+                <stop offset="100%" style="stop-color:#d97706;stop-opacity:1"/>
+            </linearGradient>
+            <filter id="neon-glow" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur1"/>
+                <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur2"/>
+                <feGaussianBlur in="SourceGraphic" stdDeviation="9" result="blur3"/>
+                <feMerge>
+                    <feMergeNode in="blur3"/>
+                    <feMergeNode in="blur2"/>
+                    <feMergeNode in="blur1"/>
+                    <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+            </filter>
+        </defs>
+        
+        <!-- Background circle -->
+        <circle cx="100" cy="100" r="95" fill="#0a0a0f" stroke="#F7A41D" stroke-width="2">
+            <animate attributeName="stroke" values="#F7A41D;#06b6d4;#7c3aed;#F7A41D" dur="4s" repeatCount="indefinite"/>
+        </circle>
+        
+        <!-- Speed lines -->
+        <g stroke="#F7A41D" stroke-width="2" fill="none" filter="url(#neon-glow)">
+            <path d="M60 80 L80 100 L60 120"/>
+            <path d="M140 80 L120 100 L140 120"/>
+            <path d="M80 60 L100 80 L120 60"/>
+        </g>
+        
+        <!-- Central power symbol -->
+        <g filter="url(#neon-glow)">
+            <circle cx="100" cy="100" r="40" fill="none" stroke="url(#pg-gradient)" stroke-width="4"/>
+            <path d="M100 70 L100 100 L130 110" stroke="url(#pg-gradient)" stroke-width="4" fill="none" stroke-linecap="round"/>
+            <circle cx="100" cy="100" r="4" fill="#F7A41D"/>
+            <circle cx="100" cy="70" r="3" fill="#F7A41D"/>
+            <circle cx="130" cy="110" r="3" fill="#F7A41D"/>
+        </g>
+        
+        <!-- Corner accents -->
+        <g stroke="#7c3aed" stroke-width="2" fill="none">
+            <path d="M30 30 L40 30 L40 40"/>
+            <path d="M170 30 L160 30 L160 40"/>
+            <path d="M30 170 L40 170 L40 160"/>
+            <path d="M170 170 L160 170 L160 160"/>
+        </g>
+        
+        <!-- Text -->
+        <text x="100" y="180" text-anchor="middle" fill="#F7A41D" font-size="14" font-weight="bold" font-family="monospace" filter="url(#neon-glow)">POWERGLIDE</text>
+    </svg>
+</div>
+```
+
+Welcome to **powerglide** ⚡ - the CLI coding agent that slides.
+
+> **Why powerglide?** Built in [Zig 0.15.2](https://ziglang.org/), powerglide orchestrates swarms of SWE (Software Engineering) agents with precise velocity control, reliable PTY management, and multi-model routing — all from a single fast binary with no runtime dependencies.
+
+Like the Lamborghini Powerglide transmission it's named after, powerglide is designed for one thing: **maximum throughput**.
+
+```bash
+$ powerglide run --agent hephaestus --velocity 2.0 "implement a binary search tree in Zig"
+```
+
+## Key Features
+
+- **Multi-Agent Swarms** 🐜 — Orchestrate N agents in parallel with independent workspaces, task queues, and health monitoring. Rogue agents are auto-killed via heartbeat timeouts and step limits.
+
+- **Velocity Control** 🚀 — Tune agent speed dynamically: `--velocity 2.0` (fast), `0.5` (conservative). Agents can self-tune via session config files.
+
+- **Ralph Loop State Machine** 🔄 — Fault-tolerant `idle → thinking → acting → observing → commit` loop with explicit `POWERGLIDE_DONE` stop signals and configurable max steps.
+
+- **Reliable PTY Management** 💻 — Full pseudoterminal support with `waitpid`-based exit-code capture, WNOHANG polling, and `/proc/<pid>/status` fallback.
+
+- **Multi-Model Routing** 🤖 — Route to Anthropic (Claude), OpenAI-compatible APIs (Ollama, NVIDIA NIM, Together AI), or any local provider. Automatic fallback chains.
+
+- **Terminal TUI** 📊 — Multi-panel vxfw dashboard: agent status, log streaming, live velocity display.
+
+## Quick Start
+
+### Prerequisites
+
+- [Zig 0.15.2](https://ziglang.org/download/) — `mise install zig@0.15.2` or from the official site
+- An API key for your model provider (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, etc.)
+
+### Build
+
+```bash
+git clone https://github.com/bkataru/powerglide
+cd powerglide
+zig build
+```
+
+The binary lands at `./zig-out/bin/powerglide`.
+
+### Run
+
+```bash
+# Health check — verify all dependencies are set up
+./zig-out/bin/powerglide doctor
+
+# Run an agent session
+./zig-out/bin/powerglide run "refactor this function to be more idiomatic"
+
+# Run with specific agent and velocity
+./zig-out/bin/powerglide run --agent hephaestus --velocity 2.0 "add unit tests"
+
+# Open TUI dashboard
+./zig-out/bin/powerglide tui
+```
+
+## CLI Commands
+
+| Command | Description |
+|---------|-------------|
+| `powerglide run` | Launch an agent coding session |
+| `powerglide session` | Manage agent sessions (list, show, resume, delete, export) |
+| `powerglide agent` | Manage agent configurations (list, add, remove, show) |
+| `powerglide swarm` | Manage agent swarms (list, create, add, remove, run, status, stop) |
+| `powerglide config` | Manage powerglide configuration (show, set, get, reset, edit) |
+| `powerglide tools` | List and test available tools (list, show, test) |
+| `powerglide tui` | Open the interactive multi-agent dashboard |
+| `powerglide doctor` | Run system health checks |
+| `powerglide version` | Show version information |
+
+## The Ralph Loop
+
+At the heart of powerglide is the **Ralph Loop** — a state machine inspired by [ralph](https://github.com/snarktank/ralph) that drives every agent session:
+
+```
+IDLE
+ │
+ ▼
+LOAD_TASKS ──(all done?)──► COMPLETE
+ │
+ ▼
+PICK_TASK (highest priority, passes == false)
+ │
+ ▼
+THINKING ──(tool_call)──► ACTING ──(result)──► OBSERVING
+ │                              │
+ ▼                              │
+VERIFY (run checks)             │
+ │                              │
+ ▼                              │
+COMMIT ──► update task status ──┘
+ │
+ ▼
+FAILED (error recovery / retry)
+```
+
+The loop emits `<POWERGLIDE_DONE>` when all tasks are complete, which the orchestrator detects as a clean stop signal.
+
+## Inspiration
+
+powerglide is inspired by the best ideas from the AI coding agent ecosystem:
+
+| Project | Inspiration |
+|---------|------------|
+| [oh-my-pi](https://github.com/can1357/oh-my-pi) | Multi-agent harness patterns, agent orchestration |
+| [oh-my-opencode](https://github.com/code-yeongyu/oh-my-opencode) | Ralph Wiggum loop, autonomous agent control |
+| [ralph](https://github.com/snarktank/ralph) | Ralph loop state machine, explicit done signals |
+| [gastown](https://github.com/steveyegge/gastown) | Multi-agent workspace isolation, task queues |
+| [opencode](https://github.com/anomalyco/opencode) | CLI UX, multi-model routing |
+| [crush](https://github.com/charmbracelet/crush) | Terminal UX, TUI design |
+
+---

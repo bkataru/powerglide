@@ -1,0 +1,143 @@
+---
+.title = "Features",
+.layout = "page.shtml",
+.description = "Explore powerglide's powerful features for multi-agent coding workflows",
+.author = "powerglide team",
+.date = @date("2026-03-02"),
+---
+
+# Features
+
+powerglide is packed with features designed for **maximum throughput** in AI-assisted coding workflows.
+
+## Multi-Agent Swarms 🐜
+
+Orchestrate N agents in parallel with:
+
+- Independent workspaces per agent
+- Task queues with priority scheduling
+- Health monitoring with heartbeat timeouts
+- Automatic rogue agent termination
+- Step limits to prevent runaway execution
+
+```bash
+powerglide swarm create my-team --agents 3
+powerglide swarm run my-team "implement the authentication module"
+```
+
+## Velocity Control 🚀
+
+Tune agent speed dynamically to match your needs:
+
+```bash
+# Fast execution (2x speed, 500ms between steps)
+powerglide run --velocity 2.0 "quick refactor"
+
+# Conservative pace (0.5x speed, 2000ms between steps)
+powerglide run --velocity 0.5 "careful review"
+
+# Agents can self-adjust via session config
+echo "VELOCITY=1.5" >> ~/.config/powerglide/session-abc123.json
+```
+
+## Ralph Loop State Machine 🔄
+
+The fault-tolerant state machine at the core:
+
+1. **IDLE** - Waiting for tasks
+2. **LOAD_TASKS** - Fetch next task from queue
+3. **THINKING** - Process and plan
+4. **ACTING** - Execute tool calls
+5. **OBSERVING** - Gather results
+6. **VERIFY** - Run validation checks
+7. **COMMIT** - Update task status
+8. **FAILED** - Error recovery / retry
+
+The loop emits `<POWERGLIDE_DONE>` when complete, providing a clean stop signal.
+
+## Reliable PTY Management 💻
+
+Full pseudoterminal support ensures accurate command execution:
+
+- `waitpid`-based exit code capture
+- WNOHANG polling for non-blocking operation
+- `/proc/<pid>/status` fallback for edge cases
+- Proper signal handling and cleanup
+
+## Multi-Model Routing 🤖
+
+Route to any LLM provider with automatic fallbacks:
+
+```bash
+# Anthropic Claude
+export ANTHROPIC_API_KEY="sk-ant-..."
+powerglide run --model "claude-opus-4-6" "..."
+
+# OpenAI-compatible (Ollama, NVIDIA NIM, Together AI)
+export OPENAI_API_KEY="sk-..."
+powerglide run --model "gpt-4" "..."
+
+# Automatic fallback chain configured in config.json
+```
+
+## Terminal TUI 📊
+
+Multi-panel dashboard for monitoring:
+
+- Real-time agent status
+- Live log streaming
+- Velocity display
+- Task progress tracking
+- Resource usage metrics
+
+```bash
+powerglide tui
+```
+
+## MCP-style Tools 🔧
+
+Full tool registry with the same tools Claude Code uses:
+
+- `bash` - Execute shell commands
+- `read` - Read file contents
+- `write` - Write files
+- `edit` - Edit files with precision
+- `grep` - Search code
+- `glob` - Find files by pattern
+
+## Doctor Command 🩺
+
+One-shot system health check:
+
+```bash
+powerglide doctor
+```
+
+Checks:
+- Zig version and PATH
+- oh-my-opencode availability
+- Git installation
+- API keys (ANTHROPIC, OPENAI)
+- Config directory structure
+
+## Persistent Memory 🧠
+
+JSONL-based session memory with:
+
+- Context windowing
+- Semantic search triggers
+- Automatic summarization
+- Cross-session persistence
+
+## SSE Streaming ⚡
+
+Real-time token streaming from model APIs:
+
+- Incremental output display
+- Lower latency perception
+- Better UX for long responses
+- Cancellable generation
+
+---
+
+[Back to Home](/) · [Architecture](/architecture/) · [CLI Reference](/cli-reference/)

@@ -1,0 +1,240 @@
+---
+.title = "For AI Agents",
+.layout = "page.shtml",
+.description = "Guidelines for AI agents working with powerglide",
+.author = "powerglide team",
+.date = @date("2026-03-02"),
+---
+
+# For AI Agents
+
+Comprehensive guidance for AI agents using powerglide as a tool or building on top of it.
+
+## Overview
+
+powerglide is designed to be agent-friendly, with:
+
+- Clear stop signals (`<POWERGLIDE_DONE>`)
+- Structured output formats
+- Reliable exit code capture
+- Session persistence for recovery
+- Configurable safety limits
+
+## Using powerglide as a Tool
+
+### Basic Invocation
+
+```bash
+powerglide run "implement a binary search tree in Zig"
+```
+
+### With Parameters
+
+```bash
+powerglide run \
+  --agent hephaestus \
+  --velocity 2.0 \
+  --model "claude-opus-4-6" \
+  "add unit tests for the authentication module"
+```
+
+### Expected Output
+
+Agents should parse for:
+
+1. `<POWERGLIDE_DONE>` - Clean completion signal
+2. `<POWERGLIDE_ERROR>` - Error condition
+3. Tool call results in structured format
+
+## Building on powerglide
+
+### Session Management
+
+```bash
+# Create new session
+powerglide run --session-id my-session "task 1"
+
+# Continue session
+powerglide run --session-id my-session "task 2"
+
+# List sessions
+powerglide session list
+```
+
+### Swarm Orchestration
+
+```bash
+# Create swarm
+powerglide swarm create dev-team --agents 3
+
+# Assign task
+powerglide swarm run dev-team "implement the API layer"
+
+# Monitor progress
+powerglide swarm status dev-team
+```
+
+## Tool Interface
+
+All powerglide tools follow a consistent interface:
+
+```zig
+pub const Tool = struct {
+    name: []const u8,
+    description: []const u8,
+    parameters: ?[]const u8 = null,
+    
+    pub fn execute(self: *Tool, args: []const u8) !ToolResult {
+        // Implementation
+    }
+};
+
+pub const ToolResult = struct {
+    success: bool,
+    output: []const u8,
+    err: ?[]const u8 = null,
+};
+```
+
+### Available Tools
+
+| Tool | Description |
+|------|-------------|
+| `bash` | Execute shell commands |
+| `read` | Read file contents |
+| `write` | Write files |
+| `edit` | Edit files with precision |
+| `grep` | Search code |
+| `glob` | Find files by pattern |
+
+## Best Practices
+
+### For Agent Developers
+
+1. **Use explicit stop signals** - Emit `<POWERGLIDE_DONE>` when complete
+2. **Respect velocity settings** - Don't bypass rate limits
+3. **Handle errors gracefully** - Use the failed state for recovery
+4. **Log progress** - Write to session files for monitoring
+5. **Honor step limits** - Don't exceed configured max steps
+
+### For Agent Consumers
+
+1. **Set appropriate limits** - Configure max_steps and timeouts
+2. **Monitor heartbeats** - Watch for stalled sessions
+3. **Use sessions** - Enable recovery from failures
+4. **Review tool calls** - Audit agent actions regularly
+
+## Integration Examples
+
+### Python Integration
+
+```python
+import subprocess
+
+def run_powerglide(task: str, agent: str = "hephaestus"):
+    result = subprocess.run([
+        "powerglide", "run",
+        "--agent", agent,
+        task
+    ], capture_output=True, text=True)
+    return result.stdout
+```
+
+### Node.js Integration
+
+```javascript
+import { execSync } from 'child_process';
+
+function runPowerglide(task, options = {}) {
+    const args = ['powerglide', 'run'];
+    if (options.agent) args.push('--agent', options.agent);
+    if (options.velocity) args.push('--velocity', options.velocity);
+    args.push(task);
+    
+    return execSync(args.join(' '), { encoding: 'utf8' });
+}
+```
+
+### Zig Integration
+
+```zig
+const std = @import("std");
+
+fn runPowerglide(allocator: std.mem.Allocator, task: []const u8) !void {
+    const result = try std.process.Child.run(.{
+        .allocator = allocator,
+        .argv = &[_][]const u8{
+            "powerglide",
+            "run",
+            task,
+        },
+    });
+    defer result.deinit();
+    
+    std.debug.print("Output: {s}\n", .{result.stdout});
+}
+```
+
+## API Reference
+
+### LoopState (src/agent/loop.zig)
+
+```zig
+pub const LoopState = enum {
+    idle,
+    thinking,
+    acting,
+    observing,
+    finished,
+    failed,
+};
+```
+
+### ModelProvider (src/models/router.zig)
+
+```zig
+pub const ModelProvider = enum {
+    anthropic,
+    openai,
+    openai_compatible,
+};
+```
+
+## Debugging
+
+### Enable Debug Logging
+
+```bash
+export POWERGLIDE_DEBUG=1
+powerglide run "task"
+```
+
+### Session Logs
+
+```bash
+# View session logs
+powerglide session show abc123 --logs
+
+# Export logs
+powerglide session export abc123 --logs > session.log
+```
+
+### Common Issues
+
+| Issue | Solution |
+|-------|----------|
+| Agent stuck | Check heartbeat timeout, increase if needed |
+| Step limit hit | Increase `max_steps` config |
+| Tool timeout | Increase tool timeout in config |
+| API errors | Check API key, rate limits |
+
+## Security Considerations
+
+1. **API Keys** - Store in environment variables, not config files
+2. **Tool Permissions** - Restrict bash commands when possible
+3. **Session Data** - Review before sharing/exporting
+4. **Network Access** - Monitor outbound connections
+
+---
+
+[Back to Home](/) · [Configuration](/configuration/) · [Architecture](/architecture/)

@@ -1,0 +1,157 @@
+---
+.title = "Architecture",
+.layout = "page.shtml",
+.description = "Understand the architecture behind powerglide's multi-agent orchestration",
+.author = "powerglide team",
+.date = @date("2026-03-02"),
+---
+
+# Architecture
+
+powerglide is built in [Zig 0.15.2](https://ziglang.org/) with a modular architecture designed for reliability and performance.
+
+## Module Structure
+
+```
+src/
+├── main.zig              # Entry point, CLI dispatch
+├── agent/
+│   ├── loop.zig          # Ralph loop state machine
+│   └── session.zig       # Session persistence (JSON)
+├── terminal/
+│   ├── pty.zig           # PTY allocation, process spawning
+│   ├── exit_code.zig     # Reliable exit code capture
+│   ├── session.zig       # Terminal session CRUD
+│   └── pool.zig          # Multi-terminal pool
+├── models/
+│   ├── http.zig          # HTTP client (std.http)
+│   ├── anthropic.zig     # Anthropic Messages API
+│   ├── openai.zig        # OpenAI-compatible API
+│   ├── router.zig        # Multi-model routing + fallbacks
+│   └── stream.zig        # SSE streaming responses
+├── memory/
+│   ├── store.zig         # Persistent JSONL memory store
+│   └── context.zig       # Context windowing, summarization
+├── config/
+│   └── config.zig        # Config schema + file/env loading
+├── tools/
+│   ├── tool.zig          # Tool interface
+│   └── registry.zig      # Tool registry (StringHashMap)
+├── tui/
+│   └── app.zig           # vxfw TUI dashboard
+└── orchestrator/
+    ├── worker.zig        # Worker agent lifecycle
+    ├── monitor.zig       # Health monitoring + events
+    └── swarm.zig         # Swarm coordinator
+```
+
+## The Ralph Loop
+
+At the heart of powerglide is the **Ralph Loop** — a state machine that drives every agent session:
+
+```zig
+pub const LoopState = enum {
+    idle,
+    thinking,
+    acting,
+    observing,
+    finished,
+    failed,
+};
+```
+
+### State Transitions
+
+```
+IDLE ──► LOAD_TASKS ──► THINKING ──► ACTING ──► OBSERVING
+         │                                    │
+         │                                    ▼
+         │                              VERIFY / COMMIT
+         │                                    │
+         └────────────◄───────────────────────┘
+```
+
+The loop emits `<POWERGLIDE_DONE>` when all tasks are complete.
+
+## Multi-Agent Swarm Architecture
+
+```
+Orchestrator (slow, powerful model)
+├── assigns tasks via task-queue.json
+├── monitors worker heartbeats
+└── aggregates results
+
+Workers (fast models) × N
+├── each has isolated workspace
+├── pulls tasks from queue
+├── writes progress to worker-{id}.json
+└── signals completion via done-{id}.json
+```
+
+Inter-agent communication is file-based at `~/.powerglide/teams/{team-id}/messages/`.
+
+## Rogue Agent Prevention
+
+powerglide includes multi-layer rogue agent prevention:
+
+| Mechanism | Default | Description |
+|-----------|---------|-------------|
+| Step limit | 200 | Kill after N steps regardless |
+| Heartbeat | 30s | Worker must write heartbeat; monitor kills if missed |
+| Circuit breaker | 3 repeats | Kill if same tool called with same args 3+ times |
+| Budget tracking | configurable | Stop if token/cost budget exceeded |
+| Explicit done signal | required | Agent must emit `POWERGLIDE_DONE` to terminate cleanly |
+
+## Velocity Control
+
+Velocity controls how fast the ralph loop progresses:
+
+```bash
+powerglide run --velocity 2.0  # 2x speed: 500ms between steps
+powerglide run --velocity 0.5  # 0.5x speed: 2000ms between steps
+```
+
+Agents can self-adjust velocity by writing `VELOCITY=<value>` to their session config file at `~/.config/powerglide/session-<id>.json`. The orchestrator polls this file every N steps.
+
+## Configuration Loading
+
+Configuration is loaded in order of precedence:
+
+1. Command-line arguments (highest priority)
+2. Environment variables
+3. `~/.config/powerglide/config.json`
+4. Built-in defaults (lowest priority)
+
+```zig
+const config = Config.load(.{
+    .cli_args = args,
+    .env = std.process.env,
+    .config_file = "~/.config/powerglide/config.json",
+});
+```
+
+## Tool Interface
+
+All tools implement a common interface:
+
+```zig
+pub const Tool = struct {
+    name: []const u8,
+    description: []const u8,
+    parameters: ?[]const u8 = null,
+    
+    pub fn execute(self: *Tool, args: []const u8) !ToolResult {
+        // Implementation
+    }
+};
+
+pub const ToolResult = struct {
+    success: bool,
+    output: []const u8,
+    err: ?[]const u8 = null,
+};
+```
+
+---
+
+[Back to Home](/) · [Features](/features/) · [CLI Reference](/cli-reference/)
