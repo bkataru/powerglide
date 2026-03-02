@@ -1,6 +1,14 @@
 # Zig build artifacts
 zig-out/
 .zig-cache/
+*.a
+*.o
+*.lib
+*.so
+*.dylib
+# Standalone binaries (built by zig, not intended for tracking)
+/main
+/powerglide
 
 # Editor
 .vscode/
