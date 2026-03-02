@@ -1,35 +1,88 @@
+//! Multi-Terminal Pool - manages multiple terminal sessions
+
 const std = @import("std");
 
-pub const TerminalPool = struct {
-    max_size: usize = 4,
-    active_count: usize = 0,
-    sessions: std.ArrayList(?*anyopaque),
+const TerminalSession = @import("session.zig").TerminalSession;
+const SessionId = @import("session.zig").SessionId;
+const CommandResult = @import("session.zig").CommandResult;
 
-    pub fn init(allocator: std.mem.Allocator, max_size: usize) TerminalPool {
+/// Pool for managing multiple terminal sessions
+pub const Pool = struct {
+    allocator: std.mem.Allocator,
+    sessions: std.AutoHashMap(SessionId, TerminalSession),
+    next_id: SessionId,
+    max_sessions: usize,
+
+    /// Initialize a new terminal pool
+    pub fn init(allocator: std.mem.Allocator, max_sessions: usize) Pool {
         return .{
-            .max_size = max_size,
-            .sessions = std.ArrayList(?*anyopaque).init(allocator),
+            .allocator = allocator,
+            .sessions = std.AutoHashMap(SessionId, TerminalSession).init(allocator),
+            .next_id = 1,
+            .max_sessions = max_sessions,
         };
     }
 
-    pub fn deinit(self: *TerminalPool) void {
+    /// Clean up all sessions and pool resources
+    pub fn deinit(self: *Pool) void {
+        var iter = self.sessions.valueIterator();
+        while (iter.next()) |session| {
+            session.deinit();
+        }
         self.sessions.deinit();
     }
 
-    pub fn acquire(self: *TerminalPool) ?*anyopaque {
-        if (self.active_count >= self.max_size) {
-            return null;
+    /// Create a new terminal session
+    pub fn create(self: *Pool) !SessionId {
+        if (self.sessions.size >= self.max_sessions) {
+            return error.PoolFull;
         }
-        self.active_count += 1;
-        return @as(?*anyopaque, @ptrFromInt(@intFromBool(true)));
+
+        const id = self.next_id;
+        self.next_id += 1;
+
+        const session = TerminalSession.init(self.allocator, id);
+        try self.sessions.put(id, session);
+
+        return id;
     }
 
-    pub fn release(self: *TerminalPool, _session: *anyopaque) void {
-        _ = _session;
-        if (self.active_count > 0) {
-            self.active_count -= 1;
-        }
+    /// Get session by ID
+    pub fn get(self: *Pool, id: SessionId) ?*TerminalSession {
+        return self.sessions.getPtr(id);
     }
+
+    /// Run a command in a session and wait for result
+    pub fn run(self: *Pool, id: SessionId, allocator: std.mem.Allocator, cmd: []const u8, timeout_ms: u64) !CommandResult {
+        const session = self.sessions.getPtr(id) orelse return error.SessionNotFound;
+        return session.runCommand(allocator, cmd, timeout_ms);
+    }
+
+    /// Close a session by ID
+    pub fn close(self: *Pool, id: SessionId) void {
+        if (self.sessions.getPtr(id)) |session| {
+            session.deinit();
+        }
+        _ = self.sessions.remove(id);
+    }
+
+    /// Count active sessions (sessions with alive processes)
+    pub fn activeCount(self: *const Pool) usize {
+        var count: usize = 0;
+        var iter = self.sessions.valueIterator();
+        while (iter.next()) |session| {
+            if (session.isAlive()) {
+                count += 1;
+            }
+        }
+        return count;
+    }
+};
+
+/// Pool-specific errors
+pub const PoolError = error{
+    PoolFull,
+    SessionNotFound,
 };
 
 test "placeholder" {
