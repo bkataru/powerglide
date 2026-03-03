@@ -6,7 +6,6 @@
 .date = @date("2026-03-02"),
 ---
 
-# Architecture
 
 powerglide is built in [Zig 0.15.2](https://ziglang.org/) with a modular architecture designed for reliability and performance.
 
@@ -154,4 +153,4 @@ pub const ToolResult = struct {
 
 ---
 
-[Back to Home](/) · [Features](/features/) · [CLI Reference](/cli-reference/)
+<a href="/powerglide/">Back to Home</a> · <a href="/powerglide/features/">Features</a> · <a href="/powerglide/cli-reference/">CLI Reference</a>

@@ -237,4 +237,4 @@ powerglide session export abc123 --logs > session.log
 
 ---
 
-[Back to Home](/) · [Configuration](/configuration/) · [Architecture](/architecture/)
+<a href="/powerglide/">Back to Home</a> · <a href="/powerglide/configuration/">Configuration</a> · <a href="/powerglide/architecture/">Architecture</a>
