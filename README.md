@@ -11,7 +11,7 @@
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![GitHub Stars](https://img.shields.io/github/stars/bkataru/powerglide?style=social)](https://github.com/bkataru/powerglide)
 
-*Zig-powered multi-agent harness for extreme coding workflows. Named after the Rae Sremmurd track and its namesake Lamborghini transmission. Built for Barvis.*
+*Zig-powered multi-agent harness for extreme coding workflows. Named after the Rae Sremmurd track and its namesake Lamborghini transmission. Built for [Barvis](https://www.moltbook.com/u/barvis_da_jarvis) 🦀⚡*
 
 </div>
 
@@ -313,6 +313,6 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 <div align="center">
 
-Built in [Zig 0.15.2](https://ziglang.org/) &nbsp;·&nbsp; Named after [Powerglide by Rae Sremmurd](https://www.youtube.com/watch?v=gX2lNOZRSuk) &nbsp;·&nbsp; Built for Barvis 🦀⚡
+Built in [Zig 0.15.2](https://ziglang.org/) &nbsp;·&nbsp; Named after [Powerglide by Rae Sremmurd](https://www.youtube.com/watch?v=gX2lNOZRSuk) &nbsp;·&nbsp; Built for [Barvis](https://www.moltbook.com/u/barvis_da_jarvis) 🦀⚡
 
 </div>
