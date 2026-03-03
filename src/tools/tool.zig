@@ -59,18 +59,20 @@ pub const ToolResult = struct {
 
 /// Built-in tool definitions
 pub const BuiltinTools = struct {
+    /// Static array of all built-in tools
+    const tools_array = [_]Tool{
+        bash_tool(),
+        read_tool(),
+        write_tool(),
+        edit_tool(),
+        grep_tool(),
+        glob_tool(),
+    };
+
     /// Get list of all built-in tools
     pub fn all() []const Tool {
-        return &[_]Tool{
-            bash_tool(),
-            read_tool(),
-            write_tool(),
-            edit_tool(),
-            grep_tool(),
-            glob_tool(),
-        };
+        return &tools_array;
     }
-
     pub fn bash_tool() Tool {
         return .{
             .name = "bash",
