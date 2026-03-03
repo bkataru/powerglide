@@ -17,7 +17,7 @@ pub const tools = @import("tools/tool.zig");
 pub const registry = @import("tools/registry.zig");
 pub const tui = @import("tui/app.zig");
 pub const orchestrator = @import("orchestrator/swarm.zig");
-
+pub const swarm_manager = @import("orchestrator/swarm_manager.zig");
 test {
     std.testing.refAllDecls(@This());
 }
