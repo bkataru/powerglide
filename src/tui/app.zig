@@ -2,6 +2,7 @@ const std = @import("std");
 const vaxis = @import("vaxis");
 const vxfw = vaxis.vxfw;
 
+const persistence = @import("../agent/persistence.zig");
 // ── Agent data ────────────────────────────────────────────────────────────────
 
 const AgentState = enum { idle, running, done, failed };
@@ -220,7 +221,6 @@ fn buildHeaderText(arena: std.mem.Allocator, refresh_count: u32) ![]const u8 {
 
 fn buildAgentsText(arena: std.mem.Allocator, agents: []const Agent) ![]const u8 {
     var buf = std.ArrayList(u8){};
-    defer buf.deinit(arena);
 
     try buf.appendSlice(arena, "═══ Agents Status ═══\n\n");
     for (agents) |ag| {
@@ -258,7 +258,6 @@ fn buildAgentsText(arena: std.mem.Allocator, agents: []const Agent) ![]const u8 
 
 fn buildLogsText(arena: std.mem.Allocator, lines: []const []const u8) ![]const u8 {
     var buf = std.ArrayList(u8){};
-    defer buf.deinit(arena);
 
     try buf.appendSlice(arena, "═══ Log Output ═══\n\n");
     for (lines) |line| {
@@ -288,27 +287,68 @@ pub const TUIApp = struct {
         self.running = true;
         defer self.running = false;
 
-        const placeholder_agents = [_]Agent{
-            .{ .name = "sisyphus", .state = .running, .step = 42, .total_steps = 100 },
-            .{ .name = "hephaestus", .state = .idle, .step = 0, .total_steps = 50 },
-            .{ .name = "oracle", .state = .done, .step = 15, .total_steps = 15 },
-        };
+        // Load real sessions
+        var persistence_manager = try persistence.PersistenceManager.init(self.allocator);
+        defer persistence_manager.deinit();
 
-        const placeholder_logs = [_][]const u8{
-            "[INFO] powerglide v0.1.0 started",
-            "[INFO] loading configuration",
-            "[INFO] agent sisyphus initialised (running)",
-            "[INFO] agent hephaestus initialised (idle)",
-            "[INFO] agent oracle completed successfully",
-            "[DEBUG] memory store ready",
-            "[DEBUG] tool registry: 12 tools loaded",
-            "[INFO] dashboard ready — press 'r' to refresh",
-        };
+        const sessions = try persistence_manager.listSessions(self.allocator);
+        defer {
+            for (sessions) |s| self.allocator.free(s);
+            self.allocator.free(sessions);
+        }
+
+        // Fetch session details for active sessions
+        var agent_list = std.ArrayList(Agent){};
+        defer agent_list.deinit(self.allocator);
+
+        var log_list = std.ArrayList([]const u8){};
+        defer {
+            for (log_list.items) |l| self.allocator.free(l);
+        }
+        defer log_list.deinit(self.allocator);
+
+        try log_list.append(self.allocator, try std.fmt.allocPrint(self.allocator, "[INFO] powerglide v0.1.0 started", .{}));
+        try log_list.append(self.allocator, try std.fmt.allocPrint(self.allocator, "[INFO] loaded {d} session(s)", .{sessions.len}));
+
+        for (sessions) |session_id| {
+            if (persistence_manager.loadSession(session_id)) |session| {
+                // NOTE: Session not deinited here - will be freed on function return
+                const state: AgentState = switch (session.status) {
+                    .pending => .idle,
+                    .active => .running,
+                    .paused => .idle,
+                    .completed => .done,
+                    .failed => .failed,
+                };
+                const agent = Agent{
+                    .name = session_id,
+                    .state = state,
+                    .step = session.step_count,
+                    .total_steps = session.step_count + 100,
+                };
+                try agent_list.append(self.allocator, agent);
+
+                try log_list.append(self.allocator, try std.fmt.allocPrint(self.allocator, "[INFO] session {s}: status={s}, step={d}", .{ session_id, @tagName(state), session.step_count }));
+            } else |_| {
+                try log_list.append(self.allocator, try std.fmt.allocPrint(self.allocator, "[WARN] could not load session {s}", .{session_id}));
+            }
+        }
+
+        if (agent_list.items.len == 0) {
+            const default_agents = [_]Agent{
+                .{ .name = "no-active-sessions", .state = .idle, .step = 0, .total_steps = 0 },
+            };
+            agent_list.items = try self.allocator.dupe(Agent, &default_agents);
+        }
+
+        if (log_list.items.len == 1) {
+            try log_list.append(self.allocator, try std.fmt.allocPrint(self.allocator, "[INFO] no active sessions found", .{}));
+        }
 
         var dashboard = Dashboard{
             .allocator = self.allocator,
-            .agents = &placeholder_agents,
-            .log_lines = &placeholder_logs,
+            .agents = agent_list.items,
+            .log_lines = log_list.items,
             .refresh_count = 0,
         };
 
