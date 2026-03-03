@@ -36,7 +36,7 @@ pub const ContextWindow = struct {
 
     /// Add a message to context (may trigger compaction if over budget)
     pub fn addMessage(self: *ContextWindow, role: []const u8, content: []const u8) !void {
-        const token_estimate = Self.estimateTokens(content);
+        const token_estimate = ContextWindow.estimateTokens(content);
         const timestamp = std.time.timestamp();
 
         const owned_role = try self.allocator.dupe(u8, role);

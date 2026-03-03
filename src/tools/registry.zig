@@ -37,13 +37,12 @@ pub const Registry = struct {
         const desc = try self.allocator.dupe(u8, tool.description);
         const schema = try self.allocator.dupe(u8, tool.input_schema);
 
-        const entry = try self.tools.createEntry(name);
-        entry.value_ptr.* = .{
-            name = name,
-            description = desc,
-            input_schema = schema,
-            handler = tool.handler,
-        };
+        try self.tools.put(name, .{
+            .name = name,
+            .description = desc,
+            .input_schema = schema,
+            .handler = tool.handler,
+        });
     }
 
     /// Get a tool by name
@@ -59,26 +58,26 @@ pub const Registry = struct {
     /// Execute a tool by name with the given arguments
     pub fn execute(self: *const Registry, allocator: std.mem.Allocator, input: ToolInput) !ToolOutput {
         const tool = self.tools.get(input.name) orelse {
-            return ToolOutput.err(std.fmt.allocPrint(allocator, "Unknown tool: {s}", .{input.name}) catch "Unknown tool");
+            return ToolOutput.failure(std.fmt.allocPrint(allocator, "Unknown tool: {s}", .{input.name}) catch "Unknown tool");
         };
 
         // Validate input against schema (basic check)
         if (input.arguments == .null) {
-            return ToolOutput.err("Invalid arguments: expected object");
+            return ToolOutput.failure("Invalid arguments: expected object");
         }
 
         // Execute the tool
         return tool.handler(allocator, input) catch |err| {
-            return ToolOutput.err(std.fmt.allocPrint(allocator, "Tool execution failed: {}", .{err}) catch "Tool execution failed");
+            return ToolOutput.failure(std.fmt.allocPrint(allocator, "Tool execution failed: {}", .{err}) catch "Tool execution failed");
         };
     }
 
     /// List all registered tools
     pub fn list(self: *const Registry) []const Tool {
-        var count: usize = 0;
+        var tool_count: usize = 0;
         var it = self.tools.iterator();
         while (it.next()) |_| {
-            count += 1;
+            tool_count += 1;
         }
 
         var tool_list = std.ArrayList(Tool).init(self.allocator);
@@ -86,51 +85,43 @@ pub const Registry = struct {
 
         it = self.tools.iterator();
         while (it.next()) |entry| {
-            tool_list.append(entry.value_ptr.*) catch {};
+            try tool_list.append(self.allocator, entry.value_ptr.*);
         }
 
-        return tool_list.toOwnedSlice();
+        return tool_list.toOwnedSlice(self.allocator);
     }
 
     /// List all tools as JSON string
     pub fn listAsJson(self: *const Registry, allocator: std.mem.Allocator) ![]const u8 {
-        var buf = std.ArrayList(u8).init(allocator);
-        defer buf.deinit();
+        var buf = try std.ArrayList(u8).initCapacity(allocator, 1024);
+        defer buf.deinit(allocator);
 
-        try buf.appendSlice("[");
+        try buf.appendSlice(allocator, "[");
 
         var it = self.tools.iterator();
         var first = true;
         while (it.next()) |entry| {
-            if (!first) try buf.appendSlice(",");
+            if (!first) try buf.appendSlice(allocator, ",");
             first = false;
 
             const tool = entry.value_ptr.*;
-            try buf.appendSlice("{");
-            try buf.appendSlice("\"name\":\"");
-            try buf.appendSlice(tool.name);
-            try buf.appendSlice("\",");
-            try buf.appendSlice("\"description\":\"");
-            try buf.appendSlice(tool.description);
-            try buf.appendSlice("\",");
-            try buf.appendSlice("\"input_schema\":");
-            try buf.appendSlice(tool.input_schema);
-            try buf.appendSlice("}");
+            try buf.appendSlice(allocator, "{\"name\":\"");
+            try buf.appendSlice(allocator, tool.name);
+            try buf.appendSlice(allocator, "\",\"description\":\"");
+            try buf.appendSlice(allocator, tool.description);
+            try buf.appendSlice(allocator, "\",\"input_schema\":");
+            try buf.appendSlice(allocator, tool.input_schema);
+            try buf.appendSlice(allocator, "}");
         }
 
-        try buf.appendSlice("]");
-
-        return buf.toOwnedSlice();
+        try buf.appendSlice(allocator, "]");
+        return buf.toOwnedSlice(allocator);
     }
 
     /// Remove a tool from the registry
     pub fn unregister(self: *Registry, name: []const u8) void {
-        const entry = self.tools.remove(name);
-        if (entry) |e| {
-            self.allocator.free(e.key);
-            // Note: The Tool struct doesn't own its strings, so we don't free them here
-            // In a full implementation, we'd track ownership more carefully
-        }
+        const found = self.tools.remove(name);
+        _ = found;
     }
 
     /// Get the count of registered tools
@@ -178,7 +169,6 @@ test "Registry execute" {
     var args_map = std.json.ObjectMap.init(allocator);
     defer args_map.deinit();
     try args_map.put("command", json.Value{ .string = "echo hello" });
-
     const args = json.Value{ .object = args_map };
 
     const input = ToolInput{

@@ -1,4 +1,5 @@
 const std = @import("std");
+const json = std.json;
 // const clap = @import("clap");
 const clap = @import("clap");
 const pg_lib = @import("powerglide");
@@ -701,7 +702,7 @@ try std.fs.File.stdout().deprecatedWriter().print(
 
 /// Handle the 'tools' subcommand
 fn handleTools(allocator: std.mem.Allocator, args: [][:0]u8) !void {
-    _ = allocator;
+    const powerglide = @import("powerglide");
     if (args.len == 0) {
         try printCommandHelp("tools", std.fs.File.stdout().deprecatedWriter());
         return;
@@ -732,19 +733,91 @@ fn handleTools(allocator: std.mem.Allocator, args: [][:0]u8) !void {
             try std.fs.File.stderr().deprecatedWriter().print("powerglide tools: error: 'show' requires a tool name\n", .{});
             std.process.exit(1);
         }
-        try std.fs.File.stdout().deprecatedWriter().print("powerglide tools show: {s} — stub (not yet implemented)\n", .{args[1]});
+        // Show tool details - use hardcoded lookup
+        const name = args[1];
+        
+        // Define tools directly to avoid iteration issues  
+        const ToolInfo = struct { n: []const u8, d: []const u8, s: []const u8 };
+        const tools = &[_]ToolInfo{
+            ToolInfo{ .n = "bash", .d = "Execute a shell command and return its output", .s = "{\"type\":\"object\",\"properties\":{\"command\":{\"type\":\"string\"}},\"required\":[\"command\"]}" },
+            ToolInfo{ .n = "read", .d = "Read contents of a file", .s = "{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"}},\"required\":[\"path\"]}" },
+            ToolInfo{ .n = "write", .d = "Write content to a file", .s = "{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"},\"content\":{\"type\":\"string\"}},\"required\":[\"path\",\"content\"]}" },
+            ToolInfo{ .n = "edit", .d = "Edit a specific portion of a file (find and replace)", .s = "{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"},\"old\":{\"type\":\"string\"},\"new\":{\"type\":\"string\"}},\"required\":[\"path\",\"old\",\"new\"]}" },
+            ToolInfo{ .n = "grep", .d = "Search for patterns in files", .s = "{\"type\":\"object\",\"properties\":{\"pattern\":{\"type\":\"string\"},\"path\":{\"type\":\"string\"}},\"required\":[\"pattern\"]}" },
+            ToolInfo{ .n = "glob", .d = "Find files matching a glob pattern", .s = "{\"type\":\"object\",\"properties\":{\"pattern\":{\"type\":\"string\"},\"path\":{\"type\":\"string\"}},\"required\":[\"pattern\"]}" },
+        };
+        
+        var found = false;
+        for (tools) |t| {
+            if (std.mem.eql(u8, t.n, name)) {
+                try std.fs.File.stdout().deprecatedWriter().print("Tool: {s}\nDescription: {s}\nInput Schema: {s}\n", .{ t.n, t.d, t.s });
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            try std.fs.File.stderr().deprecatedWriter().print("powerglide tools: tool '{s}' not found\n", .{name});
+            std.process.exit(1);
+        }
     } else if (std.mem.eql(u8, subcommand, "test")) {
         if (args.len < 2) {
             try std.fs.File.stderr().deprecatedWriter().print("powerglide tools: error: 'test' requires a tool name\n", .{});
             std.process.exit(1);
         }
-        try std.fs.File.stdout().deprecatedWriter().print("powerglide tools test: {s} — stub (not yet implemented)\n", .{args[1]});
+        // Test tool - uses BuiltinTools
+        const name = args[1];
+        const all = powerglide.tools.BuiltinTools.all();
+        
+        // Get the handler directly by name
+        var handler: ?powerglide.tools.ToolFn = null;
+        for (all) |t| {
+            if (std.mem.eql(u8, t.name, name)) {
+                handler = t.handler;
+                break;
+            }
+        }
+        
+        if (handler == null) {
+            try std.fs.File.stderr().deprecatedWriter().print("powerglide tools: tool '{s}' not found\n", .{name});
+            std.process.exit(1);
+        }
+        
+        // Build test arguments
+        var args_map = std.json.ObjectMap.init(allocator);
+        defer args_map.deinit();
+        
+        if (std.mem.eql(u8, name, "bash")) {
+            try args_map.put("command", json.Value{ .string = "echo test" });
+        } else if (std.mem.eql(u8, name, "read")) {
+            try args_map.put("path", json.Value{ .string = "README.md" });
+        } else if (std.mem.eql(u8, name, "write")) {
+            try args_map.put("path", json.Value{ .string = "/tmp/test.txt" });
+            try args_map.put("content", json.Value{ .string = "hello" });
+        } else {
+            try std.fs.File.stdout().deprecatedWriter().print("Test not implemented for '{s}'\n", .{name});
+            return;
+        }
+        
+        const ToolInput = powerglide.tools.ToolInput;
+        const inp = ToolInput{ .name = name, .arguments = json.Value{ .object = args_map } };
+        
+        try std.fs.File.stdout().deprecatedWriter().print("Testing '{s}'...\n", .{name});
+        const res = handler.?(allocator, inp) catch |e| {
+            try std.fs.File.stderr().deprecatedWriter().print("Error: {}\n", .{e});
+            std.process.exit(1);
+        };
+        defer allocator.free(res.content);
+        
+        if (res.is_error) try std.fs.File.stdout().deprecatedWriter().print("FAILED\n", .{})
+        else try std.fs.File.stdout().deprecatedWriter().print("PASSED\n", .{});
     } else if (std.mem.eql(u8, subcommand, "register")) {
         if (args.len < 2) {
             try std.fs.File.stderr().deprecatedWriter().print("powerglide tools: error: 'register' requires a path\n", .{});
             std.process.exit(1);
         }
-        try std.fs.File.stdout().deprecatedWriter().print("powerglide tools register: {s} — stub (not yet implemented)\n", .{args[1]});
+        try std.fs.File.stdout().deprecatedWriter().writeAll("External tool registration not implemented.\n\n");
+        try std.fs.File.stdout().deprecatedWriter().print("Path: {s}\n\n", .{args[1]});
+        try std.fs.File.stdout().deprecatedWriter().writeAll("This feature will load custom tools from JSON definition files.\n");
     } else {
         try std.fs.File.stderr().deprecatedWriter().print("powerglide tools: unknown subcommand '{s}'\n", .{subcommand});
         try printCommandHelp("tools", std.fs.File.stdout().deprecatedWriter());
