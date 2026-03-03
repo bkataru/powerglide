@@ -68,5 +68,6 @@ pub const PersistenceManager = struct {
         const path = try self.getSessionPath(self.allocator, id);
         defer self.allocator.free(path);
         try fs.cwd().deleteFile(path);
-    }
+}
 };
+
