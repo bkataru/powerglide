@@ -69,12 +69,12 @@ pub const Config = struct {
         } else |_| {}
 
         if (process.getEnvVarOwned(allocator, "POWERGLIDE_MAX_STEPS")) |max_steps_str| {
-            config.max_steps = try parseUint(max_steps_str);
+            config.max_steps = try parseUint(u32, max_steps_str);
             allocator.free(max_steps_str);
         } else |_| {}
 
         if (process.getEnvVarOwned(allocator, "POWERGLIDE_VELOCITY_MS")) |velocity_str| {
-            config.velocity_ms = try parseUint(velocity_str);
+            config.velocity_ms = try parseUint(u64, velocity_str);
             allocator.free(velocity_str);
         } else |_| {}
 
@@ -83,7 +83,7 @@ pub const Config = struct {
         } else |_| {}
 
         if (process.getEnvVarOwned(allocator, "POWERGLIDE_MAX_AGENTS")) |max_agents_str| {
-            config.max_agents = try parseUint(max_agents_str);
+            config.max_agents = try parseUint(u32, max_agents_str);
             allocator.free(max_agents_str);
         } else |_| {}
 
@@ -277,12 +277,12 @@ pub fn load(allocator: std.mem.Allocator) !Config {
     const config_path = try defaultConfigPath(allocator);
     defer allocator.free(config_path);
 
-    const file_config = Config.fromFile(allocator, config_path) catch |err| {
-        if (err != error.FileNotFound) {
-            std.debug.print("Warning: Failed to load config from {s}: {}\n", .{ config_path, err });
-        }
-        Config.default();
-    };
+const file_config = Config.fromFile(allocator, config_path) catch |err| {
+            if (err != error.FileNotFound) {
+                std.debug.print("Warning: Failed to load config from {s}: {}\n", .{ config_path, err });
+            }
+            return Config.default();
+        };
 
     config = config.merge(file_config);
 

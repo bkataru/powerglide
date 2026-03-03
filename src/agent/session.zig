@@ -28,9 +28,9 @@ pub const Task = struct {
     }
 
     pub fn jsonStringify(self: *const Task, allocator: std.mem.Allocator) ![]const u8 {
-        var buf = std.ArrayList(u8).init(allocator);
-        try json.stringify(self.*, .{}, buf.writer());
-        return buf.toOwnedSlice();
+        var buf = std.ArrayList(u8){};
+        try json.stringify(self.*, .{}, buf.writer(allocator));
+        return buf.toOwnedSlice(allocator);
     }
 };
 
@@ -92,8 +92,8 @@ pub const Session = struct {
             .id = try allocator.dupe(u8, id),
             .created_at = now,
             .updated_at = now,
-            .tasks = std.ArrayList(Task).init(allocator),
-            .messages = std.ArrayList(Message).init(allocator),
+            .tasks = std.ArrayList(Task){},
+            .messages = std.ArrayList(Message){},
             .step_count = 0,
             .velocity_ms = 500,
         };
@@ -106,7 +106,7 @@ pub const Session = struct {
             allocator.free(task.id);
             allocator.free(task.description);
         }
-        self.tasks.deinit();
+        self.tasks.deinit(allocator);
 
         for (self.messages.items) |msg| {
             allocator.free(msg.role);
@@ -114,18 +114,18 @@ pub const Session = struct {
             if (msg.tool_name) |name| allocator.free(name);
             if (msg.tool_result) |result| allocator.free(result);
         }
-        self.messages.deinit();
+        self.messages.deinit(allocator);
     }
 
     /// Add a task to the session
-    pub fn addTask(self: *Session, task: Task) !void {
-        try self.tasks.append(task);
+    pub fn addTask(self: *Session, allocator: std.mem.Allocator, task: Task) !void {
+        try self.tasks.append(allocator, task);
         self.updated_at = time.milliTimestamp();
     }
 
     /// Add a message to the session
-    pub fn addMessage(self: *Session, msg: Message) !void {
-        try self.messages.append(msg);
+    pub fn addMessage(self: *Session, allocator: std.mem.Allocator, msg: Message) !void {
+        try self.messages.append(allocator, msg);
         self.updated_at = time.milliTimestamp();
     }
 
@@ -176,84 +176,86 @@ pub const Session = struct {
         const file = try std.fs.cwd().createFile(path, .{});
         defer file.close();
 
-        var buf = std.ArrayList(u8).init(allocator);
-        defer buf.deinit();
+        var buf = std.ArrayList(u8){};
+        defer buf.deinit(allocator);
 
         // Build JSON manually for more control
-        try buf.appendSlice("{");
+        try buf.appendSlice(allocator, "{");
+
+        const w = buf.writer(allocator);
 
         // id
-        try buf.appendSlice("\"id\":\"");
-        try buf.appendSlice(self.id);
-        try buf.appendSlice("\",");
+        try buf.appendSlice(allocator, "\"id\":\"");
+        try buf.appendSlice(allocator, self.id);
+        try buf.appendSlice(allocator, "\",");
 
         // created_at
-        try buf.appendSlice("\"created_at\":");
-        try buf.writer().print("{d},", .{self.created_at});
+        try buf.appendSlice(allocator, "\"created_at\":");
+        try w.print("{d},", .{self.created_at});
 
         // updated_at
-        try buf.appendSlice("\"updated_at\":");
-        try buf.writer().print("{d},", .{self.updated_at});
+        try buf.appendSlice(allocator, "\"updated_at\":");
+        try w.print("{d},", .{self.updated_at});
 
         // status
-        try buf.appendSlice("\"status\":\"");
-        try buf.appendSlice(@tagName(self.status));
-        try buf.appendSlice("\",");
+        try buf.appendSlice(allocator, "\"status\":\"");
+        try buf.appendSlice(allocator, @tagName(self.status));
+        try buf.appendSlice(allocator, "\",");
 
         // step_count
-        try buf.appendSlice("\"step_count\":");
-        try buf.writer().print("{u},", .{self.step_count});
+        try buf.appendSlice(allocator, "\"step_count\":");
+        try w.print("{d},", .{self.step_count});
 
         // velocity_ms
-        try buf.appendSlice("\"velocity_ms\":");
-        try buf.writer().print("{u},", .{self.velocity_ms});
+        try buf.appendSlice(allocator, "\"velocity_ms\":");
+        try w.print("{d},", .{self.velocity_ms});
 
         // tasks array
-        try buf.appendSlice("\"tasks\":[");
+        try buf.appendSlice(allocator, "\"tasks\":[");
         for (self.tasks.items, 0..) |task, i| {
-            if (i > 0) try buf.appendSlice(",");
-            try buf.appendSlice("{");
-            try buf.appendSlice("\"id\":\"");
-            try buf.appendSlice(task.id);
-            try buf.appendSlice("\",");
-            try buf.appendSlice("\"description\":\"");
-            try buf.appendSlice(task.description);
-            try buf.appendSlice("\",");
-            try buf.appendSlice("\"passes\":");
-            try buf.writer().print("{}", .{task.passes});
-            try buf.appendSlice(",");
-            try buf.appendSlice("\"priority\":");
-            try buf.writer().print("{u}", .{task.priority});
-            try buf.appendSlice("}");
+            if (i > 0) try buf.appendSlice(allocator, ",");
+            try buf.appendSlice(allocator, "{");
+            try buf.appendSlice(allocator, "\"id\":\"");
+            try buf.appendSlice(allocator, task.id);
+            try buf.appendSlice(allocator, "\",");
+            try buf.appendSlice(allocator, "\"description\":\"");
+            try buf.appendSlice(allocator, task.description);
+            try buf.appendSlice(allocator, "\",");
+            try buf.appendSlice(allocator, "\"passes\":");
+            try w.print("{}", .{task.passes});
+            try buf.appendSlice(allocator, ",");
+            try buf.appendSlice(allocator, "\"priority\":");
+            try w.print("{d}", .{task.priority});
+            try buf.appendSlice(allocator, "}");
         }
-        try buf.appendSlice("],");
+        try buf.appendSlice(allocator, "],");
 
         // messages array
-        try buf.appendSlice("\"messages\":[");
+        try buf.appendSlice(allocator, "\"messages\":[");
         for (self.messages.items, 0..) |msg, i| {
-            if (i > 0) try buf.appendSlice(",");
-            try buf.appendSlice("{");
-            try buf.appendSlice("\"role\":\"");
-            try buf.appendSlice(msg.role);
-            try buf.appendSlice("\",");
-            try buf.appendSlice("\"content\":\"");
-            try escapeJsonString(msg.content, &buf);
-            try buf.appendSlice("\"");
+            if (i > 0) try buf.appendSlice(allocator, ",");
+            try buf.appendSlice(allocator, "{");
+            try buf.appendSlice(allocator, "\"role\":\"");
+            try buf.appendSlice(allocator, msg.role);
+            try buf.appendSlice(allocator, "\",");
+            try buf.appendSlice(allocator, "\"content\":\"");
+            try escapeJsonString(msg.content, &buf, allocator);
+            try buf.appendSlice(allocator, "\"");
             if (msg.tool_name) |name| {
-                try buf.appendSlice(",\"tool_name\":\"");
-                try buf.appendSlice(name);
-                try buf.appendSlice("\"");
+                try buf.appendSlice(allocator, ",\"tool_name\":\"");
+                try buf.appendSlice(allocator, name);
+                try buf.appendSlice(allocator, "\"");
             }
             if (msg.tool_result) |result| {
-                try buf.appendSlice(",\"tool_result\":\"");
-                try escapeJsonString(result, &buf);
-                try buf.appendSlice("\"");
+                try buf.appendSlice(allocator, ",\"tool_result\":\"");
+                try escapeJsonString(result, &buf, allocator);
+                try buf.appendSlice(allocator, "\"");
             }
-            try buf.appendSlice("}");
+            try buf.appendSlice(allocator, "}");
         }
-        try buf.appendSlice("]");
+        try buf.appendSlice(allocator, "]");
 
-        try buf.appendSlice("}");
+        try buf.appendSlice(allocator, "}");
 
         try file.writeAll(buf.items);
     }
@@ -288,6 +290,7 @@ fn parseSession(allocator: std.mem.Allocator, content: []const u8) !Session {
     const velocity_ms = parseIntField(u64, obj, "velocity_ms", 500);
 
     var session = try Session.init(allocator, id);
+    allocator.free(id); // Session.init dupes id, so free the intermediate copy
     session.created_at = created_at;
     session.updated_at = updated_at;
     session.step_count = step_count;
@@ -304,7 +307,7 @@ fn parseSession(allocator: std.mem.Allocator, content: []const u8) !Session {
     // Parse tasks
     if (obj.get("tasks")) |tasks_val| {
         if (tasks_val == .array) {
-            for (tasks_val.array) |task_val| {
+            for (tasks_val.array.items) |task_val| {
                 if (task_val == .object) {
                     const task_obj = task_val.object;
                     const task = Task{
@@ -313,7 +316,7 @@ fn parseSession(allocator: std.mem.Allocator, content: []const u8) !Session {
                         .passes = parseBoolField(task_obj, "passes", false),
                         .priority = parseIntField(u8, task_obj, "priority", 5),
                     };
-                    try session.tasks.append(task);
+                    try session.tasks.append(allocator, task);
                 }
             }
         }
@@ -322,7 +325,7 @@ fn parseSession(allocator: std.mem.Allocator, content: []const u8) !Session {
     // Parse messages
     if (obj.get("messages")) |msgs_val| {
         if (msgs_val == .array) {
-            for (msgs_val.array) |msg_val| {
+            for (msgs_val.array.items) |msg_val| {
                 if (msg_val == .object) {
                     const msg_obj = msg_val.object;
                     const msg = Message{
@@ -337,7 +340,7 @@ fn parseSession(allocator: std.mem.Allocator, content: []const u8) !Session {
                         else
                             null,
                     };
-                    try session.messages.append(msg);
+                    try session.messages.append(allocator, msg);
                 }
             }
         }
@@ -377,15 +380,15 @@ fn parseBoolField(obj: std.json.ObjectMap, field: []const u8, default_val: bool)
 }
 
 /// Escape special characters in JSON string
-fn escapeJsonString(src: []const u8, buf: *std.ArrayList(u8)) !void {
+fn escapeJsonString(src: []const u8, buf: *std.ArrayList(u8), allocator: std.mem.Allocator) !void {
     for (src) |c| {
         switch (c) {
-            '"' => try buf.appendSlice("\\\""),
-            '\\' => try buf.appendSlice("\\\\"),
-            '\n' => try buf.appendSlice("\\n"),
-            '\r' => try buf.appendSlice("\\r"),
-            '\t' => try buf.appendSlice("\\t"),
-            else => try buf.append(c),
+            '"' => try buf.appendSlice(allocator, "\\\""),
+            '\\' => try buf.appendSlice(allocator, "\\\\"),
+            '\n' => try buf.appendSlice(allocator, "\\n"),
+            '\r' => try buf.appendSlice(allocator, "\\r"),
+            '\t' => try buf.appendSlice(allocator, "\\t"),
+            else => try buf.append(allocator, c),
         }
     }
 }
@@ -412,14 +415,16 @@ pub const SessionManager = struct {
 
     /// Create a new session
     pub fn createSession(self: *SessionManager, id: []const u8) !*Session {
-        const session = try self.sessions.createEntry(id);
-        session.value_ptr.* = try Session.init(self.allocator, id);
-        return session.value_ptr;
+        const result = try self.sessions.getOrPut(id);
+        if (!result.found_existing) {
+            result.value_ptr.* = try Session.init(self.allocator, id);
+        }
+        return result.value_ptr;
     }
 
     /// Get a session by ID
-    pub fn getSession(self: *const SessionManager, id: []const u8) ?*Session {
-        return self.sessions.get(id);
+    pub fn getSession(self: *SessionManager, id: []const u8) ?*Session {
+        return self.sessions.getPtr(id);
     }
 };
 
@@ -433,7 +438,11 @@ test "Session create and basic operations" {
     try std.testing.expect(!session.allTasksDone());
 
     // Add a task
-    try session.addTask(.{ .id = "task-1", .description = "First task", .priority = 1 });
+    try session.addTask(allocator, .{
+        .id = try allocator.dupe(u8, "task-1"),
+        .description = try allocator.dupe(u8, "First task"),
+        .priority = 1,
+    });
     try std.testing.expect(session.tasks.items.len == 1);
 
     // Get next task
@@ -452,9 +461,19 @@ test "Session save and load" {
     defer session.deinit(allocator);
 
     // Add tasks and messages
-    try session.addTask(.{ .id = "task-1", .description = "Test task", .priority = 1 });
-    try session.addMessage(.{ .role = "user", .content = "Hello" });
-    try session.addMessage(.{ .role = "assistant", .content = "Hi there!" });
+    try session.addTask(allocator, .{
+        .id = try allocator.dupe(u8, "task-1"),
+        .description = try allocator.dupe(u8, "Test task"),
+        .priority = 1,
+    });
+    try session.addMessage(allocator, .{
+        .role = try allocator.dupe(u8, "user"),
+        .content = try allocator.dupe(u8, "Hello"),
+    });
+    try session.addMessage(allocator, .{
+        .role = try allocator.dupe(u8, "assistant"),
+        .content = try allocator.dupe(u8, "Hi there!"),
+    });
 
     // Save to temp file
     const test_path = "/tmp/powerglide_test_session.json";
@@ -479,7 +498,7 @@ test "SessionManager basic operations" {
 
     // Create a session
     const session = try manager.createSession("session-1");
-    try std.testing.expect(session != null);
+    try std.testing.expect(session.id.len > 0);
 
     // Get the session
     const retrieved = manager.getSession("session-1");

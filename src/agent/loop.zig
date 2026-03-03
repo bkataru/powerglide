@@ -80,7 +80,7 @@ pub const Loop = struct {
                 .continue_loop => |next_state| {
                     self.state = next_state;
                     if (self.config.velocity_ms > 0) {
-                        time.sleep(self.config.velocity_ms * 1_000_000);
+                        std.Thread.sleep(self.config.velocity_ms * 1_000_000);
                     }
                     self.step_count += 1;
                 },

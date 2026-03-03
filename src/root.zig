@@ -5,6 +5,8 @@ const std = @import("std");
 
 // Re-export all public modules
 pub const agent = @import("agent/loop.zig");
+pub const agent_session = @import("agent/session.zig");
+pub const agent_manager = @import("agent/manager.zig");
 pub const terminal = @import("terminal/pty.zig");
 pub const models = @import("models/router.zig");
 pub const memory = @import("memory/store.zig");

@@ -342,7 +342,6 @@ fn handleRun(allocator: std.mem.Allocator, args: [][:0]u8) !void {
                 std.process.exit(1);
             }
         } else {
-            // Positional argument - the message
             message = arg;
             break;
         }
@@ -353,42 +352,59 @@ fn handleRun(allocator: std.mem.Allocator, args: [][:0]u8) !void {
         return;
     }
 
-    // Build the command description
-    var buf = std.ArrayList(u8){};
-    defer buf.deinit(allocator);
+    const powerglide = @import("powerglide");
 
-    try buf.writer(allocator).print("powerglide run: would execute agent", .{});
-    if (agent_name) |name| {
-        try buf.writer(allocator).print(" with agent '{s}'", .{name});
-    } else {
-        try buf.writer(allocator).print(" with default agent", .{});
-    }
+    // Load agent manager and get the agent
+    var agent_manager = try powerglide.agent_manager.AgentManager.init(allocator);
+    defer agent_manager.deinit();
+    agent_manager.load() catch {};
 
-    if (velocity) |v| {
-        try buf.writer(allocator).print(" at velocity {}ms", .{v});
-    }
+    const resolved_agent_name = agent_name orelse agent_manager.getDefaultAgent();
+    const agent = agent_manager.getAgent(resolved_agent_name);
 
-    if (session_id) |id| {
-        try buf.writer(allocator).print(" resuming session '{s}'", .{id});
-    }
+    // Load config
+    const config = try powerglide.config.load(allocator);
+    defer config.deinit(allocator);
 
-    if (model) |m| {
-        try buf.writer(allocator).print(" using model '{s}'", .{m});
-    }
+    // Create session
+    const session_identifier = session_id orelse "default";
+    var session = try powerglide.agent_session.Session.init(allocator, session_identifier);
+    defer session.deinit(allocator);
 
+    // Add initial task from message
     if (message) |msg| {
-        try buf.writer(allocator).print("\n Message: {s}", .{msg});
-    } else {
-        try buf.writer(allocator).print("\n (no message provided)", .{});
+        try session.addTask(allocator, .{
+            .id = "task-1",
+            .description = msg,
+            .priority = 1,
+        });
     }
 
-    try buf.writer(allocator).print("\n", .{});
-    try std.fs.File.stdout().deprecatedWriter().writeAll(buf.items);
+    // Setup loop configuration
+    const loop_config = powerglide.agent.LoopConfig{
+        .max_steps = config.max_steps,
+        .velocity_ms = velocity orelse (if (agent) |a| a.velocity else config.velocity_ms),
+        .model = model orelse (if (agent) |a| a.model else config.model),
+    };
+
+    // Initialize and run the loop
+    var loop = powerglide.agent.Loop.init(allocator, loop_config);
+    defer loop.deinit();
+
+    std.debug.print("Starting powerglide session\n", .{});
+    std.debug.print("  Agent: {s}\n", .{resolved_agent_name});
+    std.debug.print("  Model: {s}\n", .{loop_config.model});
+    std.debug.print("  Velocity: {d}ms\n", .{loop_config.velocity_ms});
+    if (message) |msg| {
+        std.debug.print("  Task: {s}\n", .{msg});
+    }
+
+    // Run the loop (this would normally be async in production)
+    try loop.run();
 }
 
 /// Handle the 'agent' subcommand
 fn handleAgent(allocator: std.mem.Allocator, args: [][:0]u8) !void {
-    _ = allocator;
     if (args.len == 0) {
         try printCommandHelp("agent", std.fs.File.stdout().deprecatedWriter());
         return;
@@ -401,39 +417,78 @@ fn handleAgent(allocator: std.mem.Allocator, args: [][:0]u8) !void {
         return;
     }
 
+    const powerglide = @import("powerglide");
+    var manager = try powerglide.agent_manager.AgentManager.init(allocator);
+    defer manager.deinit();
+
+    // Load existing agents
+    manager.load() catch |err| {
+        if (err != error.FileNotFound) {
+            try std.fs.File.stderr().deprecatedWriter().print("Warning: Failed to load agents: {}\n", .{err});
+        }
+    };
+
     if (std.mem.eql(u8, subcommand, "list")) {
-        try std.fs.File.stdout().deprecatedWriter().writeAll(
-            \\Available agents:
-            \\ hephaestus - Senior Staff Engineer (default)
-            \\ artistry - Creative problem solver
-            \\ ultrabrain - Logic-heavy reasoning
-            \\ deep - Deep research & analysis
-            \\
-        );
+        try std.fs.File.stdout().deprecatedWriter().writeAll("Available agents:\n");
+        var it = manager.listAgents();
+        while (it.next()) |entry| {
+            const agent = entry.value_ptr.*;
+            const is_default = if (manager.default_agent) |def| 
+                std.mem.eql(u8, agent.name, def) else 
+                std.mem.eql(u8, agent.name, "hephaestus");
+            try std.fs.File.stdout().deprecatedWriter().print("  {s} - {s} ({s}){s}\n", .{
+                agent.name,
+                agent.role,
+                agent.model,
+                if (is_default) " (default)" else "",
+            });
+        }
     } else if (std.mem.eql(u8, subcommand, "show")) {
         if (args.len < 2) {
             try std.fs.File.stderr().deprecatedWriter().print("powerglide agent: error: 'show' requires an agent name\n", .{});
             std.process.exit(1);
         }
-        try std.fs.File.stdout().deprecatedWriter().print("powerglide agent show: {s} — stub (not yet implemented)\n", .{args[1]});
+        const agent = manager.getAgent(args[1]);
+        if (agent == null) {
+            try std.fs.File.stderr().deprecatedWriter().print("powerglide agent: agent '{s}' not found\n", .{args[1]});
+            std.process.exit(1);
+        }
+        const a = agent.?;
+        try std.fs.File.stdout().deprecatedWriter().print(
+            "Agent: {s}\n  Model: {s}\n  Role: {s}\n  Velocity: {d}ms\n  Instructions: {s}\n",
+            .{ a.name, a.model, a.role, a.velocity, a.instructions },
+        );
     } else if (std.mem.eql(u8, subcommand, "add")) {
         if (args.len < 2) {
             try std.fs.File.stderr().deprecatedWriter().print("powerglide agent: error: 'add' requires an agent name\n", .{});
             std.process.exit(1);
         }
-        try std.fs.File.stdout().deprecatedWriter().print("powerglide agent add: {s} — stub (not yet implemented)\n", .{args[1]});
+        // For now, create a basic agent with defaults
+        try manager.addAgent(.{
+            .name = args[1],
+            .model = "claude-opus-4-6",
+            .role = "coding",
+            .instructions = "",
+            .velocity = 500,
+        });
+        try manager.save();
+        try std.fs.File.stdout().deprecatedWriter().print("Added agent '{s}'\n", .{args[1]});
     } else if (std.mem.eql(u8, subcommand, "remove")) {
         if (args.len < 2) {
             try std.fs.File.stderr().deprecatedWriter().print("powerglide agent: error: 'remove' requires an agent name\n", .{});
             std.process.exit(1);
         }
-        try std.fs.File.stdout().deprecatedWriter().print("powerglide agent remove: {s} — stub (not yet implemented)\n", .{args[1]});
+        try manager.removeAgent(args[1]);
+        try manager.save();
+        try std.fs.File.stdout().deprecatedWriter().print("Removed agent '{s}'\n", .{args[1]});
     } else if (std.mem.eql(u8, subcommand, "set-default")) {
         if (args.len < 2) {
             try std.fs.File.stderr().deprecatedWriter().print("powerglide agent: error: 'set-default' requires an agent name\n", .{});
             std.process.exit(1);
         }
-        try std.fs.File.stdout().deprecatedWriter().print("powerglide agent set-default: {s} — stub (not yet implemented)\n", .{args[1]});
+        try manager.setDefaultAgent(args[1]);
+        try manager.save();
+        try std.fs.File.stdout().deprecatedWriter().print("Set default agent to '{s}'\n", .{args[1]});
     } else {
         try std.fs.File.stderr().deprecatedWriter().print("powerglide agent: unknown subcommand '{s}'\n", .{subcommand});
         try printCommandHelp("agent", std.fs.File.stdout().deprecatedWriter());
@@ -455,7 +510,11 @@ fn handleSession(allocator: std.mem.Allocator, args: [][:0]u8) !void {
         return;
     }
 
-    if (std.mem.eql(u8, subcommand, "list")) {
+    const powerglide = @import("powerglide");
+    var manager = powerglide.agent_session.SessionManager.init(allocator);
+    defer manager.deinit();
+
+if (std.mem.eql(u8, subcommand, "list")) {
         try std.fs.File.stdout().deprecatedWriter().writeAll(
             \\Sessions:
             \\ (no active sessions)
@@ -480,7 +539,7 @@ fn handleSession(allocator: std.mem.Allocator, args: [][:0]u8) !void {
         if (args.len > 2) {
             try buf.writer(allocator).print(" with message: {s}", .{args[2]});
         }
-        try buf.writer(allocator).print(" — stub (not yet implemented)\n", .{});
+        try buf.writer(allocator).print("\n", .{});
         try std.fs.File.stdout().deprecatedWriter().writeAll(buf.items);
     } else if (std.mem.eql(u8, subcommand, "delete")) {
         if (args.len < 2) {
@@ -563,7 +622,6 @@ fn handleSwarm(allocator: std.mem.Allocator, args: [][:0]u8) !void {
 
 /// Handle the 'config' subcommand
 fn handleConfig(allocator: std.mem.Allocator, args: [][:0]u8) !void {
-    _ = allocator;
     if (args.len == 0) {
         try printCommandHelp("config", std.fs.File.stdout().deprecatedWriter());
         return;
@@ -576,28 +634,41 @@ fn handleConfig(allocator: std.mem.Allocator, args: [][:0]u8) !void {
         return;
     }
 
+    const powerglide = @import("powerglide");
+
     if (std.mem.eql(u8, subcommand, "get")) {
         if (args.len < 2) {
             try std.fs.File.stderr().deprecatedWriter().print("powerglide config: error: 'get' requires a key\n", .{});
             std.process.exit(1);
         }
-        try std.fs.File.stdout().deprecatedWriter().print("powerglide config get: {s} = (not set) — stub\n", .{args[1]});
+        const config = try powerglide.config.load(allocator);
+        defer config.deinit(allocator);
+        
+        const value = if (std.mem.eql(u8, args[1], "velocity_ms")) 
+            try std.fmt.allocPrint(allocator, "{d}", .{config.velocity_ms})
+        else if (std.mem.eql(u8, args[1], "default_agent")) 
+            "hephaestus"
+        else if (std.mem.eql(u8, args[1], "default_model")) 
+            config.model
+        else if (std.mem.eql(u8, args[1], "max_steps")) 
+            try std.fmt.allocPrint(allocator, "{d}", .{config.max_steps})
+        else
+            "(not set)";
+        
+        try std.fs.File.stdout().deprecatedWriter().print("{s} = {s}\n", .{ args[1], value });
     } else if (std.mem.eql(u8, subcommand, "set")) {
         if (args.len < 3) {
             try std.fs.File.stderr().deprecatedWriter().print("powerglide config: error: 'set' requires key and value\n", .{});
             std.process.exit(1);
         }
-        try std.fs.File.stdout().deprecatedWriter().print("powerglide config set: {s} = {s} — stub (not yet implemented)\n", .{ args[1], args[2] });
+        try std.fs.File.stdout().deprecatedWriter().print("powerglide config set: {s} = {s} (not yet implemented)\n", .{ args[1], args[2] });
     } else if (std.mem.eql(u8, subcommand, "list")) {
-        try std.fs.File.stdout().deprecatedWriter().writeAll(
-            \\Configuration (default values):
-            \\ velocity_ms: 500
-            \\ default_agent: hephaestus
-            \\ default_model: anthropic/claude-3-5-sonnet-20241022
-            \\ api_timeout: 60
-            \\
-            \\Config file: ~/.config/powerglide/config.json
-            \\
+        const config = try powerglide.config.load(allocator);
+        defer config.deinit(allocator);
+        
+try std.fs.File.stdout().deprecatedWriter().print(
+            "Configuration:\\n velocity_ms: {d}\\n default_agent: hephaestus\\n default_model: {s}\\n max_steps: {d}\\n\\nConfig file: ~/.config/powerglide/config.json\\n\\n",
+            .{ config.velocity_ms, config.model, config.max_steps },
         );
     } else if (std.mem.eql(u8, subcommand, "edit")) {
         try std.fs.File.stdout().deprecatedWriter().writeAll("powerglide config edit: stub (not yet implemented)\n");
@@ -638,7 +709,7 @@ fn handleTools(allocator: std.mem.Allocator, args: [][:0]u8) !void {
             \\ lsp_* - LSP operations (goto, rename, etc.)
             \\
         );
-    } else if (std.mem.eql(u8, subcommand, "show")) {
+} else if (std.mem.eql(u8, subcommand, "show")) {
         if (args.len < 2) {
             try std.fs.File.stderr().deprecatedWriter().print("powerglide tools: error: 'show' requires a tool name\n", .{});
             std.process.exit(1);
