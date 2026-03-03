@@ -39,7 +39,7 @@ section "4. Available Agents"
 
 # 5. Show configuration
 section "5. Current Configuration"
-./zig-out/bin/powerglide config show || echo "(No config file found - using defaults)"
+./zig-out/bin/powerglide config list || echo "(No config file found - using defaults)"
 
 # 6. List tools
 section "6. Available Tools"
@@ -58,10 +58,10 @@ section "8. Session Management"
 section "9. Swarm Management"
 ./zig-out/bin/powerglide swarm list || echo "(No active swarms)"
 
-# 10. TUI launch (will fail if not in TTY)
+# 10. TUI dashboard (not yet implemented)
 section "10. TUI Dashboard"
-echo -e "${YELLOW}Note: TUI requires a TTY. Showing help instead.${NC}"
-./zig-out/bin/powerglide tui --help || echo "(TUI requires interactive terminal)"
+echo -e "${YELLOW}Note: TUI is not yet implemented. Showing help instead.${NC}"
+./zig-out/bin/powerglide --help
 
 # Summary
 section "Demo Complete!"
@@ -70,6 +70,6 @@ echo ""
 echo -e "${BOLD}Next steps:${NC}"
 echo "  • Set your API key: export ANTHROPIC_API_KEY='your-key'"
 echo "  • Run an agent: ./zig-out/bin/powerglide run \"your task\""
-echo "  • Open TUI: ./zig-out/bin/powerglide tui"
+echo " • View help: ./zig-out/bin/powerglide --help"
 echo ""
 echo -e "For more information, see ${BLUE}README.md${NC} or run ${BLUE}powerglide --help${NC}"
