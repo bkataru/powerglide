@@ -530,58 +530,124 @@ fn handleSession(allocator: std.mem.Allocator, args: [][:0]u8) !void {
     }
 
     const powerglide = @import("powerglide");
-    var manager = powerglide.agent_session.SessionManager.init(allocator);
-    defer manager.deinit();
+    const PersistenceManager = powerglide.persistence.PersistenceManager;
 
-if (std.mem.eql(u8, subcommand, "list")) {
-        try std.fs.File.stdout().deprecatedWriter().writeAll(
-            \\Sessions:
-            \\ (no active sessions)
-            \\
-            \\Use 'powerglide run' to start a new session.
-            \\
-        );
+
+    var persistence = try PersistenceManager.init(allocator);
+    defer persistence.deinit();
+
+    const stdout = std.fs.File.stdout().deprecatedWriter();
+    const stderr = std.fs.File.stderr().deprecatedWriter();
+
+    if (std.mem.eql(u8, subcommand, "list")) {
+        try stdout.writeAll("Sessions:\n");
+        const session_ids = try persistence.listSessions(allocator);
+        defer {
+            for (session_ids) |id| allocator.free(id);
+            allocator.free(session_ids);
+        }
+        
+        if (session_ids.len == 0) {
+            try stdout.writeAll("  (no active sessions)\n");
+            try stdout.writeAll("\nUse 'powerglide run' to start a new session.\n");
+        } else {
+            for (session_ids) |id| {
+                try stdout.print("  {s}\n", .{id});
+            }
+            try stdout.print("\nTotal: {d} session(s)\n", .{session_ids.len});
+        }
     } else if (std.mem.eql(u8, subcommand, "show")) {
         if (args.len < 2) {
-            try std.fs.File.stderr().deprecatedWriter().print("powerglide session: error: 'show' requires a session ID\n", .{});
+            try stderr.print("powerglide session: error: 'show' requires a session ID\n", .{});
             std.process.exit(1);
         }
-        try std.fs.File.stdout().deprecatedWriter().print("powerglide session show: {s} — stub (not yet implemented)\n", .{args[1]});
+        const session_id = args[1];
+        
+        var session = persistence.loadSession(session_id) catch |err| {
+            if (err == error.FileNotFound) {
+                try stderr.print("powerglide session: error: session '{s}' not found\n", .{session_id});
+            } else {
+                try stderr.print("powerglide session: error: failed to load session: {}\n", .{err});
+            }
+            std.process.exit(1);
+        };
+        defer session.deinit(allocator);
+        
+        const status_str = @tagName(session.status);
+        try stdout.print("Session: {s}\n", .{session.id});
+        try stdout.print("Status: {s}\n", .{status_str});
+        try stdout.print("Steps: {d}\n", .{session.step_count});
+        try stdout.print("Velocity: {d}ms\n", .{session.velocity_ms});
+        try stdout.print("Tasks: {d}\n", .{session.tasks.items.len});
+        try stdout.print("Messages: {d}\n", .{session.messages.items.len});
+        try stdout.print("Created: {d}\n", .{session.created_at});
+        try stdout.print("Updated: {d}\n", .{session.updated_at});
     } else if (std.mem.eql(u8, subcommand, "resume")) {
         if (args.len < 2) {
-            try std.fs.File.stderr().deprecatedWriter().print("powerglide session: error: 'resume' requires a session ID\n", .{});
+            try stderr.print("powerglide session: error: 'resume' requires a session ID\n", .{});
             std.process.exit(1);
         }
-        var buf = std.ArrayList(u8){};
-        defer buf.deinit(allocator);
-        try buf.writer(allocator).print("powerglide session resume: {s}", .{args[1]});
+        try stdout.print("Resuming session: {s}\n", .{args[1]});
         if (args.len > 2) {
-            try buf.writer(allocator).print(" with message: {s}", .{args[2]});
+            try stdout.print("Message: {s}\n", .{args[2]});
         }
-        try buf.writer(allocator).print("\n", .{});
-        try std.fs.File.stdout().deprecatedWriter().writeAll(buf.items);
+        try stdout.writeAll("(resume not yet implemented - would use run command with session-id)\n");
     } else if (std.mem.eql(u8, subcommand, "delete")) {
         if (args.len < 2) {
-            try std.fs.File.stderr().deprecatedWriter().print("powerglide session: error: 'delete' requires a session ID\n", .{});
+            try stderr.print("powerglide session: error: 'delete' requires a session ID\n", .{});
             std.process.exit(1);
         }
-        try std.fs.File.stdout().deprecatedWriter().print("powerglide session delete: {s} — stub (not yet implemented)\n", .{args[1]});
+        const session_id = args[1];
+        
+        persistence.deleteSession(session_id) catch |err| {
+            if (err == error.FileNotFound) {
+                try stderr.print("powerglide session: error: session '{s}' not found\n", .{session_id});
+            } else {
+                try stderr.print("powerglide session: error: failed to delete session: {}\n", .{err});
+            }
+            std.process.exit(1);
+        };
+        
+        try stdout.print("Deleted session: {s}\n", .{session_id});
     } else if (std.mem.eql(u8, subcommand, "export")) {
         if (args.len < 2) {
-            try std.fs.File.stderr().deprecatedWriter().print("powerglide session: error: 'export' requires a session ID\n", .{});
+            try stderr.print("powerglide session: error: 'export' requires a session ID\n", .{});
             std.process.exit(1);
         }
-        try std.fs.File.stdout().deprecatedWriter().print("powerglide session export: {s} — stub (not yet implemented)\n", .{args[1]});
-    } else {
-        try std.fs.File.stderr().deprecatedWriter().print("powerglide session: unknown subcommand '{s}'\n", .{subcommand});
-        try printCommandHelp("session", std.fs.File.stdout().deprecatedWriter());
+        const session_id = args[1];
+        
+        var session = try persistence.loadSession(session_id);
+        defer session.deinit(allocator);
+        
+        // Export session to temp file and print to stdout
+        const export_path = try std.fmt.allocPrint(allocator, "/tmp/{s}.json", .{session_id});
+        defer allocator.free(export_path);
+        
+        session.save(allocator, export_path) catch |err| {
+            try stderr.print("powerglide session: error: failed to export session: {}\n", .{err});
+            std.process.exit(1);
+        };
+        
+        const file = std.fs.cwd().openFile(export_path, .{}) catch |err| {
+            try stderr.print("powerglide session: error: failed to read exported session: {}\n", .{err});
+            std.process.exit(1);
+        };
+        defer file.close();
+        
+        const content = try file.readToEndAlloc(allocator, 10 * 1024 * 1024);
+        defer allocator.free(content);
+        
+        try stdout.writeAll(content);
+        // Cleanup temp file
+        std.fs.cwd().deleteFile(export_path) catch {};
+        try stderr.print("powerglide session: unknown subcommand '{s}'\n", .{subcommand});
+        try printCommandHelp("session", stdout);
         std.process.exit(1);
     }
 }
 
 /// Handle the 'swarm' subcommand
 fn handleSwarm(allocator: std.mem.Allocator, args: [][:0]u8) !void {
-    _ = allocator;
     if (args.len == 0) {
         try printCommandHelp("swarm", std.fs.File.stdout().deprecatedWriter());
         return;
@@ -594,47 +660,143 @@ fn handleSwarm(allocator: std.mem.Allocator, args: [][:0]u8) !void {
         return;
     }
 
+    const powerglide = @import("powerglide");
+    const SwarmManager = powerglide.swarm_manager.SwarmManager;
+
+    var swarm_manager = try SwarmManager.init(allocator);
+    defer swarm_manager.deinit();
+
+    swarm_manager.load() catch |err| {
+        if (err != error.FileNotFound) {
+            try std.fs.File.stderr().deprecatedWriter().print("Warning: Failed to load swarms: {}\n", .{err});
+        }
+    };
+
+    const stdout = std.fs.File.stdout().deprecatedWriter();
+    const stderr = std.fs.File.stderr().deprecatedWriter();
+
     if (std.mem.eql(u8, subcommand, "list")) {
-        try std.fs.File.stdout().deprecatedWriter().writeAll(
-            \\Swarms:
-            \\ (no active swarms)
-            \\
-            \\Use 'powerglide swarm create <name>' to create a new swarm.
-            \\
-        );
+        try stdout.writeAll("Swarms:\n");
+        var it = swarm_manager.listSwarms();
+        var count: usize = 0;
+        while (it.next()) |entry| {
+            const swarm = entry.value_ptr.*;
+            try stdout.print("  {s} (agents: {d}, workers: {d})\n", .{swarm.name, swarm.agents.items.len, swarm.max_workers});
+            count += 1;
+        }
+        if (count == 0) {
+            try stdout.writeAll("  (no active swarms)\n");
+            try stdout.writeAll("\nUse 'powerglide swarm create <name> <working_dir>' to create a new swarm.\n");
+        } else {
+            try stdout.print("\nTotal: {d} swarm(s)\n", .{count});
+        }
     } else if (std.mem.eql(u8, subcommand, "create")) {
-        if (args.len < 2) {
-            try std.fs.File.stderr().deprecatedWriter().print("powerglide swarm: error: 'create' requires a swarm name\n", .{});
+        if (args.len < 3) {
+            try stderr.print("powerglide swarm: error: 'create' requires a swarm name and working directory\n", .{});
             std.process.exit(1);
         }
-        try std.fs.File.stdout().deprecatedWriter().print("powerglide swarm create: {s} — stub (not yet implemented)\n", .{args[1]});
+        const swarm_name = args[1];
+        const working_dir = args[2];
+        
+        swarm_manager.createSwarm(swarm_name, working_dir) catch |err| {
+            if (err == error.SwarmAlreadyExists) {
+                try stderr.print("powerglide swarm: error: swarm '{s}' already exists\n", .{swarm_name});
+            } else {
+                try stderr.print("powerglide swarm: error: failed to create swarm: {}\n", .{err});
+            }
+            std.process.exit(1);
+        };
+        
+        try swarm_manager.save();
+        try stdout.print("Created swarm '{s}' in '{s}'\n", .{swarm_name, working_dir});
     } else if (std.mem.eql(u8, subcommand, "add")) {
         if (args.len < 3) {
-            try std.fs.File.stderr().deprecatedWriter().print("powerglide swarm: error: 'add' requires swarm and agent names\n", .{});
+            try stderr.print("powerglide swarm: error: 'add' requires swarm name and agent name\n", .{});
             std.process.exit(1);
         }
-        try std.fs.File.stdout().deprecatedWriter().print("powerglide swarm add: {s} {s} — stub (not yet implemented)\n", .{ args[1], args[2] });
+        const swarm_name = args[1];
+        const agent_name = args[2];
+        
+        swarm_manager.addAgent(swarm_name, agent_name) catch |err| {
+            if (err == error.SwarmNotFound) {
+                try stderr.print("powerglide swarm: error: swarm '{s}' not found\n", .{swarm_name});
+            } else {
+                try stderr.print("powerglide swarm: error: failed to add agent: {}\n", .{err});
+            }
+            std.process.exit(1);
+        };
+        
+        try swarm_manager.save();
+        try stdout.print("Added agent '{s}' to swarm '{s}'\n", .{agent_name, swarm_name});
     } else if (std.mem.eql(u8, subcommand, "remove")) {
         if (args.len < 3) {
-            try std.fs.File.stderr().deprecatedWriter().print("powerglide swarm: error: 'remove' requires swarm and agent names\n", .{});
+            try stderr.print("powerglide swarm: error: 'remove' requires swarm name and agent name\n", .{});
             std.process.exit(1);
         }
-        try std.fs.File.stdout().deprecatedWriter().print("powerglide swarm remove: {s} {s} — stub (not yet implemented)\n", .{ args[1], args[2] });
+        const swarm_name = args[1];
+        const agent_name = args[2];
+        
+        swarm_manager.removeAgent(swarm_name, agent_name) catch |err| {
+            if (err == error.SwarmNotFound) {
+                try stderr.print("powerglide swarm: error: swarm '{s}' not found\n", .{swarm_name});
+            } else if (err == error.AgentNotFound) {
+                try stderr.print("powerglide swarm: error: agent '{s}' not found in swarm\n", .{agent_name});
+            } else {
+                try stderr.print("powerglide swarm: error: failed to remove agent: {}\n", .{err});
+            }
+            std.process.exit(1);
+        };
+        
+        try swarm_manager.save();
+        try stdout.print("Removed agent '{s}' from swarm '{s}'\n", .{agent_name, swarm_name});
     } else if (std.mem.eql(u8, subcommand, "run")) {
         if (args.len < 3) {
-            try std.fs.File.stderr().deprecatedWriter().print("powerglide swarm: error: 'run' requires swarm name and message\n", .{});
+            try stderr.print("powerglide swarm: error: 'run' requires swarm name and message\n", .{});
             std.process.exit(1);
         }
-        try std.fs.File.stdout().deprecatedWriter().print("powerglide swarm run: {s} \"{s}\" — stub (not yet implemented)\n", .{ args[1], args[2] });
+        const swarm_name = args[1];
+        const message = args[2..];
+        
+        const swarm = swarm_manager.getSwarm(swarm_name) orelse {
+            try stderr.print("powerglide swarm: error: swarm '{s}' not found\n", .{swarm_name});
+            std.process.exit(1);
+        };
+        
+        try stdout.print("Running swarm: {s}\n", .{swarm_name});
+        try stdout.print("  Working dir: {s}\n", .{swarm.working_dir});
+        try stdout.print("  Agents: ", .{});
+        for (swarm.agents.items, 0..) |agent, i| {
+            if (i > 0) try stdout.print(", ", .{});
+            try stdout.print("{s}", .{agent});
+        }
+        try stdout.writeAll("\n");
+        try stdout.print("  Message: ", .{});
+        for (message) |msg_part| {
+            try stdout.print("{s} ", .{msg_part});
+        }
+        try stdout.writeAll("\n");
+        try stdout.writeAll("(swarm run not yet fully implemented - would use orchestrator.Swarm)\n");
     } else if (std.mem.eql(u8, subcommand, "delete")) {
         if (args.len < 2) {
-            try std.fs.File.stderr().deprecatedWriter().print("powerglide swarm: error: 'delete' requires a swarm name\n", .{});
+            try stderr.print("powerglide swarm: error: 'delete' requires a swarm name\n", .{});
             std.process.exit(1);
         }
-        try std.fs.File.stdout().deprecatedWriter().print("powerglide swarm delete: {s} — stub (not yet implemented)\n", .{args[1]});
+        const swarm_name = args[1];
+        
+        swarm_manager.deleteSwarm(swarm_name) catch |err| {
+            if (err == error.SwarmNotFound) {
+                try stderr.print("powerglide swarm: error: swarm '{s}' not found\n", .{swarm_name});
+            } else {
+                try stderr.print("powerglide swarm: error: failed to delete swarm: {}\n", .{err});
+            }
+            std.process.exit(1);
+        };
+        
+        try swarm_manager.save();
+        try stdout.print("Deleted swarm '{s}'\n", .{swarm_name});
     } else {
-        try std.fs.File.stderr().deprecatedWriter().print("powerglide swarm: unknown subcommand '{s}'\n", .{subcommand});
-        try printCommandHelp("swarm", std.fs.File.stdout().deprecatedWriter());
+        try stderr.print("powerglide swarm: unknown subcommand '{s}'\n", .{subcommand});
+        try printCommandHelp("swarm", stdout);
         std.process.exit(1);
     }
 }
@@ -680,26 +842,89 @@ fn handleConfig(allocator: std.mem.Allocator, args: [][:0]u8) !void {
             try std.fs.File.stderr().deprecatedWriter().print("powerglide config: error: 'set' requires key and value\n", .{});
             std.process.exit(1);
         }
-        try std.fs.File.stdout().deprecatedWriter().print("powerglide config set: {s} = {s} (not yet implemented)\n", .{ args[1], args[2] });
+        // Load current config
+        var config = try powerglide.config.load(allocator);
+        defer config.deinit(allocator);
+        
+        const key = args[1];
+        const value = args[2];
+        
+        // Update the config field based on key
+        if (std.mem.eql(u8, key, "velocity_ms")) {
+            config.velocity_ms = std.fmt.parseInt(u64, value, 10) catch {
+                try std.fs.File.stderr().deprecatedWriter().print("powerglide config: error: invalid value for velocity_ms\n", .{});
+                std.process.exit(1);
+            };
+        } else if (std.mem.eql(u8, key, "max_steps")) {
+            config.max_steps = std.fmt.parseInt(u32, value, 10) catch {
+                try std.fs.File.stderr().deprecatedWriter().print("powerglide config: error: invalid value for max_steps\n", .{});
+                std.process.exit(1);
+            };
+        } else if (std.mem.eql(u8, key, "model") or std.mem.eql(u8, key, "default_model")) {
+            config.model = try allocator.dupe(u8, value);
+        } else if (std.mem.eql(u8, key, "shell")) {
+            config.shell = try allocator.dupe(u8, value);
+        } else {
+            try std.fs.File.stderr().deprecatedWriter().print("powerglide config: error: unknown key '{s}'\n", .{key});
+            try std.fs.File.stderr().deprecatedWriter().writeAll("Valid keys: velocity_ms, max_steps, model, default_model, shell\n");
+            std.process.exit(1);
+        }
+        
+        // Save config
+        const config_path = try powerglide.config.defaultConfigPath(allocator);
+        defer allocator.free(config_path);
+        try config.save(allocator, config_path);
+        try std.fs.File.stdout().deprecatedWriter().print("Set {s} = {s}\n", .{key, value});
     } else if (std.mem.eql(u8, subcommand, "list")) {
         const config = try powerglide.config.load(allocator);
         defer config.deinit(allocator);
         
-try std.fs.File.stdout().deprecatedWriter().print(
-            "Configuration:\\n velocity_ms: {d}\\n default_agent: hephaestus\\n default_model: {s}\\n max_steps: {d}\\n\\nConfig file: ~/.config/powerglide/config.json\\n\\n",
-            .{ config.velocity_ms, config.model, config.max_steps },
+        try std.fs.File.stdout().deprecatedWriter().print(
+            "Configuration:\n  model: {s}\n  velocity_ms: {d}\n  max_steps: {d}\n  shell: {s}\n\nConfig file: ~/.config/powerglide/config.json\n\n",
+            .{ config.model, config.velocity_ms, config.max_steps, config.shell },
         );
     } else if (std.mem.eql(u8, subcommand, "edit")) {
-        try std.fs.File.stdout().deprecatedWriter().writeAll("powerglide config edit: stub (not yet implemented)\n");
+        const config_path = try powerglide.config.defaultConfigPath(allocator);
+        defer allocator.free(config_path);
+        
+        // Get EDITOR env var, default to vim
+        const editor = std.process.getEnvVarOwned(allocator, "EDITOR") catch try allocator.dupe(u8, "vim");
+        defer allocator.free(editor);
+        
+        // Run editor
+        const result = std.process.Child.run(.{
+            .allocator = allocator,
+            .argv = &[_][]const u8{ editor, config_path },
+        }) catch |err| {
+            try std.fs.File.stderr().deprecatedWriter().print("powerglide config: error: failed to open editor: {}\n", .{err});
+            std.process.exit(1);
+        };
+        defer {
+            allocator.free(result.stdout);
+            allocator.free(result.stderr);
+        }
+        
+        if (result.term.Exited != 0 and result.term.Exited != 0) {
+            try std.fs.File.stderr().deprecatedWriter().print("powerglide config: warning: editor exited with non-zero status\n", .{});
+        }
+        
+        try std.fs.File.stdout().deprecatedWriter().print("Edited config file: {s}\n", .{config_path});
     } else if (std.mem.eql(u8, subcommand, "init")) {
-        try std.fs.File.stdout().deprecatedWriter().writeAll("powerglide config init: stub (not yet implemented)\n");
+        const config_path = try powerglide.config.defaultConfigPath(allocator);
+        defer allocator.free(config_path);
+        
+        // Create default config (overwrites if already exists)
+        const default_config = powerglide.config.Config.default();
+        try default_config.save(allocator, config_path);
+        try std.fs.File.stdout().deprecatedWriter().print("Initialized config at: {s}\n", .{config_path});
+        try std.fs.File.stdout().deprecatedWriter().writeAll("You can now edit it with 'powerglide config edit'\n");
     } else {
         try std.fs.File.stderr().deprecatedWriter().print("powerglide config: unknown subcommand '{s}'\n", .{subcommand});
         try printCommandHelp("config", std.fs.File.stdout().deprecatedWriter());
         std.process.exit(1);
     }
-}
 
+}
 /// Handle the 'tools' subcommand
 fn handleTools(allocator: std.mem.Allocator, args: [][:0]u8) !void {
     const powerglide = @import("powerglide");
