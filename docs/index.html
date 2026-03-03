@@ -163,26 +163,140 @@
 <span class="comment"># Open TUI dashboard</span>
 <span class="constant function">./zig-out/bin/powerglide</span> <span class="constant">tui</span>
 </code></pre>
-<h2>CLI Commands</h2><table><tr><th>Command</th><th>Description</th></tr><tr><td><code>powerglide run</code></td><td>Launch an agent coding session</td></tr><tr><td><code>powerglide session</code></td><td>Manage agent sessions (list, show, resume, delete, export)</td></tr><tr><td><code>powerglide agent</code></td><td>Manage agent configurations (list, add, remove, show)</td></tr><tr><td><code>powerglide swarm</code></td><td>Manage agent swarms (list, create, add, remove, run, status, stop)</td></tr><tr><td><code>powerglide config</code></td><td>Manage powerglide configuration (show, set, get, reset, edit)</td></tr><tr><td><code>powerglide tools</code></td><td>List and test available tools (list, show, test)</td></tr><tr><td><code>powerglide tui</code></td><td>Open the interactive multi-agent dashboard</td></tr><tr><td><code>powerglide doctor</code></td><td>Run system health checks</td></tr><tr><td><code>powerglide version</code></td><td>Show version information</td></tr></table><h2>The Ralph Loop</h2><p>At the heart of powerglide is the <strong>Ralph Loop</strong> — a state machine inspired by <a href="https://github.com/snarktank/ralph" target="_blank">ralph</a> that drives every agent session:</p><pre><code>IDLE
- │
- ▼
-LOAD_TASKS ──(all done?)──► COMPLETE
- │
- ▼
-PICK_TASK (highest priority, passes == false)
- │
- ▼
-THINKING ──(tool_call)──► ACTING ──(result)──► OBSERVING
- │                              │
- ▼                              │
-VERIFY (run checks)             │
- │                              │
- ▼                              │
-COMMIT ──► update task status ──┘
- │
- ▼
-FAILED (error recovery / retry)
-</code></pre><p>The loop emits <code>&lt;POWERGLIDE_DONE&gt;</code> when all tasks are complete, which the orchestrator detects as a clean stop signal.</p><h2>Inspiration</h2><p>powerglide is inspired by the best ideas from the AI coding agent ecosystem:</p><table><tr><th>Project</th><th>Inspiration</th></tr><tr><td><a href="https://github.com/can1357/oh-my-pi" target="_blank">oh-my-pi</a></td><td>Multi-agent harness patterns, agent orchestration</td></tr><tr><td><a href="https://github.com/code-yeongyu/oh-my-opencode" target="_blank">oh-my-opencode</a></td><td>Ralph Wiggum loop, autonomous agent control</td></tr><tr><td><a href="https://github.com/snarktank/ralph" target="_blank">ralph</a></td><td>Ralph loop state machine, explicit done signals</td></tr><tr><td><a href="https://github.com/steveyegge/gastown" target="_blank">gastown</a></td><td>Multi-agent workspace isolation, task queues</td></tr><tr><td><a href="https://github.com/anomalyco/opencode" target="_blank">opencode</a></td><td>CLI UX, multi-model routing</td></tr><tr><td><a href="https://github.com/charmbracelet/crush" target="_blank">crush</a></td><td>Terminal UX, TUI design</td></tr></table><hr></div>
+<h2>CLI Commands</h2><table><tr><th>Command</th><th>Description</th></tr><tr><td><code>powerglide run</code></td><td>Launch an agent coding session</td></tr><tr><td><code>powerglide session</code></td><td>Manage agent sessions (list, show, resume, delete, export)</td></tr><tr><td><code>powerglide agent</code></td><td>Manage agent configurations (list, add, remove, show)</td></tr><tr><td><code>powerglide swarm</code></td><td>Manage agent swarms (list, create, add, remove, run, status, stop)</td></tr><tr><td><code>powerglide config</code></td><td>Manage powerglide configuration (show, set, get, reset, edit)</td></tr><tr><td><code>powerglide tools</code></td><td>List and test available tools (list, show, test)</td></tr><tr><td><code>powerglide tui</code></td><td>Open the interactive multi-agent dashboard</td></tr><tr><td><code>powerglide doctor</code></td><td>Run system health checks</td></tr><tr><td><code>powerglide version</code></td><td>Show version information</td></tr></table><h2>The Ralph Loop</h2><p>At the heart of powerglide is the <strong>Ralph Loop</strong> — a state machine inspired by <a href="https://github.com/snarktank/ralph" target="_blank">ralph</a> that drives every agent session:</p><svg viewBox="0 0 600 480" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="pg-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F7A41D;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#d97706;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="cyan-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#06b6d4;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#0891b2;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="purple-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#7c3aed;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#6d28d9;stop-opacity:1"/>
+    </linearGradient>
+    <filter id="neon-glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur1"/>
+      <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur2"/>
+      <feMerge>
+        <feMergeNode in="blur2"/>
+        <feMergeNode in="blur1"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="soft-glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#F7A41D"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="600" height="480" fill="#050505" rx="8"/>
+
+  <!-- Cyber grid pattern -->
+  <g stroke="#1a1a25" stroke-width="1" opacity="0.5">
+    <line x1="100" y1="0" x2="100" y2="480"/>
+    <line x1="200" y1="0" x2="200" y2="480"/>
+    <line x1="300" y1="0" x2="300" y2="480"/>
+    <line x1="400" y1="0" x2="400" y2="480"/>
+    <line x1="500" y1="0" x2="500" y2="480"/>
+    <line x1="0" y1="100" x2="600" y2="100"/>
+    <line x1="0" y1="200" x2="600" y2="200"/>
+    <line x1="0" y1="300" x2="600" y2="300"/>
+    <line x1="0" y1="400" x2="600" y2="400"/>
+  </g>
+
+  <!-- IDLE -->
+  <rect x="220" y="30" width="160" height="40" fill="none" stroke="url(#pg-gradient)" stroke-width="2" rx="4" filter="url(#soft-glow)"/>
+  <text x="300" y="55" text-anchor="middle" fill="#e4e4e7" font-size="14" font-weight="bold" font-family="monospace">IDLE</text>
+
+  <!-- Arrow down -->
+  <line x1="300" y1="70" x2="300" y2="95" stroke="#F7A41D" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+  <!-- LOAD_TASKS -->
+  <rect x="180" y="100" width="240" height="40" fill="none" stroke="url(#cyan-gradient)" stroke-width="2" rx="4" filter="url(#soft-glow)"/>
+  <text x="300" y="125" text-anchor="middle" fill="#e4e4e7" font-size="14" font-weight="bold" font-family="monospace">LOAD_TASKS</text>
+
+  <!-- Arrow down -->
+  <line x1="300" y1="140" x2="300" y2="165" stroke="#F7A41D" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+  <!-- PICK_TASK -->
+  <rect x="150" y="170" width="300" height="40" fill="none" stroke="url(#cyan-gradient)" stroke-width="2" rx="4" filter="url(#soft-glow)"/>
+  <text x="300" y="195" text-anchor="middle" fill="#e4e4e7" font-size="12" font-weight="bold" font-family="monospace">PICK_TASK (highest priority)</text>
+
+  <!-- Arrow down -->
+  <line x1="300" y1="210" x2="300" y2="235" stroke="#F7A41D" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+  <!-- THINKING -->
+  <rect x="180" y="240" width="120" height="40" fill="none" stroke="url(#cyan-gradient)" stroke-width="2" rx="4" filter="url(#soft-glow)"/>
+  <text x="240" y="265" text-anchor="middle" fill="#e4e4e7" font-size="14" font-weight="bold" font-family="monospace">THINKING</text>
+
+  <!-- Arrow right -->
+  <line x1="300" y1="260" x2="335" y2="260" stroke="#F7A41D" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <text x="318" y="250" text-anchor="middle" fill="#a1a1aa" font-size="10" font-family="monospace">tool_call</text>
+
+  <!-- ACTING -->
+  <rect x="340" y="240" width="100" height="40" fill="none" stroke="url(#cyan-gradient)" stroke-width="2" rx="4" filter="url(#soft-glow)"/>
+  <text x="390" y="265" text-anchor="middle" fill="#e4e4e7" font-size="14" font-weight="bold" font-family="monospace">ACTING</text>
+
+  <!-- Arrow right -->
+  <line x1="440" y1="260" x2="475" y2="260" stroke="#F7A41D" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <text x="458" y="250" text-anchor="middle" fill="#a1a1aa" font-size="10" font-family="monospace">result</text>
+
+  <!-- OBSERVING -->
+  <rect x="480" y="240" width="110" height="40" fill="none" stroke="url(#cyan-gradient)" stroke-width="2" rx="4" filter="url(#soft-glow)"/>
+  <text x="535" y="265" text-anchor="middle" fill="#e4e4e7" font-size="14" font-weight="bold" font-family="monospace">OBSERVING</text>
+
+  <!-- Arrow down from THINKING -->
+  <line x1="240" y1="280" x2="240" y2="305" stroke="#F7A41D" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+  <!-- VERIFY -->
+  <rect x="180" y="310" width="120" height="40" fill="none" stroke="url(#purple-gradient)" stroke-width="2" rx="4" filter="url(#soft-glow)"/>
+  <text x="240" y="335" text-anchor="middle" fill="#e4e4e7" font-size="14" font-weight="bold" font-family="monospace">VERIFY</text>
+
+  <!-- Arrow down -->
+  <line x1="240" y1="350" x2="240" y2="375" stroke="#F7A41D" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+  <!-- COMMIT -->
+  <rect x="180" y="380" width="120" height="40" fill="none" stroke="url(#purple-gradient)" stroke-width="2" rx="4" filter="url(#soft-glow)"/>
+  <text x="240" y="405" text-anchor="middle" fill="#e4e4e7" font-size="14" font-weight="bold" font-family="monospace">COMMIT</text>
+
+  <!-- Arrow from COMMIT back to LOAD_TASKS -->
+  <path d="M 180 400 Q 100 400 100 250 Q 100 120 175 120" fill="none" stroke="#7c3aed" stroke-width="2" marker-end="url(#arrowhead)" stroke-dasharray="5,5"/>
+  <text x="110" y="260" text-anchor="middle" fill="#a1a1aa" font-size="10" font-family="monospace">update task status</text>
+
+  <!-- Arrow from LOAD_TASKS to COMPLETE -->
+  <line x1="420" y1="120" x2="475" y2="120" stroke="#06b6d4" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <text x="448" y="110" text-anchor="middle" fill="#a1a1aa" font-size="10" font-family="monospace">all done?</text>
+
+  <!-- COMPLETE -->
+  <rect x="480" y="100" width="100" height="40" fill="none" stroke="#06b6d4" stroke-width="2" rx="4" filter="url(#soft-glow)"/>
+  <text x="530" y="125" text-anchor="middle" fill="#e4e4e7" font-size="14" font-weight="bold" font-family="monospace">COMPLETE</text>
+
+  <!-- Arrow down from COMMIT to FAILED -->
+  <line x1="300" y1="400" x2="300" y2="425" stroke="#ec4899" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+  <!-- FAILED -->
+  <rect x="220" y="430" width="160" height="40" fill="none" stroke="#ec4899" stroke-width="2" rx="4" filter="url(#soft-glow)"/>
+  <text x="300" y="455" text-anchor="middle" fill="#e4e4e7" font-size="14" font-weight="bold" font-family="monospace">FAILED</text>
+
+  <!-- Corner accents -->
+  <g stroke="#7c3aed" stroke-width="2" fill="none" opacity="0.5">
+    <path d="M20 20 L30 20 L30 30"/>
+    <path d="M580 20 L570 20 L570 30"/>
+    <path d="M20 460 L30 460 L30 450"/>
+    <path d="M580 460 L570 460 L570 450"/>
+  </g>
+</svg>
+<p>The loop emits <code>&lt;POWERGLIDE_DONE&gt;</code> when all tasks are complete, which the orchestrator detects as a clean stop signal.</p><h2>Inspiration</h2><p>powerglide is inspired by the best ideas from the AI coding agent ecosystem:</p><table><tr><th>Project</th><th>Inspiration</th></tr><tr><td><a href="https://github.com/can1357/oh-my-pi" target="_blank">oh-my-pi</a></td><td>Multi-agent harness patterns, agent orchestration</td></tr><tr><td><a href="https://github.com/code-yeongyu/oh-my-opencode" target="_blank">oh-my-opencode</a></td><td>Ralph Wiggum loop, autonomous agent control</td></tr><tr><td><a href="https://github.com/snarktank/ralph" target="_blank">ralph</a></td><td>Ralph loop state machine, explicit done signals</td></tr><tr><td><a href="https://github.com/steveyegge/gastown" target="_blank">gastown</a></td><td>Multi-agent workspace isolation, task queues</td></tr><tr><td><a href="https://github.com/anomalyco/opencode" target="_blank">opencode</a></td><td>CLI UX, multi-model routing</td></tr><tr><td><a href="https://github.com/charmbracelet/crush" target="_blank">crush</a></td><td>Terminal UX, TUI design</td></tr></table><hr></div>
 <!--YH--> </div>
 <!--TH--> </article>
 <!--WR--> </main>

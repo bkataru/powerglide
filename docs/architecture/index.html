@@ -89,37 +89,185 @@
 <!--TP--> <article class="py-12">
 <!--XY--> <div class="max-w-4xl mx-auto">
 <!--XT--> <h1 class="text-4xl md:text-5xl font-bold mb-8 text-pg-primary glow-primary">Architecture</h1>
-<!--RM--> <div class="prose prose-invert prose-lg max-w-none"><p>powerglide is built in <a href="https://ziglang.org/" target="_blank">Zig 0.15.2</a> with a modular architecture designed for reliability and performance.</p><h2>Module Structure</h2><pre><code>src/
-├── main.zig              # Entry point, CLI dispatch
-├── agent/
-│   ├── loop.zig          # Ralph loop state machine
-│   └── session.zig       # Session persistence (JSON)
-├── terminal/
-│   ├── pty.zig           # PTY allocation, process spawning
-│   ├── exit_code.zig     # Reliable exit code capture
-│   ├── session.zig       # Terminal session CRUD
-│   └── pool.zig          # Multi-terminal pool
-├── models/
-│   ├── http.zig          # HTTP client (std.http)
-│   ├── anthropic.zig     # Anthropic Messages API
-│   ├── openai.zig        # OpenAI-compatible API
-│   ├── router.zig        # Multi-model routing + fallbacks
-│   └── stream.zig        # SSE streaming responses
-├── memory/
-│   ├── store.zig         # Persistent JSONL memory store
-│   └── context.zig       # Context windowing, summarization
-├── config/
-│   └── config.zig        # Config schema + file/env loading
-├── tools/
-│   ├── tool.zig          # Tool interface
-│   └── registry.zig      # Tool registry (StringHashMap)
-├── tui/
-│   └── app.zig           # vxfw TUI dashboard
-└── orchestrator/
-    ├── worker.zig        # Worker agent lifecycle
-    ├── monitor.zig       # Health monitoring + events
-    └── swarm.zig         # Swarm coordinator
-</code></pre><h2>The Ralph Loop</h2><p>At the heart of powerglide is the <strong>Ralph Loop</strong> — a state machine that drives every agent session:</p><pre><code class="zig"><span class="keyword_modifier">pub</span> <span class="keyword">const</span> <span class="constant variable_builtin type variable">LoopState</span> <span class="operator">=</span> <span class="keyword_type">enum</span> <span class="punctuation_bracket">{</span>
+<!--RM--> <div class="prose prose-invert prose-lg max-w-none"><p>powerglide is built in <a href="https://ziglang.org/" target="_blank">Zig 0.15.2</a> with a modular architecture designed for reliability and performance.</p><h2>Module Structure</h2><svg viewBox="0 0 700 520" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="pg-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F7A41D;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#d97706;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="cyan-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#06b6d4;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#0891b2;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="purple-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#7c3aed;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#6d28d9;stop-opacity:1"/>
+    </linearGradient>
+    <filter id="neon-glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur1"/>
+      <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur2"/>
+      <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur3"/>
+      <feMerge>
+        <feMergeNode in="blur3"/>
+        <feMergeNode in="blur2"/>
+        <feMergeNode in="blur1"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="soft-glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="700" height="520" fill="#050505" rx="8"/>
+
+  <!-- Cyber grid pattern -->
+  <g stroke="#1a1a25" stroke-width="1">
+    <line x1="100" y1="0" x2="100" y2="520"/>
+    <line x1="200" y1="0" x2="200" y2="520"/>
+    <line x1="300" y1="0" x2="300" y2="520"/>
+    <line x1="400" y1="0" x2="400" y2="520"/>
+    <line x1="500" y1="0" x2="500" y2="520"/>
+    <line x1="600" y1="0" x2="600" y2="520"/>
+    <line x1="0" y1="100" x2="700" y2="100"/>
+    <line x1="0" y1="200" x2="700" y2="200"/>
+    <line x1="0" y1="300" x2="700" y2="300"/>
+    <line x1="0" y1="400" x2="700" y2="400"/>
+  </g>
+
+  <!-- Title -->
+  <text x="350" y="35" text-anchor="middle" fill="#F7A41D" font-size="18" font-weight="bold" font-family="monospace" filter="url(#neon-glow)">src/</text>
+
+  <!-- Root node -->
+  <rect x="280" y="55" width="140" height="35" fill="none" stroke="url(#pg-gradient)" stroke-width="2" rx="4" filter="url(#soft-glow)"/>
+  <text x="350" y="78" text-anchor="middle" fill="#e4e4e7" font-size="14" font-family="monospace">main.zig</text>
+
+  <!-- Vertical line from root -->
+  <line x1="350" y1="90" x2="350" y2="115" stroke="url(#pg-gradient)" stroke-width="2"/>
+
+  <!-- Level 1 nodes -->
+  <!-- agent/ -->
+  <rect x="30" y="115" width="100" height="30" fill="none" stroke="url(#cyan-gradient)" stroke-width="2" rx="4" filter="url(#soft-glow)"/>
+  <text x="80" y="135" text-anchor="middle" fill="#e4e4e7" font-size="12" font-family="monospace">agent/</text>
+
+  <!-- terminal/ -->
+  <rect x="150" y="115" width="100" height="30" fill="none" stroke="url(#cyan-gradient)" stroke-width="2" rx="4" filter="url(#soft-glow)"/>
+  <text x="200" y="135" text-anchor="middle" fill="#e4e4e7" font-size="12" font-family="monospace">terminal/</text>
+
+  <!-- models/ -->
+  <rect x="270" y="115" width="100" height="30" fill="none" stroke="url(#cyan-gradient)" stroke-width="2" rx="4" filter="url(#soft-glow)"/>
+  <text x="320" y="135" text-anchor="middle" fill="#e4e4e7" font-size="12" font-family="monospace">models/</text>
+
+  <!-- memory/ -->
+  <rect x="390" y="115" width="100" height="30" fill="none" stroke="url(#cyan-gradient)" stroke-width="2" rx="4" filter="url(#soft-glow)"/>
+  <text x="440" y="135" text-anchor="middle" fill="#e4e4e7" font-size="12" font-family="monospace">memory/</text>
+
+  <!-- config/ -->
+  <rect x="510" y="115" width="100" height="30" fill="none" stroke="url(#cyan-gradient)" stroke-width="2" rx="4" filter="url(#soft-glow)"/>
+  <text x="560" y="135" text-anchor="middle" fill="#e4e4e7" font-size="12" font-family="monospace">config/</text>
+
+  <!-- tools/ -->
+  <rect x="30" y="250" width="100" height="30" fill="none" stroke="url(#cyan-gradient)" stroke-width="2" rx="4" filter="url(#soft-glow)"/>
+  <text x="80" y="270" text-anchor="middle" fill="#e4e4e7" font-size="12" font-family="monospace">tools/</text>
+
+  <!-- tui/ -->
+  <rect x="150" y="250" width="100" height="30" fill="none" stroke="url(#cyan-gradient)" stroke-width="2" rx="4" filter="url(#soft-glow)"/>
+  <text x="200" y="270" text-anchor="middle" fill="#e4e4e7" font-size="12" font-family="monospace">tui/</text>
+
+  <!-- orchestrator/ -->
+  <rect x="270" y="250" width="120" height="30" fill="none" stroke="url(#purple-gradient)" stroke-width="2" rx="4" filter="url(#soft-glow)"/>
+  <text x="330" y="270" text-anchor="middle" fill="#e4e4e7" font-size="12" font-family="monospace">orchestrator/</text>
+
+  <!-- Level 2 nodes - agent/ -->
+  <line x1="80" y1="145" x2="80" y2="165" stroke="url(#cyan-gradient)" stroke-width="1.5"/>
+  <rect x="30" y="165" width="100" height="25" fill="none" stroke="#71717a" stroke-width="1" rx="3"/>
+  <text x="80" y="182" text-anchor="middle" fill="#a1a1aa" font-size="10" font-family="monospace">loop.zig</text>
+  <line x1="80" y1="190" x2="80" y2="205" stroke="url(#cyan-gradient)" stroke-width="1.5"/>
+  <rect x="30" y="205" width="100" height="25" fill="none" stroke="#71717a" stroke-width="1" rx="3"/>
+  <text x="80" y="222" text-anchor="middle" fill="#a1a1aa" font-size="10" font-family="monospace">session.zig</text>
+
+  <!-- Level 2 nodes - terminal/ -->
+  <line x1="200" y1="145" x2="200" y2="165" stroke="url(#cyan-gradient)" stroke-width="1.5"/>
+  <rect x="150" y="165" width="100" height="25" fill="none" stroke="#71717a" stroke-width="1" rx="3"/>
+  <text x="200" y="182" text-anchor="middle" fill="#a1a1aa" font-size="10" font-family="monospace">pty.zig</text>
+  <line x1="200" y1="190" x2="200" y2="205" stroke="url(#cyan-gradient)" stroke-width="1.5"/>
+  <rect x="150" y="205" width="100" height="25" fill="none" stroke="#71717a" stroke-width="1" rx="3"/>
+  <text x="200" y="222" text-anchor="middle" fill="#a1a1aa" font-size="10" font-family="monospace">exit_code.zig</text>
+  <line x1="200" y1="230" x2="200" y2="245" stroke="url(#cyan-gradient)" stroke-width="1.5"/>
+  <rect x="150" y="245" width="100" height="25" fill="none" stroke="#71717a" stroke-width="1" rx="3"/>
+  <text x="200" y="262" text-anchor="middle" fill="#a1a1aa" font-size="10" font-family="monospace">session.zig</text>
+  <line x1="200" y1="270" x2="200" y2="285" stroke="url(#cyan-gradient)" stroke-width="1.5"/>
+  <rect x="150" y="285" width="100" height="25" fill="none" stroke="#71717a" stroke-width="1" rx="3"/>
+  <text x="200" y="302" text-anchor="middle" fill="#a1a1aa" font-size="10" font-family="monospace">pool.zig</text>
+
+  <!-- Level 2 nodes - models/ -->
+  <line x1="320" y1="145" x2="320" y2="165" stroke="url(#cyan-gradient)" stroke-width="1.5"/>
+  <rect x="270" y="165" width="100" height="25" fill="none" stroke="#71717a" stroke-width="1" rx="3"/>
+  <text x="320" y="182" text-anchor="middle" fill="#a1a1aa" font-size="10" font-family="monospace">http.zig</text>
+  <line x1="320" y1="190" x2="320" y2="205" stroke="url(#cyan-gradient)" stroke-width="1.5"/>
+  <rect x="270" y="205" width="100" height="25" fill="none" stroke="#71717a" stroke-width="1" rx="3"/>
+  <text x="320" y="222" text-anchor="middle" fill="#a1a1aa" font-size="10" font-family="monospace">anthropic.zig</text>
+  <line x1="320" y1="230" x2="320" y2="245" stroke="url(#cyan-gradient)" stroke-width="1.5"/>
+  <rect x="270" y="245" width="100" height="25" fill="none" stroke="#71717a" stroke-width="1" rx="3"/>
+  <text x="320" y="262" text-anchor="middle" fill="#a1a1aa" font-size="10" font-family="monospace">openai.zig</text>
+  <line x1="320" y1="270" x2="320" y2="285" stroke="url(#cyan-gradient)" stroke-width="1.5"/>
+  <rect x="270" y="285" width="100" height="25" fill="none" stroke="#71717a" stroke-width="1" rx="3"/>
+  <text x="320" y="302" text-anchor="middle" fill="#a1a1aa" font-size="10" font-family="monospace">router.zig</text>
+  <line x1="320" y1="310" x2="320" y2="325" stroke="url(#cyan-gradient)" stroke-width="1.5"/>
+  <rect x="270" y="325" width="100" height="25" fill="none" stroke="#71717a" stroke-width="1" rx="3"/>
+  <text x="320" y="342" text-anchor="middle" fill="#a1a1aa" font-size="10" font-family="monospace">stream.zig</text>
+
+  <!-- Level 2 nodes - memory/ -->
+  <line x1="440" y1="145" x2="440" y2="165" stroke="url(#cyan-gradient)" stroke-width="1.5"/>
+  <rect x="390" y="165" width="100" height="25" fill="none" stroke="#71717a" stroke-width="1" rx="3"/>
+  <text x="440" y="182" text-anchor="middle" fill="#a1a1aa" font-size="10" font-family="monospace">store.zig</text>
+  <line x1="440" y1="190" x2="440" y2="205" stroke="url(#cyan-gradient)" stroke-width="1.5"/>
+  <rect x="390" y="205" width="100" height="25" fill="none" stroke="#71717a" stroke-width="1" rx="3"/>
+  <text x="440" y="222" text-anchor="middle" fill="#a1a1aa" font-size="10" font-family="monospace">context.zig</text>
+
+  <!-- Level 2 nodes - config/ -->
+  <line x1="560" y1="145" x2="560" y2="165" stroke="url(#cyan-gradient)" stroke-width="1.5"/>
+  <rect x="510" y="165" width="100" height="25" fill="none" stroke="#71717a" stroke-width="1" rx="3"/>
+  <text x="560" y="182" text-anchor="middle" fill="#a1a1aa" font-size="10" font-family="monospace">config.zig</text>
+
+  <!-- Level 2 nodes - tools/ -->
+  <line x1="80" y1="280" x2="80" y2="300" stroke="url(#cyan-gradient)" stroke-width="1.5"/>
+  <rect x="30" y="300" width="100" height="25" fill="none" stroke="#71717a" stroke-width="1" rx="3"/>
+  <text x="80" y="317" text-anchor="middle" fill="#a1a1aa" font-size="10" font-family="monospace">tool.zig</text>
+  <line x1="80" y1="325" x2="80" y2="340" stroke="url(#cyan-gradient)" stroke-width="1.5"/>
+  <rect x="30" y="340" width="100" height="25" fill="none" stroke="#71717a" stroke-width="1" rx="3"/>
+  <text x="80" y="357" text-anchor="middle" fill="#a1a1aa" font-size="10" font-family="monospace">registry.zig</text>
+
+  <!-- Level 2 nodes - tui/ -->
+  <line x1="200" y1="280" x2="200" y2="300" stroke="url(#cyan-gradient)" stroke-width="1.5"/>
+  <rect x="150" y="300" width="100" height="25" fill="none" stroke="#71717a" stroke-width="1" rx="3"/>
+  <text x="200" y="317" text-anchor="middle" fill="#a1a1aa" font-size="10" font-family="monospace">app.zig</text>
+
+  <!-- Level 2 nodes - orchestrator/ -->
+  <line x1="330" y1="280" x2="330" y2="300" stroke="url(#purple-gradient)" stroke-width="1.5"/>
+  <rect x="270" y="300" width="120" height="25" fill="none" stroke="#71717a" stroke-width="1" rx="3"/>
+  <text x="330" y="317" text-anchor="middle" fill="#a1a1aa" font-size="10" font-family="monospace">worker.zig</text>
+  <line x1="330" y1="325" x2="330" y2="340" stroke="url(#purple-gradient)" stroke-width="1.5"/>
+  <rect x="270" y="340" width="120" height="25" fill="none" stroke="#71717a" stroke-width="1" rx="3"/>
+  <text x="330" y="357" text-anchor="middle" fill="#a1a1aa" font-size="10" font-family="monospace">monitor.zig</text>
+  <line x1="330" y1="365" x2="330" y2="380" stroke="url(#purple-gradient)" stroke-width="1.5"/>
+  <rect x="270" y="380" width="120" height="25" fill="none" stroke="#71717a" stroke-width="1" rx="3"/>
+  <text x="330" y="397" text-anchor="middle" fill="#a1a1aa" font-size="10" font-family="monospace">swarm.zig</text>
+
+  <!-- Corner accents -->
+  <g stroke="#7c3aed" stroke-width="2" fill="none" opacity="0.5">
+    <path d="M20 20 L30 20 L30 30"/>
+    <path d="M680 20 L670 20 L670 30"/>
+    <path d="M20 500 L30 500 L30 490"/>
+    <path d="M680 500 L670 500 L670 490"/>
+  </g>
+</svg>
+<h2>The Ralph Loop</h2><p>At the heart of powerglide is the <strong>Ralph Loop</strong> — a state machine that drives every agent session:</p><pre><code class="zig"><span class="keyword_modifier">pub</span> <span class="keyword">const</span> <span class="constant variable_builtin type variable">LoopState</span> <span class="operator">=</span> <span class="keyword_type">enum</span> <span class="punctuation_bracket">{</span>
     <span class="constant variable_builtin type variable">idle</span><span class="punctuation_delimiter">,</span>
     <span class="constant variable_builtin type variable">thinking</span><span class="punctuation_delimiter">,</span>
     <span class="constant variable_builtin type variable">acting</span><span class="punctuation_delimiter">,</span>
@@ -128,23 +276,194 @@
     <span class="constant variable_builtin type variable">failed</span><span class="punctuation_delimiter">,</span>
 <span class="punctuation_bracket">}</span><span class="punctuation_delimiter">;</span>
 </code></pre>
-<h3>State Transitions</h3><pre><code>IDLE ──► LOAD_TASKS ──► THINKING ──► ACTING ──► OBSERVING
-         │                                    │
-         │                                    ▼
-         │                              VERIFY / COMMIT
-         │                                    │
-         └────────────◄───────────────────────┘
-</code></pre><p>The loop emits <code>&lt;POWERGLIDE_DONE&gt;</code> when all tasks are complete.</p><h2>Multi-Agent Swarm Architecture</h2><pre><code>Orchestrator (slow, powerful model)
-├── assigns tasks via task-queue.json
-├── monitors worker heartbeats
-└── aggregates results
+<h3>State Transitions</h3><svg viewBox="0 0 800 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="pg-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F7A41D;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#d97706;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="cyan-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#06b6d4;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#0891b2;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="purple-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#7c3aed;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#6d28d9;stop-opacity:1"/>
+    </linearGradient>
+    <filter id="neon-glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur1"/>
+      <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur2"/>
+      <feMerge>
+        <feMergeNode in="blur2"/>
+        <feMergeNode in="blur1"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="soft-glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#F7A41D"/>
+    </marker>
+  </defs>
 
-Workers (fast models) × N
-├── each has isolated workspace
-├── pulls tasks from queue
-├── writes progress to worker-{id}.json
-└── signals completion via done-{id}.json
-</code></pre><p>Inter-agent communication is file-based at <code>~/.powerglide/teams/{team-id}/messages/</code>.</p><h2>Rogue Agent Prevention</h2><p>powerglide includes multi-layer rogue agent prevention:</p><table><tr><th>Mechanism</th><th>Default</th><th>Description</th></tr><tr><td>Step limit</td><td>200</td><td>Kill after N steps regardless</td></tr><tr><td>Heartbeat</td><td>30s</td><td>Worker must write heartbeat; monitor kills if missed</td></tr><tr><td>Circuit breaker</td><td>3 repeats</td><td>Kill if same tool called with same args 3+ times</td></tr><tr><td>Budget tracking</td><td>configurable</td><td>Stop if token/cost budget exceeded</td></tr><tr><td>Explicit done signal</td><td>required</td><td>Agent must emit <code>POWERGLIDE_DONE</code> to terminate cleanly</td></tr></table><h2>Velocity Control</h2><p>Velocity controls how fast the ralph loop progresses:</p><pre><code class="bash"><span class="constant function">powerglide</span> <span class="constant">run</span> <span class="constant">--velocity</span> <span class="constant">2.0</span>  <span class="comment"># 2x speed: 500ms between steps</span>
+  <!-- Background -->
+  <rect width="800" height="200" fill="#050505" rx="8"/>
+
+  <!-- Cyber grid pattern -->
+  <g stroke="#1a1a25" stroke-width="1" opacity="0.5">
+    <line x1="100" y1="0" x2="100" y2="200"/>
+    <line x1="200" y1="0" x2="200" y2="200"/>
+    <line x1="300" y1="0" x2="300" y2="200"/>
+    <line x1="400" y1="0" x2="400" y2="200"/>
+    <line x1="500" y1="0" x2="500" y2="200"/>
+    <line x1="600" y1="0" x2="600" y2="200"/>
+    <line x1="700" y1="0" x2="700" y2="200"/>
+    <line x1="0" y1="100" x2="800" y2="100"/>
+  </g>
+
+  <!-- State boxes -->
+  <!-- IDLE -->
+  <rect x="30" y="80" width="100" height="40" fill="none" stroke="url(#pg-gradient)" stroke-width="2" rx="4" filter="url(#soft-glow)"/>
+  <text x="80" y="105" text-anchor="middle" fill="#e4e4e7" font-size="14" font-weight="bold" font-family="monospace">IDLE</text>
+
+  <!-- LOAD_TASKS -->
+  <rect x="170" y="80" width="120" height="40" fill="none" stroke="url(#cyan-gradient)" stroke-width="2" rx="4" filter="url(#soft-glow)"/>
+  <text x="230" y="105" text-anchor="middle" fill="#e4e4e7" font-size="14" font-weight="bold" font-family="monospace">LOAD_TASKS</text>
+
+  <!-- THINKING -->
+  <rect x="330" y="80" width="100" height="40" fill="none" stroke="url(#cyan-gradient)" stroke-width="2" rx="4" filter="url(#soft-glow)"/>
+  <text x="380" y="105" text-anchor="middle" fill="#e4e4e7" font-size="14" font-weight="bold" font-family="monospace">THINKING</text>
+
+  <!-- ACTING -->
+  <rect x="470" y="80" width="100" height="40" fill="none" stroke="url(#cyan-gradient)" stroke-width="2" rx="4" filter="url(#soft-glow)"/>
+  <text x="520" y="105" text-anchor="middle" fill="#e4e4e7" font-size="14" font-weight="bold" font-family="monospace">ACTING</text>
+
+  <!-- OBSERVING -->
+  <rect x="610" y="80" width="110" height="40" fill="none" stroke="url(#cyan-gradient)" stroke-width="2" rx="4" filter="url(#soft-glow)"/>
+  <text x="665" y="105" text-anchor="middle" fill="#e4e4e7" font-size="14" font-weight="bold" font-family="monospace">OBSERVING</text>
+
+  <!-- VERIFY/COMMIT -->
+  <rect x="610" y="150" width="110" height="40" fill="none" stroke="url(#purple-gradient)" stroke-width="2" rx="4" filter="url(#soft-glow)"/>
+  <text x="665" y="175" text-anchor="middle" fill="#e4e4e7" font-size="12" font-weight="bold" font-family="monospace">VERIFY/COMMIT</text>
+
+  <!-- Arrows -->
+  <!-- IDLE -> LOAD_TASKS -->
+  <line x1="130" y1="100" x2="165" y2="100" stroke="#F7A41D" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+  <!-- LOAD_TASKS -> THINKING -->
+  <line x1="290" y1="100" x2="325" y2="100" stroke="#F7A41D" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+  <!-- THINKING -> ACTING -->
+  <line x1="430" y1="100" x2="465" y2="100" stroke="#F7A41D" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+  <!-- ACTING -> OBSERVING -->
+  <line x1="570" y1="100" x2="605" y2="100" stroke="#F7A41D" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+  <!-- OBSERVING -> VERIFY/COMMIT -->
+  <line x1="665" y1="120" x2="665" y2="145" stroke="#F7A41D" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+  <!-- VERIFY/COMMIT -> LOAD_TASKS (loop back) -->
+  <path d="M 610 170 Q 230 170 230 125" fill="none" stroke="#7c3aed" stroke-width="2" marker-end="url(#arrowhead)" stroke-dasharray="5,5"/>
+
+  <!-- Corner accents -->
+  <g stroke="#7c3aed" stroke-width="2" fill="none" opacity="0.5">
+    <path d="M20 20 L30 20 L30 30"/>
+    <path d="M780 20 L770 20 L770 30"/>
+    <path d="M20 180 L30 180 L30 170"/>
+    <path d="M780 180 L770 180 L770 170"/>
+  </g>
+</svg>
+<p>The loop emits <code>&lt;POWERGLIDE_DONE&gt;</code> when all tasks are complete.</p><h2>Multi-Agent Swarm Architecture</h2><svg viewBox="0 0 700 350" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="pg-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F7A41D;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#d97706;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="cyan-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#06b6d4;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#0891b2;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="purple-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#7c3aed;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#6d28d9;stop-opacity:1"/>
+    </linearGradient>
+    <filter id="neon-glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur1"/>
+      <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur2"/>
+      <feMerge>
+        <feMergeNode in="blur2"/>
+        <feMergeNode in="blur1"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="soft-glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#F7A41D"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="700" height="350" fill="#050505" rx="8"/>
+
+  <!-- Cyber grid pattern -->
+  <g stroke="#1a1a25" stroke-width="1" opacity="0.5">
+    <line x1="100" y1="0" x2="100" y2="350"/>
+    <line x1="200" y1="0" x2="200" y2="350"/>
+    <line x1="300" y1="0" x2="300" y2="350"/>
+    <line x1="400" y1="0" x2="400" y2="350"/>
+    <line x1="500" y1="0" x2="500" y2="350"/>
+    <line x1="600" y1="0" x2="600" y2="350"/>
+    <line x1="0" y1="100" x2="700" y2="100"/>
+    <line x1="0" y1="200" x2="700" y2="200"/>
+    <line x1="0" y1="300" x2="700" y2="300"/>
+  </g>
+
+  <!-- Orchestrator Section -->
+  <rect x="50" y="40" width="600" height="130" fill="none" stroke="url(#purple-gradient)" stroke-width="2" rx="8" filter="url(#soft-glow)"/>
+  <text x="350" y="65" text-anchor="middle" fill="#7c3aed" font-size="16" font-weight="bold" font-family="monospace" filter="url(#neon-glow)">Orchestrator (slow, powerful model)</text>
+
+  <!-- Orchestrator items -->
+  <g fill="#e4e4e7" font-size="12" font-family="monospace">
+    <text x="70" y="95">• assigns tasks via task-queue.json</text>
+    <text x="70" y="120">• monitors worker heartbeats</text>
+    <text x="70" y="145">• aggregates results</text>
+  </g>
+
+  <!-- Workers Section -->
+  <rect x="50" y="200" width="600" height="130" fill="none" stroke="url(#cyan-gradient)" stroke-width="2" rx="8" filter="url(#soft-glow)"/>
+  <text x="350" y="225" text-anchor="middle" fill="#06b6d4" font-size="16" font-weight="bold" font-family="monospace" filter="url(#neon-glow)">Workers (fast models) × N</text>
+
+  <!-- Workers items -->
+  <g fill="#e4e4e7" font-size="12" font-family="monospace">
+    <text x="70" y="255">• each has isolated workspace</text>
+    <text x="70" y="280">• pulls tasks from queue</text>
+    <text x="70" y="305">• writes progress to worker-{id}.json</text>
+    <text x="70" y="330">• signals completion via done-{id}.json</text>
+  </g>
+
+  <!-- Connection arrow -->
+  <path d="M 350 170 L 350 195" stroke="#F7A41D" stroke-width="3" marker-end="url(#arrowhead)" filter="url(#soft-glow)"/>
+
+  <!-- Corner accents -->
+  <g stroke="#7c3aed" stroke-width="2" fill="none" opacity="0.5">
+    <path d="M20 20 L30 20 L30 30"/>
+    <path d="M680 20 L670 20 L670 30"/>
+    <path d="M20 330 L30 330 L30 320"/>
+    <path d="M680 330 L670 330 L670 320"/>
+  </g>
+</svg>
+<p>Inter-agent communication is file-based at <code>~/.powerglide/teams/{team-id}/messages/</code>.</p><h2>Rogue Agent Prevention</h2><p>powerglide includes multi-layer rogue agent prevention:</p><table><tr><th>Mechanism</th><th>Default</th><th>Description</th></tr><tr><td>Step limit</td><td>200</td><td>Kill after N steps regardless</td></tr><tr><td>Heartbeat</td><td>30s</td><td>Worker must write heartbeat; monitor kills if missed</td></tr><tr><td>Circuit breaker</td><td>3 repeats</td><td>Kill if same tool called with same args 3+ times</td></tr><tr><td>Budget tracking</td><td>configurable</td><td>Stop if token/cost budget exceeded</td></tr><tr><td>Explicit done signal</td><td>required</td><td>Agent must emit <code>POWERGLIDE_DONE</code> to terminate cleanly</td></tr></table><h2>Velocity Control</h2><p>Velocity controls how fast the ralph loop progresses:</p><pre><code class="bash"><span class="constant function">powerglide</span> <span class="constant">run</span> <span class="constant">--velocity</span> <span class="constant">2.0</span>  <span class="comment"># 2x speed: 500ms between steps</span>
 <span class="constant function">powerglide</span> <span class="constant">run</span> <span class="constant">--velocity</span> <span class="constant">0.5</span>  <span class="comment"># 0.5x speed: 2000ms between steps</span>
 </code></pre>
 <p>Agents can self-adjust velocity by writing <code>VELOCITY=&lt;value&gt;</code> to their session config file at <code>~/.config/powerglide/session-&lt;id&gt;.json</code>. The orchestrator polls this file every N steps.</p><h2>Configuration Loading</h2><p>Configuration is loaded in order of precedence:</p><ol><li>Command-line arguments (highest priority)</li><li>Environment variables</li><li><code>~/.config/powerglide/config.json</code></li><li>Built-in defaults (lowest priority)</li></ol><pre><code class="zig"><span class="keyword">const</span> <span class="constant variable_builtin type variable">config</span> <span class="operator">=</span> <span class="constant variable_builtin type variable">Config</span><span class="punctuation_delimiter">.</span><span class="type constant variable_builtin function_call variable_member variable">load</span><span class="punctuation_bracket">(</span><span class="punctuation_delimiter">.</span><span class="punctuation_bracket">{</span>
