@@ -28,6 +28,12 @@ pub const Registry = struct {
 
     /// Clean up registry resources
     pub fn deinit(self: *Registry) void {
+        var iter = self.tools.iterator();
+        while (iter.next()) |entry| {
+            self.allocator.free(entry.value_ptr.name);
+            self.allocator.free(entry.value_ptr.description);
+            self.allocator.free(entry.value_ptr.input_schema);
+        }
         self.tools.deinit();
     }
 
@@ -120,8 +126,11 @@ pub const Registry = struct {
 
     /// Remove a tool from the registry
     pub fn unregister(self: *Registry, name: []const u8) void {
-        const found = self.tools.remove(name);
-        _ = found;
+        if (self.tools.fetchRemove(name)) |entry| {
+            self.allocator.free(entry.value.name);
+            self.allocator.free(entry.value.description);
+            self.allocator.free(entry.value.input_schema);
+        }
     }
 
     /// Get the count of registered tools
