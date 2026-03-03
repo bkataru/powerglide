@@ -33,7 +33,9 @@
       "Bash(/root/.local/share/mise/installs/zig/0.15.2/zig build-lib:*)",
       "Bash(/root/.local/share/mise/installs/zig/0.15.2/zig test:*)",
       "Bash(xxd:*)",
-      "Bash(/tmp/prompt_phase10_fix.txt:*)"
+      "Bash(/tmp/prompt_phase10_fix.txt:*)",
+      "Bash(/root/.local/share/mise/installs/zig/0.15.2/bin/zig build:*)",
+      "Bash(./zig-out/bin/powerglide tui:*)"
     ]
   }
 }

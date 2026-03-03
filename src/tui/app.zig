@@ -237,8 +237,8 @@ fn buildAgentsText(arena: std.mem.Allocator, agents: []const Agent) ![]const u8 
             else 0.0;
             const bar_len: u32 = @intFromFloat(progress * 10.0);
             var bar: [12]u8 = undefined;
-            @memset(bar[0..bar_len], '█');
-            @memset(bar[bar_len..10], '░');
+            @memset(bar[0..bar_len], '#');
+            @memset(bar[bar_len..10], '-');
             bar[10] = ' ';
             bar[11] = 0;
             
@@ -313,9 +313,10 @@ pub const TUIApp = struct {
         };
 
         var app = vxfw.App.init(self.allocator) catch |err| {
-            if (err == error.NotATTY) {
+            if (err == error.NotATTY or err == error.Unexpected) {
                 const stderr = std.fs.File.stderr().deprecatedWriter();
-                try stderr.writeAll("powerglide TUI: not a TTY — skipping interactive dashboard\n");
+                try stderr.writeAll("powerglide tui: requires an interactive terminal (TTY)\n");
+                try stderr.writeAll("  Run powerglide in an interactive shell to use the TUI dashboard.\n");
                 return;
             }
             return err;

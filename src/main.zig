@@ -1,6 +1,8 @@
 const std = @import("std");
 // const clap = @import("clap");
 const clap = @import("clap");
+const pg_lib = @import("powerglide");
+const tui_app = pg_lib.tui;
 
 const VERSION = "0.1.0";
 const ConfigDir = ".config/powerglide";
@@ -83,6 +85,21 @@ pub fn main() !void {
         return;
     }
 
+    if (std.mem.eql(u8, top_level, "tui")) {
+        // Require a real TTY before launching vxfw (avoids Unexpected errno in non-TTY env)
+        if (!std.posix.isatty(std.posix.STDIN_FILENO)) {
+            try std.fs.File.stderr().deprecatedWriter().writeAll(
+                "powerglide tui: requires an interactive terminal (TTY)\n" ++
+                "  Run powerglide in an interactive shell to use the TUI dashboard.\n"
+            );
+            std.process.exit(1);
+        }
+        var app = tui_app.TUIApp.init(allocator);
+        defer app.deinit();
+        try app.start();
+        return;
+    }
+
     // Unknown command
     try std.fs.File.stdout().deprecatedWriter().print("powerglide: unknown command '{s}'\n", .{top_level});
     try printMainHelp(std.fs.File.stdout().deprecatedWriter());
@@ -104,6 +121,7 @@ fn printMainHelp(writer: anytype) !void {
         \\ swarm <subcommand> Manage agent swarms
         \\ config <subcommand> Manage configuration
         \\ tools <subcommand> List and test tools
+        \\ tui Open the interactive multi-agent dashboard
         \\ doctor Check system health and configuration
         \\ version Print version information
         \\ help [COMMAND] Show help for a command
