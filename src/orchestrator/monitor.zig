@@ -38,8 +38,9 @@ pub const Monitor = struct {
     /// Single poll cycle: check each worker status
     /// Returns list of events that occurred
     pub fn poll(self: *Monitor, allocator: std.mem.Allocator) ![]MonitorEvent {
-        var events = std.ArrayList(MonitorEvent).init(allocator);
-        errdefer events.deinit();
+        var events = std.ArrayList(MonitorEvent){};
+        errdefer events.deinit(allocator);
+        try events.ensureTotalCapacity(allocator, 16);
 
         var iterator = self.workers.iterator();
         while (iterator.next()) |entry| {
@@ -52,7 +53,7 @@ pub const Monitor = struct {
 
             // Check if heartbeat is stale
             if (worker.isStale(self.heartbeat_timeout_ms)) {
-                try events.append(.{ .worker_stale = id });
+                try events.append(allocator, .{ .worker_stale = id });
                 continue;
             }
 
@@ -67,19 +68,19 @@ pub const Monitor = struct {
                         if (status.Exited) {
                             if (status.code == 0) {
                                 worker.status = .done;
-                                try events.append(.{ .worker_done = id });
+                                try events.append(allocator, .{ .worker_done = id });
                             } else {
                                 worker.status = .failed;
-                                try events.append(.{ .worker_failed = id });
+                                try events.append(allocator, .{ .worker_failed = id });
                             }
                         } else if (status.Signaled) {
                             worker.status = .failed;
-                            try events.append(.{ .worker_failed = id });
+                            try events.append(allocator, .{ .worker_failed = id });
                         }
                     } else if (wait_result == -1) {
                         // Error - process might have died
                         worker.status = .failed;
-                        try events.append(.{ .worker_failed = id });
+                        try events.append(allocator, .{ .worker_failed = id });
                     }
                 }
             }
@@ -88,14 +89,14 @@ pub const Monitor = struct {
             if (worker.status == .running) {
                 const done = worker.checkDone() catch false;
                 if (done) {
-                    try events.append(.{ .worker_done = id });
+                    try events.append(allocator, .{ .worker_done = id });
                 }
             }
         }
 
         // Check if all workers are done
         if (self.allDone()) {
-            try events.append(.all_done);
+            try events.append(allocator, .all_done);
         }
 
         return events.toOwnedSlice();
