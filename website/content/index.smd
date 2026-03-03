@@ -62,11 +62,11 @@
 </div>
 ```
 
-Welcome to **powerglide** ⚡ - the CLI coding agent that slides.
+Welcome to **powerglide** ⚡ — the CLI coding agent that slides.
 
-> **Why powerglide?** Built in [Zig 0.15.2](https://ziglang.org/), powerglide orchestrates swarms of SWE (Software Engineering) agents with precise velocity control, reliable PTY management, and multi-model routing — all from a single fast binary with no runtime dependencies.
+> **Why powerglide?** Built in [Zig 0.15.2](https://ziglang.org/), powerglide orchestrates swarms of SWE (Software Engineering) agents with precise velocity control, reliable PTY management, and multi-model routing. Everything ships as a single fast binary with zero runtime dependencies.
 
-Like the Lamborghini Powerglide transmission it's named after, powerglide is designed for one thing: **maximum throughput**.
+Named after the legendary Lamborghini Powerglide transmission, powerglide is built for one purpose: **maximum throughput**.
 
 ```bash
 $ powerglide run --agent hephaestus --velocity 2.0 "implement a binary search tree in Zig"
@@ -74,23 +74,24 @@ $ powerglide run --agent hephaestus --velocity 2.0 "implement a binary search tr
 
 ## Key Features
 
-- **Multi-Agent Swarms** 🐜 — Orchestrate N agents in parallel with independent workspaces, task queues, and health monitoring. Rogue agents are auto-killed via heartbeat timeouts and step limits.
+- **Multi-Agent Swarms** 🐜 — Run N agents in parallel with independent workspaces, task queues, and health monitoring. Rogue agents get auto-terminated via heartbeat timeouts and step limits.
 
-- **Velocity Control** 🚀 — Tune agent speed dynamically: `--velocity 2.0` (fast), `0.5` (conservative). Agents can self-tune via session config files.
+- **Velocity Control** 🚀 — Tune agent speed on the fly: `--velocity 2.0` (fast) or `0.5` (conservative). Agents self-tune through session config files.
 
-- **Ralph Loop State Machine** 🔄 — Fault-tolerant `idle → thinking → acting → observing → commit` loop with explicit `POWERGLIDE_DONE` stop signals and configurable max steps.
+- **Ralph Loop State Machine** 🔄 — Fault-tolerant `idle → thinking → acting → observing → commit` cycle with explicit `POWERGLIDE_DONE` stop signals and configurable max steps.
 
-- **Reliable PTY Management** 💻 — Full pseudoterminal support with `waitpid`-based exit-code capture, WNOHANG polling, and `/proc/<pid>/status` fallback.
+- **Reliable PTY Management** 💻 — Full pseudoterminal support using `waitpid` for exit-code capture, WNOHANG polling, and `/proc/<pid>/status` fallback.
 
-- **Multi-Model Routing** 🤖 — Route to Anthropic (Claude), OpenAI-compatible APIs (Ollama, NVIDIA NIM, Together AI), or any local provider. Automatic fallback chains.
+- **Multi-Model Routing** 🤖 — Route to Anthropic (Claude), OpenAI-compatible APIs (Ollama, NVIDIA NIM, Together AI), or any local provider. Automatic fallback chains included.
 
-- **Terminal TUI** 📊 — Multi-panel vxfw dashboard: agent status, log streaming, live velocity display.
+- **Terminal TUI** 📊 — Multi-panel vxfw dashboard showing agent status, log streaming, and live velocity display.
 
 ## Quick Start
 
-### Prerequisites
+### Get Started
 
-- [Zig 0.15.2](https://ziglang.org/download/) — `mise install zig@0.15.2` or from the official site
+- [Zig 0.15.2](https://ziglang.org/download/) — Install with `mise install zig@0.15.2` or from the official site
+- An API key for your model provider (set `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`)
 - An API key for your model provider (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, etc.)
 
 ### Build
@@ -119,9 +120,19 @@ The binary lands at `./zig-out/bin/powerglide`.
 ./zig-out/bin/powerglide tui
 ```
 
-## CLI Commands
+## Commands
 
-| Command | Description |
+| Command | Purpose |
+|---------|---------|
+| `powerglide run` | Launch an agent coding session |
+| `powerglide session` | Manage agent sessions — list, show, resume, delete, export |
+| `powerglide agent` | Manage agent configurations — list, add, remove, show |
+| `powerglide swarm` | Manage agent swarms — list, create, add, remove, run, status, stop |
+| `powerglide config` | Manage powerglide configuration — show, set, get, reset, edit |
+| `powerglide tools` | List and test available tools — list, show, test |
+| `powerglide tui` | Open the interactive multi-agent dashboard |
+| `powerglide doctor` | Run system health checks |
+| `powerglide version` | Show version information |
 |---------|-------------|
 | `powerglide run` | Launch an agent coding session |
 | `powerglide session` | Manage agent sessions (list, show, resume, delete, export) |
@@ -135,7 +146,7 @@ The binary lands at `./zig-out/bin/powerglide`.
 
 ## The Ralph Loop
 
-At the heart of powerglide is the **Ralph Loop** — a state machine inspired by [ralph](https://github.com/snarktank/ralph) that drives every agent session:
+powerglide centers on the **Ralph Loop** — a state machine inspired by [ralph](https://github.com/snarktank/ralph) that powers every agent session:
 
 ```=html
 <svg viewBox="0 0 600 480" xmlns="http://www.w3.org/2000/svg">
@@ -274,13 +285,20 @@ At the heart of powerglide is the **Ralph Loop** — a state machine inspired by
 ```
 
 
-The loop emits `<POWERGLIDE_DONE>` when all tasks are complete, which the orchestrator detects as a clean stop signal.
+The loop emits `<POWERGLIDE_DONE>` when all tasks complete, giving the orchestrator a clean stop signal.
 
 ## Inspiration
 
-powerglide is inspired by the best ideas from the AI coding agent ecosystem:
+powerglide draws from the best ideas across the AI coding agent ecosystem:
 
-| Project | Inspiration |
+| Project | What We Borrowed |
+|---------|---------------|
+| [oh-my-pi](https://github.com/can1357/oh-my-pi) | Multi-agent harness patterns and orchestration |
+| [oh-my-opencode](https://github.com/code-yeongyu/oh-my-opencode) | Ralph Wiggum loop and autonomous agent control |
+| [ralph](https://github.com/snarktank/ralph) | Ralph loop state machine with explicit done signals |
+| [gastown](https://github.com/steveyegge/gastown) | Multi-agent workspace isolation and task queues |
+| [opencode](https://github.com/anomalyco/opencode) | CLI UX and multi-model routing |
+| [crush](https://github.com/charmbracelet/crush) | Terminal UX and TUI design |
 |---------|------------|
 | [oh-my-pi](https://github.com/can1357/oh-my-pi) | Multi-agent harness patterns, agent orchestration |
 | [oh-my-opencode](https://github.com/code-yeongyu/oh-my-opencode) | Ralph Wiggum loop, autonomous agent control |

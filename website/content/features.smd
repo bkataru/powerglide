@@ -6,19 +6,18 @@
 .date = @date("2026-03-02"),
 ---
 
-# Features
+powerglide packs features designed for **maximum throughput** in AI-assisted coding workflows.
 
-powerglide is packed with features designed for **maximum throughput** in AI-assisted coding workflows.
 
 ## Multi-Agent Swarms 🐜
 
-Orchestrate N agents in parallel with:
+Run N agents in parallel with:
 
 - Independent workspaces per agent
-- Task queues with priority scheduling
+- Priority-scheduled task queues
 - Health monitoring with heartbeat timeouts
 - Automatic rogue agent termination
-- Step limits to prevent runaway execution
+- Step limits that stop runaway execution
 
 ```bash
 powerglide swarm create my-team --agents 3
@@ -27,10 +26,17 @@ powerglide swarm run my-team "implement the authentication module"
 
 ## Velocity Control 🚀
 
-Tune agent speed dynamically to match your needs:
+Adjust agent speed to match your needs:
 
 ```bash
 # Fast execution (2x speed, 500ms between steps)
+powerglide run --velocity 2.0 "quick refactor"
+
+# Conservative pace (0.5x speed, 2000ms between steps)
+powerglide run --velocity 0.5 "careful review"
+
+# Agents self-adjust via session config
+echo "VELOCITY=1.5" >> ~/.config/powerglide/session-abc123.json
 powerglide run --velocity 2.0 "quick refactor"
 
 # Conservative pace (0.5x speed, 2000ms between steps)
@@ -59,8 +65,8 @@ The loop emits `<POWERGLIDE_DONE>` when complete, providing a clean stop signal.
 
 Full pseudoterminal support ensures accurate command execution:
 
-- `waitpid`-based exit code capture
-- WNOHANG polling for non-blocking operation
+- Exit code capture via `waitpid`
+- Non-blocking WNOHANG polling
 - `/proc/<pid>/status` fallback for edge cases
 - Proper signal handling and cleanup
 
@@ -78,11 +84,19 @@ export OPENAI_API_KEY="sk-..."
 powerglide run --model "gpt-4" "..."
 
 # Automatic fallback chain configured in config.json
+export ANTHROPIC_API_KEY="sk-ant-..."
+powerglide run --model "claude-opus-4-6" "..."
+
+# OpenAI-compatible (Ollama, NVIDIA NIM, Together AI)
+export OPENAI_API_KEY="sk-..."
+powerglide run --model "gpt-4" "..."
+
+# Automatic fallback chain configured in config.json
 ```
 
 ## Terminal TUI 📊
 
-Multi-panel dashboard for monitoring:
+Monitor everything through a multi-panel dashboard:
 
 - Real-time agent status
 - Live log streaming
@@ -96,7 +110,7 @@ powerglide tui
 
 ## MCP-style Tools 🔧
 
-Full tool registry with the same tools Claude Code uses:
+A complete tool registry with the same tools Claude Code uses:
 
 - `bash` - Execute shell commands
 - `read` - Read file contents
@@ -107,14 +121,14 @@ Full tool registry with the same tools Claude Code uses:
 
 ## Doctor Command 🩺
 
-One-shot system health check:
+A one-shot system health check:
 
 ```bash
 powerglide doctor
 ```
 
-Checks:
-- Zig version and PATH
+Checks what matters:
+- Zig version and PATH availability
 - oh-my-opencode availability
 - Git installation
 - API keys (ANTHROPIC, OPENAI)
@@ -122,7 +136,7 @@ Checks:
 
 ## Persistent Memory 🧠
 
-JSONL-based session memory with:
+JSONL-based session memory that gives you:
 
 - Context windowing
 - Semantic search triggers
@@ -134,7 +148,7 @@ JSONL-based session memory with:
 Real-time token streaming from model APIs:
 
 - Incremental output display
-- Lower latency perception
+- Lower perceived latency
 - Better UX for long responses
 - Cancellable generation
 

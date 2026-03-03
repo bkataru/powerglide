@@ -193,7 +193,7 @@ powerglide is built in [Zig 0.15.2](https://ziglang.org/) with a modular archite
 
 ## The Ralph Loop
 
-At the heart of powerglide is the **Ralph Loop** — a state machine that drives every agent session:
+The **Ralph Loop** sits at the heart of powerglide, a state machine that drives every agent session:
 
 ```zig
 pub const LoopState = enum {
@@ -313,7 +313,7 @@ pub const LoopState = enum {
 </svg>
 ```
 
-The loop emits `<POWERGLIDE_DONE>` when all tasks are complete.
+The loop emits `<POWERGLIDE_DONE>` when all tasks complete.
 
 ## Multi-Agent Swarm Architecture
 
@@ -405,11 +405,11 @@ The loop emits `<POWERGLIDE_DONE>` when all tasks are complete.
 </svg>
 ```
 
-Inter-agent communication is file-based at `~/.powerglide/teams/{team-id}/messages/`.
+Inter-agent communication happens through files at `~/.powerglide/teams/{team-id}/messages/`.
 
 ## Rogue Agent Prevention
 
-powerglide includes multi-layer rogue agent prevention:
+powerglide prevents runaway agents through multiple layers:
 
 | Mechanism | Default | Description |
 |-----------|---------|-------------|
@@ -421,18 +421,18 @@ powerglide includes multi-layer rogue agent prevention:
 
 ## Velocity Control
 
-Velocity controls how fast the ralph loop progresses:
+Velocity controls how fast the Ralph Loop progresses:
 
 ```bash
 powerglide run --velocity 2.0  # 2x speed: 500ms between steps
 powerglide run --velocity 0.5  # 0.5x speed: 2000ms between steps
 ```
 
-Agents can self-adjust velocity by writing `VELOCITY=<value>` to their session config file at `~/.config/powerglide/session-<id>.json`. The orchestrator polls this file every N steps.
+Agents self-adjust velocity by writing `VELOCITY=<value>` to their session config file at `~/.config/powerglide/session-<id>.json`. The orchestrator polls this file every N steps.
 
 ## Configuration Loading
 
-Configuration is loaded in order of precedence:
+Configuration loads in order of precedence:
 
 1. Command-line arguments (highest priority)
 2. Environment variables

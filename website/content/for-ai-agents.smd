@@ -6,9 +6,8 @@
 .date = @date("2026-03-02"),
 ---
 
-# For AI Agents
-
 Comprehensive guidance for AI agents using powerglide as a tool or building on top of it.
+
 
 ## Overview
 
