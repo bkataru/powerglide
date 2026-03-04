@@ -6,136 +6,175 @@
 .date = @date("2026-03-02"),
 ---
 
-powerglide packs features designed for **maximum throughput** in AI-assisted coding workflows.
+Coding agents hit the same walls repeatedly: runaway processes, opaque internal state, no real parallelism, and fragile tool execution that silently drops exit codes. powerglide is designed specifically to remove those walls — not by abstracting over them, but by addressing each one with a deliberate mechanism.
 
 
 ## Multi-Agent Swarms 🐜
 
-Run N agents in parallel with:
+A single agent serializes everything. One task at a time, one tool call at a time, one model round-trip at a time. For large codebases or multi-component work, that's a hard ceiling on throughput. Swarms break it — but only if the orchestration layer keeps workers from trampling each other's edits, getting stuck silently, or diverging into incoherence.
 
-- Independent workspaces per agent
-- Priority-scheduled task queues
-- Health monitoring with heartbeat timeouts
-- Automatic rogue agent termination
-- Step limits that stop runaway execution
+powerglide's swarm model gives each worker a **fully isolated workspace**, a **private file-backed task queue**, and a **heartbeat protocol** that lets the monitor process detect and kill stuck workers without taking down the whole team.
 
 ```bash
 powerglide swarm create my-team --agents 3
 powerglide swarm run my-team "implement the authentication module"
 ```
 
+Under the hood, the orchestrator writes tasks to `~/.powerglide/teams/{id}/task-queue.json`. Workers race to claim entries by atomically rewriting a status field. This is an intentional design choice: file I/O is observable, debuggable, and restartable after a crash — no daemon, no socket, no shared memory to reason about when something goes wrong.
+
+- **Independent workspaces** — each worker clones into its own directory; no file write conflicts between agents
+- **Priority-scheduled task queues** — higher-priority items get claimed first; urgent tasks don't queue behind trivial ones
+- **Health monitoring** — the monitor process polls heartbeat files every 30 seconds per worker
+- **Automatic rogue termination** — a missed heartbeat triggers SIGKILL before diverged work accumulates further
+- **Step limits** — a hard ceiling stops agents that loop without making progress, regardless of why they're stuck
+
+
 ## Velocity Control 🚀
 
-Adjust agent speed to match your needs:
+Every agent loop iteration consumes tokens and wall-clock time. Sometimes you want maximum throughput; sometimes you want a human able to stay in the loop and intervene. Velocity is a multiplier on a 1000ms base delay: `delay = 1000ms / velocity`. At `2.0` you get 500ms between steps; at `0.5` you get 2000ms — long enough to read tool output and stop the agent before it goes too far.
 
 ```bash
-# Fast execution (2x speed, 500ms between steps)
+# 500ms between steps — maximum throughput
 powerglide run --velocity 2.0 "quick refactor"
 
-# Conservative pace (0.5x speed, 2000ms between steps)
+# 2000ms between steps — deliberate, reviewable pace
 powerglide run --velocity 0.5 "careful review"
 
-# Agents self-adjust via session config
+# Agents write their own velocity back to disk mid-session
 echo "VELOCITY=1.5" >> ~/.config/powerglide/session-abc123.json
 ```
 
+That last pattern is the interesting one: an agent approaching a risky operation can slow itself down by writing a lower velocity to its session file. The orchestrator polls this file every N steps and adjusts accordingly. No external signal, no interrupt — just a file write that the loop naturally picks up on its next iteration.
+
+
 ## Ralph Loop State Machine 🔄
 
-The fault-tolerant state machine at the core:
+The Ralph Loop is the cognitive engine inside every powerglide agent. Rather than letting the LLM run unconstrained until it decides to stop — with all the failure modes that entails — the loop drives execution through an explicit 11-state machine. Each transition is deliberate; each state has a clearly defined entry condition and a well-specified exit path.
 
-1. **IDLE** - Waiting for tasks
-2. **LOAD_TASKS** - Fetch next task from queue
-3. **THINKING** - Process and plan
-4. **ACTING** - Execute tool calls
-5. **OBSERVING** - Gather results
-6. **VERIFY** - Run validation checks
-7. **COMMIT** - Update task status
-8. **FAILED** - Error recovery / retry
+1. **IDLE** — Quiescent. The agent has been initialized but no task has been dispatched yet.
+2. **LOAD_TASKS** — Read the task queue from disk. If the queue is empty, exit cleanly to DONE. If not, proceed.
+3. **PICK_TASK** — Select the highest-priority unclaimed task and mark it in-flight atomically.
+4. **THINKING** — Send the current task context and conversation history to the LLM; collect its plan or next intended action.
+5. **TOOL_CALL** — Parse the LLM's tool invocation from its response and prepare the argument payload.
+6. **EXECUTING** — Spawn the named tool inside a PTY, stream its output, wait for a reliable exit code.
+7. **OBSERVING** — Feed the tool's output back to the LLM as a new context message, completing the action-observation cycle.
+8. **VERIFY** — Run any configured validation checks: tests, linters, type-checkers, or custom assertions.
+9. **COMMIT** — Write the task completion record with results; loop back to LOAD_TASKS for the next task.
+10. **DONE** — All tasks complete. Emit `<POWERGLIDE_DONE>` and exit. No more work.
+11. **FAILED** — An unrecoverable error occurred. Record it, attempt retry if configured, else mark the task as failed.
 
-The loop emits `<POWERGLIDE_DONE>` when complete, providing a clean stop signal.
+The `<POWERGLIDE_DONE>` terminal signal is a hard contract. Without it, calling code — whether it's a CI script, an orchestrator, or a human reading terminal output — has no reliable way to distinguish a clean completion from a silent crash. Every powerglide session either emits `<POWERGLIDE_DONE>` or `<POWERGLIDE_ERROR>`. There is no ambiguous exit.
+
 
 ## Reliable PTY Management 💻
 
-Full pseudoterminal support ensures accurate command execution:
+Tool execution is more nuanced than calling `exec()`. A raw subprocess loses the terminal environment that many programs assume — interactive prompts hang indefinitely, readline line-editing breaks, and exit codes vanish in `waitpid()`'s edge cases around process groups and zombie reaping.
 
-- Exit code capture via `waitpid`
-- Non-blocking WNOHANG polling
-- `/proc/<pid>/status` fallback for edge cases
-- Proper signal handling and cleanup
+powerglide allocates a proper pseudoterminal for every tool invocation, so `bash`, `zig build`, `pytest`, or any arbitrary command behaves exactly as it would in an interactive terminal. Exit code capture uses a three-layer strategy because no single approach is reliable in all cases:
+
+- **`waitpid` with WNOHANG polling** — Non-blocking check lets the agent loop remain responsive while a long-running tool executes
+- **`/proc/<pid>/status` fallback** — When `waitpid` returns ambiguous results (process groups, reparented children), the kernel's proc filesystem has the ground truth
+- **Proper signal handling and cleanup** — The PTY file descriptor is always closed, even on panic, preventing zombie accumulation over long sessions
+
+This means the VERIFY and COMMIT states can trust the exit code they receive. A tool that fails with exit code 1 reliably surfaces as a failed tool call, not a successful one that happened to print an error.
+
 
 ## Multi-Model Routing 🤖
 
-Route to any LLM provider with automatic fallbacks:
+Not every task warrants a frontier model. A quick glob search doesn't need Claude Opus; a complex architectural refactor might. powerglide's router selects from a configured provider chain and falls back automatically when a model is rate-limited, unavailable, or returns an unexpected error.
 
 ```bash
-# Anthropic Claude
+# Anthropic Claude — Messages API
 export ANTHROPIC_API_KEY="sk-ant-..."
 powerglide run --model "claude-opus-4-6" "..."
 
-# OpenAI-compatible (Ollama, NVIDIA NIM, Together AI)
+# OpenAI or any OpenAI-compatible endpoint
 export OPENAI_API_KEY="sk-..."
 powerglide run --model "gpt-4" "..."
 
-# Automatic fallback chain configured in config.json
+# Fallback chain in config.json — if the primary is unavailable, the next entry takes over automatically
 ```
+
+The OpenAI-compatible interface is deliberately broad. Ollama running locally, NVIDIA NIM on-prem, Together AI in the cloud, and dozens of other providers all speak the same `/v1/chat/completions` API. You point `base_url` at the endpoint and powerglide treats it identically to the hosted services — same streaming, same tool call format, same error handling.
+
+The fallback chain defined in `config.json` means a session doesn't die because one provider is having an outage. It degrades gracefully to the next available option, logs the fallback reason, and continues.
+
 
 ## Terminal TUI 📊
 
-Monitor everything through a multi-panel dashboard:
-
-- Real-time agent status
-- Live log streaming
-- Velocity display
-- Task progress tracking
-- Resource usage metrics
+When you're running a swarm of agents, you need situational awareness across all workers simultaneously. Watching interleaved log output in a terminal is unworkable beyond two agents. The TUI, built on [libvaxis](https://github.com/rockorager/libvaxis) via its `vxfw` widget layer, opens a multi-panel dashboard that presents the live state of every agent in a scannable layout.
 
 ```bash
 powerglide tui
 ```
 
-## MCP-style Tools 🔧
+Each agent panel shows:
 
-A complete tool registry with the same tools Claude Code uses:
+- **Loop state** — which of the 11 Ralph Loop states the agent is currently in, color-coded by phase (amber for startup, cyan for execution, purple for verification)
+- **Live log streaming** — tool output and LLM response tokens rendered as they arrive over SSE
+- **Current velocity** — the effective delay between steps, displayed as both the multiplier and the raw ms value
+- **Task progress** — how many tasks are complete, in-flight, claimed, and still pending in the queue
+- **Token usage** — running count of input and output tokens per session, with approximate cost
 
-- `bash` - Execute shell commands
-- `read` - Read file contents
-- `write` - Write files
-- `edit` - Edit files with precision
-- `grep` - Search code
-- `glob` - Find files by pattern
+
+## MCP-style Tool Registry 🔧
+
+Tools are the hands of the agent — the actual code that reads files, writes diffs, runs tests. powerglide's tool interface is intentionally minimal: a name, a JSON schema so the LLM understands how to invoke the tool, and an execute function that takes raw argument bytes and returns a structured result.
+
+```
+bash   — Execute shell commands in a full PTY with accurate exit code capture
+read   — Read file contents up to a configurable byte limit
+write  — Write or overwrite files; the agent can create new files or replace existing ones
+edit   — Surgical edits: match an exact string in a file and replace it, nothing else
+grep   — Ripgrep-powered content search returning file paths and matching lines
+glob   — Pattern-based file discovery returning sorted paths by modification time
+```
+
+The registry is a `StringHashMap<Tool>`, keyed by tool name. In the TOOL_CALL state, the LLM emits a tool name and a JSON argument payload. The loop does a single hash lookup, dispatches to the stored function pointer, and feeds the result to EXECUTING. No reflection, no dynamic dispatch beyond what's already in the struct — the hot path stays predictable.
+
 
 ## Doctor Command 🩺
 
-A one-shot system health check:
+Before you burn tokens on a misconfigured session, `doctor` surfaces every setup failure up front:
 
 ```bash
 powerglide doctor
 ```
 
-Checks what matters:
-- Zig version and PATH availability
-- oh-my-opencode availability
-- Git installation
-- API keys (ANTHROPIC, OPENAI)
-- Config directory structure
+```
+✓ zig 0.15.2 found at /usr/local/bin/zig
+✓ oh-my-opencode found
+✓ git 2.40.1 found
+✓ ANTHROPIC_API_KEY set
+✗ OPENAI_API_KEY not set
+✓ Config directory exists
+```
+
+Run it after initial setup, after rotating API keys, or any time a session fails in a way that suggests environment configuration rather than agent logic. It checks the full dependency surface: Zig version, `oh-my-opencode` availability (for omo-style agent delegation), git, API key presence in environment, and the config directory structure that sessions write into.
+
 
 ## Persistent Memory 🧠
 
-JSONL-based session memory that gives you:
+Session memory persists as a JSONL file at `~/.powerglide/sessions/{id}/memory.jsonl`. Each line is a timestamped entry — tool invocation, LLM response, observation, or system event — with enough metadata to reconstruct the full context of any session from scratch. JSONL is a deliberate format choice: it's appendable without locking, readable with standard tools, and survives partial writes.
 
-- Context windowing
-- Semantic search triggers
-- Automatic summarization
-- Cross-session persistence
+Three mechanisms control how memory is used within an active session:
+
+- **Context windowing** — The active window is trimmed to the most recent N tokens before each LLM call, preventing runaway context growth from exceeding model limits or inflating cost
+- **Semantic triggers** — If a file path appears in the current task that also appears in earlier memory entries, those earlier edits get surfaced automatically — preserving relevant history without including everything
+- **Automatic summarization** — Old turns beyond the window get compressed into a single high-level summary entry, preserving intent without preserving every token
+
 
 ## SSE Streaming ⚡
 
-Real-time token streaming from model APIs:
+Waiting for a complete LLM response before rendering anything degrades the experience badly — frontier model responses can take 30 seconds or more for complex reasoning tasks. powerglide consumes each model's Server-Sent Events stream token by token, rendering output as it arrives.
 
-- Incremental output display
-- Lower perceived latency
-- Better UX for long responses
-- Cancellable generation
+This has concrete consequences beyond perceived latency:
+
+- The TUI shows partial LLM responses live in the THINKING state panel, so you can see the agent's reasoning as it forms
+- The OBSERVING state can detect early that a tool result is sending the agent in a bad direction, before it commits to a full response
+- Generation can be cancelled mid-stream without consuming (and paying for) the full completion
+- For long-form outputs — large refactors, detailed plans, extensive test suites — the effective start-of-useful-output time drops from 30s to under 1s
+
 
 ---
 

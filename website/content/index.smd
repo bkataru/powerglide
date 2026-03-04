@@ -62,29 +62,27 @@
 </div>
 ```
 
-Welcome to **powerglide** ⚡ — the CLI coding agent that slides.
-
-> **Why powerglide?** Built in [Zig 0.15.2](https://ziglang.org/), powerglide orchestrates swarms of SWE (Software Engineering) agents with precise velocity control, reliable PTY management, and multi-model routing. Everything ships as a single fast binary with zero runtime dependencies.
-
-Named after the legendary Lamborghini Powerglide transmission, powerglide is built for one purpose: **maximum throughput**.
+**powerglide** is a CLI coding agent harness — the layer between you and a swarm of LLM-driven software engineers working your codebase in parallel. It is written in [Zig 0.15.2](https://ziglang.org/), compiles to a single static binary with zero runtime dependencies, and is designed around one constraint: the agent loop must be reliable enough to run unattended.
 
 ```bash
 $ powerglide run --agent hephaestus --velocity 2.0 "implement a binary search tree in Zig"
 ```
 
+> Named after the legendary Lamborghini Powerglide transmission — powerglide is built for **maximum throughput**.
+
 ## Key Features
 
-- **Multi-Agent Swarms** 🐜 — Run N agents in parallel with independent workspaces, task queues, and health monitoring. Rogue agents get auto-terminated via heartbeat timeouts and step limits.
+- **Multi-Agent Swarms** 🐜 — Run N agents in parallel, each in an isolated workspace, pulling from a shared file-backed task queue. Workers are monitored via heartbeat; rogue agents are killed before their diverged work accumulates.
 
-- **Velocity Control** 🚀 — Tune agent speed on the fly: `--velocity 2.0` (fast) or `0.5` (conservative). Agents self-tune through session config files.
+- **Velocity Control** 🚀 — Tune agent speed: `--velocity 2.0` halves the step delay (500ms); `0.5` doubles it (2000ms). Agents can self-throttle mid-session by writing a new velocity to their session file — no external signal required.
 
-- **Ralph Loop State Machine** 🔄 — Fault-tolerant `idle → thinking → acting → observing → commit` cycle with explicit `POWERGLIDE_DONE` stop signals and configurable max steps.
+- **Ralph Loop State Machine** 🔄 — An explicit 11-state machine drives every session: `idle → load_tasks → pick_task → thinking → tool_call → executing → observing → verify → commit → done`. No implicit flow, no silent exits. Every session ends with `<POWERGLIDE_DONE>` or `<POWERGLIDE_ERROR>`.
 
-- **Reliable PTY Management** 💻 — Full pseudoterminal support using `waitpid` for exit-code capture, WNOHANG polling, and `/proc/<pid>/status` fallback.
+- **Reliable PTY Management** 💻 — Every tool runs in a full pseudoterminal. Exit codes are captured via `waitpid` with WNOHANG polling and a `/proc/<pid>/status` fallback — so `bash`, `zig build`, and `pytest` all report reliable exit codes that the verify state can trust.
 
-- **Multi-Model Routing** 🤖 — Route to Anthropic (Claude), OpenAI-compatible APIs (Ollama, NVIDIA NIM, Together AI), or any local provider. Automatic fallback chains included.
+- **Multi-Model Routing** 🤖 — Route to Anthropic (Claude), OpenAI, or any OpenAI-compatible endpoint (Ollama, NVIDIA NIM, Together AI). Fallback chains in `config.json` mean a rate-limited primary provider degrades gracefully to the next available one.
 
-- **Terminal TUI** 📊 — Multi-panel vxfw dashboard showing agent status, log streaming, and live velocity display.
+- **Terminal TUI** 📊 — A `vxfw`-based multi-panel dashboard showing each agent's current loop state, live log output, velocity, task progress, and token usage — across all workers simultaneously.
 
 ## Quick Start
 
@@ -136,7 +134,7 @@ The binary lands at `./zig-out/bin/powerglide`.
 
 ## The Ralph Loop
 
-powerglide centers on the **Ralph Loop** — a state machine inspired by [ralph](https://github.com/snarktank/ralph) that powers every agent session:
+Every powerglide agent session is driven by the **Ralph Loop** — an explicit state machine that enforces a strict sequence from task intake through tool execution to completion. The loop structure is what makes powerglide agents auditable and stoppable: you can see exactly which state an agent is in, you can attach rate limiting or logging to any specific transition, and you always know whether a session ended cleanly.
 
 ```=html
 <svg viewBox="0 0 520 620" xmlns="http://www.w3.org/2000/svg">
@@ -274,20 +272,20 @@ powerglide centers on the **Ralph Loop** — a state machine inspired by [ralph]
 ```
 
 
-The loop emits `<POWERGLIDE_DONE>` when all tasks complete, giving the orchestrator a clean stop signal.
+When `LOAD_TASKS` finds an empty queue — every task complete or failed — the loop emits `<POWERGLIDE_DONE>` and exits. This terminal signal is the agent's contract with its caller: any script, CI job, or orchestrator can reliably detect completion without polling process exit codes or parsing log output.
 
 ## Inspiration
 
-powerglide draws from the best ideas across the AI coding agent ecosystem:
+powerglide synthesizes patterns from across the AI coding agent ecosystem, taking the strongest idea from each:
 
-| Project | What We Borrowed |
-|---------|---------------|
-| [oh-my-pi](https://github.com/can1357/oh-my-pi) | Multi-agent harness patterns and orchestration |
-| [oh-my-opencode](https://github.com/code-yeongyu/oh-my-opencode) | Ralph Wiggum loop and autonomous agent control |
-| [ralph](https://github.com/snarktank/ralph) | Ralph loop state machine with explicit done signals |
-| [gastown](https://github.com/steveyegge/gastown) | Multi-agent workspace isolation and task queues |
-| [opencode](https://github.com/anomalyco/opencode) | CLI UX and multi-model routing |
-| [crush](https://github.com/charmbracelet/crush) | Terminal UX and TUI design |
+| Project | What We Took |
+|---------|--------------|
+| [oh-my-pi](https://github.com/can1357/oh-my-pi) | Multi-agent harness architecture: N workers, one orchestrator, file-based coordination |
+| [oh-my-opencode](https://github.com/code-yeongyu/oh-my-opencode) | The omo agent model — autonomous coding agents invocable as CLI subprocesses |
+| [ralph](https://github.com/snarktank/ralph) | The ralph loop pattern: explicit states, explicit done signal, no implicit flow |
+| [gastown](https://github.com/steveyegge/gastown) | Workspace isolation per worker — each agent gets its own directory, no write conflicts |
+| [opencode](https://github.com/anomalyco/opencode) | CLI structure and multi-model routing with OpenAI-compatible fallback chains |
+| [crush](https://github.com/charmbracelet/crush) | Terminal UX sensibility and the vxfw-based TUI approach |
 
 
 ---

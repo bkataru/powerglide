@@ -6,20 +6,16 @@
 .date = @date("2026-03-02"),
 ---
 
-Comprehensive guidance for AI agents using powerglide as a tool or building on top of it.
-
-
-## Overview
-
-powerglide is designed to be agent-friendly, with:
-
-- Clear stop signals (`<POWERGLIDE_DONE>`)
-- Structured output formats
-- Reliable exit code capture
-- Session persistence for recovery
-- Configurable safety limits
+This page is for AI agents that use powerglide as a subprocess tool, and for developers building orchestration layers on top of it. The key design properties that make powerglide composable: deterministic terminal signals, structured session state on disk, and configurable safety limits that an orchestrator can set without cooperation from the agent itself.
 
 ## Using powerglide as a Tool
+
+When an AI agent invokes powerglide, it needs to know when the session is done and whether it succeeded. powerglide provides two explicit terminal signals emitted to stdout:
+
+- `<POWERGLIDE_DONE>` — All tasks in the queue were processed. The session ended cleanly.
+- `<POWERGLIDE_ERROR>` — An unrecoverable error occurred. Check the session log for details.
+
+These signals are unambiguous even in a stream of mixed output. Grep for them rather than relying on process exit codes, which can be swallowed by shell wrappers or process managers.
 
 ### Basic Invocation
 
@@ -37,45 +33,43 @@ powerglide run \
   "add unit tests for the authentication module"
 ```
 
-### Expected Output
-
-Agents should parse for:
-
-1. `<POWERGLIDE_DONE>` - Clean completion signal
-2. `<POWERGLIDE_ERROR>` - Error condition
-3. Tool call results in structured format
+Setting `--velocity 2.0` halves the inter-step delay (500ms). This is appropriate when the calling agent is monitoring output and doesn't need time for human review. For unattended long-running tasks, `--velocity 1.0` (the default 1000ms) adds breathing room.
 
 ## Building on powerglide
 
 ### Session Management
 
+Sessions persist to `~/.powerglide/sessions/{id}/` as JSON and JSONL files. Using an explicit `--session-id` lets you resume work across invocations: the session file records which tasks have been completed, so a resumed session picks up where the previous one left off rather than re-executing finished work.
+
 ```bash
-# Create new session
+# Start a session with an explicit ID
 powerglide run --session-id my-session "task 1"
 
-# Continue session
+# Resume the same session — picks up from where task 1 left off
 powerglide run --session-id my-session "task 2"
 
-# List sessions
+# Inspect what sessions exist
 powerglide session list
 ```
 
 ### Swarm Orchestration
 
+For multi-agent workflows, the swarm commands manage the full lifecycle: creation, task assignment, status monitoring, and teardown. The `status` subcommand polls the worker heartbeat files and reports each worker's current loop state — useful for an orchestrating agent that needs to know when all workers are idle before aggregating results.
+
 ```bash
-# Create swarm
+# Create a 3-worker swarm
 powerglide swarm create dev-team --agents 3
 
-# Assign task
+# Assign a task to the swarm — distributed across workers via task-queue.json
 powerglide swarm run dev-team "implement the API layer"
 
-# Monitor progress
+# Poll worker states — reports loop state, steps completed, last heartbeat
 powerglide swarm status dev-team
 ```
 
 ## Tool Interface
 
-All powerglide tools follow a consistent interface:
+All powerglide tools follow a consistent interface. The `parameters` field is a raw JSON Schema string, formatted identically to Claude's tool use API and OpenAI's function calling API, so tool definitions can be forwarded directly to either model family without transformation.
 
 ```zig
 pub const Tool = struct {
@@ -110,18 +104,18 @@ pub const ToolResult = struct {
 
 ### For Agent Developers
 
-1. **Use explicit stop signals** - Emit `<POWERGLIDE_DONE>` when complete
-2. **Respect velocity settings** - Don't bypass rate limits
-3. **Handle errors gracefully** - Use the failed state for recovery
-4. **Log progress** - Write to session files for monitoring
-5. **Honor step limits** - Don't exceed configured max steps
+1. **Emit `<POWERGLIDE_DONE>` explicitly** — The loop checks for this signal; without it, the calling code cannot distinguish a clean exit from a crash. Always emit it when all work is complete.
+2. **Write velocity to the session file for risky operations** — If your agent is about to touch production data or make irreversible changes, write `VELOCITY=0.25` to `~/.config/powerglide/session-<id>.json` first. The orchestrator will slow the loop, giving monitoring systems time to detect and stop the action.
+3. **Use the `failed` state for recovery, not for logging** — The `failed` state triggers retry logic if configured. If you reach it, the failure should be recorded with enough context to determine whether a retry would succeed.
+4. **Write structured progress to the session file** — The `steps_completed` and `last_activity` fields are polled by the monitor. Keeping them updated accurately is how you stay alive past the heartbeat timeout.
+5. **Respect step limits** — A session that approaches `max_steps` without completing its task should report partial progress in its result file rather than silently truncating.
 
 ### For Agent Consumers
 
-1. **Set appropriate limits** - Configure max_steps and timeouts
-2. **Monitor heartbeats** - Watch for stalled sessions
-3. **Use sessions** - Enable recovery from failures
-4. **Review tool calls** - Audit agent actions regularly
+1. **Set `max_steps` to match task scope** — A small refactor might complete in 20 steps; a full feature implementation might need 150. The default 200 is a safety net, not a target.
+2. **Monitor heartbeat age, not just process liveness** — A process can be running but fully stuck inside a hung subprocess. The heartbeat file age is the reliable indicator.
+3. **Always use `--session-id` for recoverable work** — Without an explicit session ID, a crashed session leaves no restart point. Named sessions can be resumed after transient failures.
+4. **Check the session result file before declaring success** — The process exit code alone doesn't tell you whether the task completed. Read `~/.powerglide/sessions/{id}/result.json` for the authoritative outcome.
 
 ## Integration Examples
 
@@ -176,26 +170,33 @@ fn runPowerglide(allocator: std.mem.Allocator, task: []const u8) !void {
 
 ## API Reference
 
-### LoopState (src/agent/loop.zig)
+### LoopState (`src/agent/loop.zig`)
+
+The full 11-state enum. When monitoring a running agent, the `status` field in its session file will contain one of these values as a string.
 
 ```zig
 pub const LoopState = enum {
-    idle,
-    thinking,
-    acting,
-    observing,
-    finished,
-    failed,
+    idle,        // initialized, no task dispatched yet
+    load_tasks,  // reading task queue from disk
+    pick_task,   // selecting and claiming the next task
+    thinking,    // awaiting LLM response
+    tool_call,   // parsing LLM's tool invocation
+    executing,   // running tool subprocess in PTY
+    observing,   // feeding tool output back to LLM
+    verify,      // running validation checks
+    commit,      // writing completion record
+    done,        // all tasks complete, emitting POWERGLIDE_DONE
+    failed,      // unrecoverable error
 };
 ```
 
-### ModelProvider (src/models/router.zig)
+### ModelProvider (`src/models/router.zig`)
 
 ```zig
 pub const ModelProvider = enum {
-    anthropic,
-    openai,
-    openai_compatible,
+    anthropic,          // Anthropic Messages API (Claude)
+    openai,             // OpenAI Chat Completions API
+    openai_compatible,  // Any /v1/chat/completions endpoint — set base_url in config
 };
 ```
 

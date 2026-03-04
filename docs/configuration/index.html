@@ -78,7 +78,7 @@
         <article class="py-12">
             <div class="max-w-4xl mx-auto">
                 <h1 class="text-4xl md:text-5xl font-bold mb-8 text-pg-primary glow-primary">Configuration</h1>
-                <div class="prose prose-invert prose-lg max-w-none"><p>powerglide supports multiple configuration methods with a clear precedence order.</p><h2>Configuration Precedence</h2><p>Configuration loads in the following order (highest to lowest priority):</p><ol><li><strong>Command-line arguments</strong> — Override everything</li><li><strong>Environment variables</strong> — System-wide settings</li><li><strong>Config file</strong> — <code>~/.config/powerglide/config.json</code></li><li><strong>Built-in defaults</strong> — Fallback values</li></ol><h2>Environment Variables</h2><p>Add these to your shell profile (<code>~/.bashrc</code>, <code>~/.zshrc</code>, etc.):</p><pre><code class="bash"><span class="comment"># API Keys</span>
+                <div class="prose prose-invert prose-lg max-w-none"><p>powerglide resolves configuration through four layers in strict precedence order. The design intent is that your persistent preferences live in the config file, system-wide or CI overrides live in environment variables, and per-invocation changes go on the command line — each layer wins over everything below it without clobbering it.</p><h2>Configuration Precedence</h2><p>Configuration loads in the following order (highest to lowest priority):</p><ol><li><strong>Command-line arguments</strong> — Override everything. Useful for one-off sessions without touching persistent config.</li><li><strong>Environment variables</strong> — System-wide settings, shared across all sessions. The natural home for API keys.</li><li><strong>Config file</strong> — <code>~/.config/powerglide/config.json</code> — User preferences that persist across sessions.</li><li><strong>Built-in defaults</strong> — Fallback values when nothing else specifies a setting.</li></ol><h2>Environment Variables</h2><p>API keys belong here rather than in the config file — environment variables don’t get accidentally committed to version control, and they’re easy to rotate per-machine or per-CI-job without touching a shared config. Add to your shell profile (<code>~/.bashrc</code>, <code>~/.zshrc</code>, etc.):</p><pre><code class="bash"><span class="comment"># API Keys</span>
 <span class="keyword">export</span> <span class="property">ANTHROPIC_API_KEY</span>=<span class="string">&quot;sk-ant-...&quot;</span>
 <span class="keyword">export</span> <span class="property">OPENAI_API_KEY</span>=<span class="string">&quot;sk-...&quot;</span>
 
@@ -87,7 +87,7 @@
 <span class="keyword">export</span> <span class="property">POWERGLIDE_VELOCITY</span>=<span class="string">&quot;1.0&quot;</span>
 <span class="keyword">export</span> <span class="property">POWERGLIDE_MAX_STEPS</span>=<span class="string">&quot;200&quot;</span>
 </code></pre>
-<h3>Available Variables</h3><table><tr><th>Variable</th><th>Type</th><th>Default</th><th>Description</th></tr><tr><td><code>ANTHROPIC_API_KEY</code></td><td>string</td><td>-</td><td>Anthropic API key</td></tr><tr><td><code>OPENAI_API_KEY</code></td><td>string</td><td>-</td><td>OpenAI-compatible API key</td></tr><tr><td><code>POWERGLIDE_MODEL</code></td><td>string</td><td><code>claude-sonnet-4</code></td><td>Default model</td></tr><tr><td><code>POWERGLIDE_VELOCITY</code></td><td>float</td><td><code>1.0</code></td><td>Velocity multiplier</td></tr><tr><td><code>POWERGLIDE_MAX_STEPS</code></td><td>integer</td><td><code>200</code></td><td>Max steps per session</td></tr><tr><td><code>POWERGLIDE_CONFIG_DIR</code></td><td>string</td><td><code>~/.config/powerglide</code></td><td>Config directory</td></tr></table><h2>Config File</h2><p>Location: <code>~/.config/powerglide/config.json</code></p><pre><code class="json">{
+<h3>Available Variables</h3><table><tr><th>Variable</th><th>Type</th><th>Default</th><th>Description</th></tr><tr><td><code>ANTHROPIC_API_KEY</code></td><td>string</td><td>-</td><td>Anthropic API key</td></tr><tr><td><code>OPENAI_API_KEY</code></td><td>string</td><td>-</td><td>OpenAI-compatible API key</td></tr><tr><td><code>POWERGLIDE_MODEL</code></td><td>string</td><td><code>claude-sonnet-4</code></td><td>Default model</td></tr><tr><td><code>POWERGLIDE_VELOCITY</code></td><td>float</td><td><code>1.0</code></td><td>Velocity multiplier</td></tr><tr><td><code>POWERGLIDE_MAX_STEPS</code></td><td>integer</td><td><code>200</code></td><td>Max steps per session</td></tr><tr><td><code>POWERGLIDE_CONFIG_DIR</code></td><td>string</td><td><code>~/.config/powerglide</code></td><td>Config directory</td></tr></table><h2>Config File</h2><p>The config file is the right home for preferences that should persist: your default agent, velocity, model provider, and safety limits. It’s read on every invocation and merged with the layers above it.</p><p>Location: <code>~/.config/powerglide/config.json</code></p><pre><code class="json">{
   <span class="string_special_key string">&quot;default_agent&quot;</span>: <span class="string">&quot;hephaestus&quot;</span>,
   <span class="string_special_key string">&quot;velocity&quot;</span>: <span class="number">1.0</span>,
   <span class="string_special_key string">&quot;max_steps&quot;</span>: <span class="number">200</span>,
@@ -132,7 +132,7 @@
   }
 }
 </code></pre>
-<h2>Session Configuration</h2><pre><code class="json">{
+<h2>Session Configuration</h2><p>Each running session writes its own JSON file at <code>~/.config/powerglide/session-&lt;id&gt;.json</code>. This file serves two purposes: it’s the authoritative record of the session’s current state, and it’s the mechanism through which agents self-adjust velocity mid-session. The orchestrator polls it on each loop iteration.</p><pre><code class="json">{
   <span class="string_special_key string">&quot;id&quot;</span>: <span class="string">&quot;abc123&quot;</span>,
   <span class="string_special_key string">&quot;agent&quot;</span>: <span class="string">&quot;hephaestus&quot;</span>,
   <span class="string_special_key string">&quot;velocity&quot;</span>: <span class="number">1.5</span>,
@@ -143,7 +143,7 @@
   <span class="string_special_key string">&quot;status&quot;</span>: <span class="string">&quot;active&quot;</span>
 }
 </code></pre>
-<h2>Model Providers</h2><h3>Anthropic (Claude)</h3><pre><code class="bash"><span class="keyword">export</span> <span class="property">ANTHROPIC_API_KEY</span>=<span class="string">&quot;sk-ant-...&quot;</span>
+<p><code>steps_completed</code> is how the step-limit safety check tracks progress. <code>last_activity</code> is updated on each loop iteration and is what the heartbeat monitor compares against <code>heartbeat_timeout</code> to detect stalled sessions.</p><h2>Model Providers</h2><p>powerglide supports three provider modes. Anthropic and OpenAI use their respective native APIs; <code>openai_compatible</code> uses the same OpenAI request format but with a configurable <code>base_url</code>, which means any endpoint that speaks <code>/v1/chat/completions</code> — Ollama, NVIDIA NIM, Together AI, LM Studio, vLLM — works without any code changes.</p><h3>Anthropic (Claude)</h3><pre><code class="bash"><span class="keyword">export</span> <span class="property">ANTHROPIC_API_KEY</span>=<span class="string">&quot;sk-ant-...&quot;</span>
 <span class="keyword">export</span> <span class="property">POWERGLIDE_MODEL</span>=<span class="string">&quot;claude-opus-4-6&quot;</span>
 </code></pre>
 <h3>OpenAI</h3><pre><code class="bash"><span class="keyword">export</span> <span class="property">OPENAI_API_KEY</span>=<span class="string">&quot;sk-...&quot;</span>
@@ -161,7 +161,7 @@
   }
 <span class="constant function">}</span>
 </code></pre>
-<h2>Tool Configuration</h2><h3>Bash Tool</h3><pre><code class="json">{
+<h2>Tool Configuration</h2><p>Tool-specific configuration limits the blast radius of individual tool calls. The bash tool’s <code>timeout</code> prevents a hung subprocess from blocking the loop indefinitely; <code>max_output</code> prevents a verbose command from flooding the model’s context window. <code>blocked_commands</code> is a pattern list applied before execution — a last-resort guardrail against obviously dangerous invocations.</p><h3>Bash Tool</h3><pre><code class="json">{
   <span class="string_special_key string">&quot;tools&quot;</span>: {
     <span class="string_special_key string">&quot;bash&quot;</span>: {
       <span class="string_special_key string">&quot;timeout&quot;</span>: <span class="number">30000</span>,
@@ -182,7 +182,7 @@
   }
 }
 </code></pre>
-<h2>Rogue Prevention</h2><p>Configure safety limits:</p><pre><code class="json">{
+<h2>Rogue Prevention</h2><p>The rogue prevention settings form a layered safety net. No single mechanism catches every failure mode, so powerglide uses several independent checks that operate simultaneously.</p><pre><code class="json">{
   <span class="string_special_key string">&quot;rogue_prevention&quot;</span>: {
     <span class="string_special_key string">&quot;step_limit&quot;</span>: <span class="number">200</span>,
     <span class="string_special_key string">&quot;heartbeat_timeout&quot;</span>: <span class="number">30000</span>,
@@ -194,7 +194,7 @@
   }
 }
 </code></pre>
-<h2>Editing Configuration</h2><p>Use the CLI to manage configuration:</p><pre><code class="bash"><span class="comment"># Show current config</span>
+<ul><li><strong><code>step_limit</code></strong> — Hard ceiling on loop iterations. An agent making one tool call per step hits this at 200 tool calls. Raise it for large tasks; lower it for exploratory runs you want to review.</li><li><strong><code>heartbeat_timeout</code></strong> — Milliseconds since <code>last_activity</code> before the monitor considers a worker stalled. 30s is conservative; a hung subprocess would miss this quickly.</li><li><strong><code>circuit_breaker_threshold</code></strong> — If the same tool is called with identical arguments N times in a row, the loop is definitionally stuck. 3 repetitions is usually enough signal.</li><li><strong><code>budget.max_tokens</code></strong> — Aggregate token count across the session. Useful for preventing runaway cost on tasks that unexpectedly expand in scope.</li><li><strong><code>budget.max_cost_usd</code></strong> — Estimated USD cost ceiling. The router tracks approximate cost per model based on published token pricing.</li></ul><h2>Editing Configuration</h2><p>Use the CLI to manage configuration:</p><pre><code class="bash"><span class="comment"># Show current config</span>
 <span class="constant function">powerglide</span> <span class="constant">config</span> <span class="constant">show</span>
 
 <span class="comment"># Set a value</span>

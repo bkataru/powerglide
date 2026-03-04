@@ -6,8 +6,7 @@
 .date = @date("2026-03-02"),
 ---
 
-Complete reference for all powerglide commands and options.
-
+Complete reference for every powerglide command, subcommand, and flag. For conceptual explanations of what these do and why, see the <a href="/powerglide/features/">Features</a> and <a href="/powerglide/architecture/">Architecture</a> pages.
 
 ## Main Command
 
@@ -33,34 +32,38 @@ Run 'powerglide [command] --help' for command-specific help.
 
 ## powerglide run
 
-Launch an agent coding session.
+Launch an agent coding session. The agent runs the Ralph Loop until all tasks are complete, the step limit is hit, or an unrecoverable error occurs.
 
 ```
 USAGE:
     powerglide run [options] [message]
 
 OPTIONS:
-    --agent, -a <name>      Agent to use (default: hephaestus)
-    --velocity, -v <ms>     Delay between steps in ms (default: 500)
-    --session-id, -s <id>   Resume or create session with given ID
-    --model, -m <model>     Model override (e.g. claude-opus-4-6)
+    --agent, -a <name>      Agent configuration to use (default: hephaestus)
+    --velocity, -v <mult>   Velocity multiplier — delay = 1000ms / velocity (default: 1.0)
+    --session-id, -s <id>   Resume or create a named session for recovery
+    --model, -m <model>     Override the configured model (e.g. claude-opus-4-6)
     --help, -h              Show this help
 ```
 
 ### Examples
 
 ```bash
-# Basic run
-powerglide run "refactor this function"
+# Basic session
+powerglide run "refactor this function to be more idiomatic Zig"
 
-# With specific agent
-powerglide run --agent hephaestus "add tests"
+# Use a specific agent configuration
+powerglide run --agent hephaestus "add unit tests for the auth module"
 
-# With velocity control
+# Fast mode — 500ms between steps (velocity=2.0 → 1000ms/2.0)
 powerglide run --velocity 2.0 "quick fix"
 
-# Resume session
-powerglide run --session-id abc123 "continue"
+# Slow mode — 2000ms between steps, easier to monitor manually
+powerglide run --velocity 0.5 "refactor with careful review"
+
+# Named session — can be resumed after a crash or interruption
+powerglide run --session-id feature-auth "implement OAuth2 flow"
+powerglide run --session-id feature-auth "continue"
 ```
 
 ## powerglide session
@@ -243,18 +246,18 @@ OPTIONS:
 
 ## powerglide doctor
 
-Run system health checks.
+Run system health checks before starting a session. Surfaces configuration and dependency issues before any tokens are spent.
 
 ```
 USAGE:
     powerglide doctor
 
 Checks:
-    - zig              Version and PATH
-    - oh-my-opencode   npx availability
-    - git              Version
-    - API keys         ANTHROPIC_API_KEY, OPENAI_API_KEY
-    - Config dir       ~/.config/powerglide/
+    - zig              Version and PATH availability
+    - oh-my-opencode   npx availability for omo-style agents
+    - git              Version (required for commit-phase operations)
+    - API keys         ANTHROPIC_API_KEY, OPENAI_API_KEY presence in environment
+    - Config dir       ~/.config/powerglide/ structure and permissions
 ```
 
 ### Example Output

@@ -6,7 +6,9 @@
 .date = @date("2026-03-02"),
 ---
 
-powerglide is built in [Zig 0.15.2](https://ziglang.org/) with a modular architecture designed for reliability and performance.
+powerglide is written in [Zig 0.15.2](https://ziglang.org/) and compiles to a single static binary with zero runtime dependencies. The design prioritizes explicitness over abstraction: every subsystem has a clearly defined boundary, every failure mode has a named path, and nothing happens implicitly.
+
+The codebase is organized into eight modules, each owning a distinct concern. The two rows in the diagram below reflect a natural layering — the top row handles agent cognition and I/O; the bottom row handles configuration, tooling, presentation, and coordination.
 
 ## Module Structure
 
@@ -137,9 +139,25 @@ powerglide is built in [Zig 0.15.2](https://ziglang.org/) with a modular archite
 </svg>
 ```
 
+**`agent/`** — The cognitive core. `loop.zig` implements the Ralph Loop state machine; `session.zig` persists session state as JSON; `manager.zig` handles agent configuration (name, model, velocity, step limit).
+
+**`terminal/`** — Everything below the shell. `pty.zig` allocates pseudoterminals and spawns child processes; `exit_code.zig` captures exit codes reliably via `waitpid` + `/proc` fallback; `session.zig` and `pool.zig` manage multiple concurrent terminal sessions.
+
+**`models/`** — The LLM boundary. `http.zig` is a minimal HTTP client for the model APIs; `anthropic.zig` and `openai.zig` implement their respective request/response formats; `router.zig` selects providers and applies fallback chains; `stream.zig` parses SSE token streams.
+
+**`memory/`** — Session context. `store.zig` appends to and reads from JSONL memory files; `context.zig` applies windowing and summarization before building the LLM message list.
+
+**`config/`** — Layered configuration. `config.zig` merges CLI args, environment variables, and the JSON config file into a single resolved `Config` struct.
+
+**`tools/`** — The agent's hands. `tool.zig` defines the `Tool` interface (name, schema, execute function); `registry.zig` is a `StringHashMap<Tool>` that dispatches tool calls by name.
+
+**`tui/`** — The multi-agent dashboard. `app.zig` implements a `vxfw`-based terminal UI showing live agent states, log streams, and task progress across all workers simultaneously.
+
+**`orchestrator/`** — Multi-agent coordination. `worker.zig` spawns and manages individual agent processes; `monitor.zig` polls heartbeat files and kills rogue workers; `swarm.zig` is the top-level coordinator that owns the task queue and aggregates results.
+
 ## The Ralph Loop
 
-The **Ralph Loop** sits at the heart of powerglide, a state machine that drives every agent session:
+The **Ralph Loop** is the central control structure of every powerglide agent session. Named after the ralph loop pattern from the AI agent community, it enforces a rigid discipline on what the agent is allowed to do and when. Rather than giving the LLM an open-ended "think and act until you're done" prompt and hoping for the best, the loop sequences execution through 11 explicitly named states — each with a defined entry condition and a defined exit transition.
 
 ```zig
 pub const LoopState = enum {
@@ -156,6 +174,8 @@ pub const LoopState = enum {
     failed,
 };
 ```
+
+The separation between `tool_call`, `executing`, and `observing` is deliberate: `tool_call` parses the LLM's intent; `executing` runs the actual subprocess; `observing` feeds results back. These could be collapsed into one state, but keeping them distinct makes the loop auditable — you can attach logging or rate limiting to any individual transition without touching the others. The `verify` and `commit` pair similarly: validation is a separate concern from persistence, and failing verification should not advance the task to complete.
 
 ### State Transitions
 
@@ -246,7 +266,7 @@ pub const LoopState = enum {
 </svg>
 ```
 
-The loop emits `<POWERGLIDE_DONE>` when all tasks complete.
+The loop emits `<POWERGLIDE_DONE>` when `LOAD_TASKS` finds an empty queue — meaning every task has been completed or failed. This is a hard protocol contract: any code that spawns a powerglide agent can `grep` for this signal rather than relying on process exit codes, which are unreliable across shells and process managers. `<POWERGLIDE_ERROR>` is the corresponding signal for unrecoverable failure.
 
 ## Multi-Agent Swarm Architecture
 
@@ -343,39 +363,43 @@ The loop emits `<POWERGLIDE_DONE>` when all tasks complete.
 </svg>
 ```
 
-Inter-agent communication happens through files at `~/.powerglide/teams/{team-id}/messages/`.
+Inter-agent communication is entirely file-based. Workers read from `~/.powerglide/teams/{id}/task-queue.json` to claim tasks and write results to `~/.powerglide/teams/{id}/worker-{n}.json`. The orchestrator reads those result files to aggregate output. There is no IPC socket, no shared memory segment, no message broker.
+
+This is a deliberate design choice. Files are observable with standard tools (`cat`, `jq`, `tail -f`), restartable after a crash without replaying messages, and version-controllable if you want an audit trail. The cost is that task claiming requires careful atomic file writes to avoid races — but that complexity is isolated to a single function in `swarm.zig`, not spread across the system.
 
 ## Rogue Agent Prevention
 
-powerglide prevents runaway agents through multiple layers:
+Agents get stuck. This is not a hypothetical — it happens when an LLM loops on a failing tool call, when a subprocess hangs waiting for input that never comes, or when a rate limit causes a retry loop that never backs off. powerglide's safety layer is defense in depth: multiple independent mechanisms, each catching a different failure mode.
 
 | Mechanism | Default | Description |
 |-----------|---------|-------------|
-| Step limit | 200 | Kill after N steps regardless |
-| Heartbeat | 30s | Worker must write heartbeat; monitor kills if missed |
-| Circuit breaker | 3 repeats | Kill if same tool called with same args 3+ times |
-| Budget tracking | configurable | Stop if token/cost budget exceeded |
-| Explicit done signal | required | Agent must emit `POWERGLIDE_DONE` to terminate cleanly |
+| Step limit | 200 | Hard kill after N loop iterations — catches agents that make progress per-step but never converge |
+| Heartbeat | 30s | Worker must write a timestamp to its heartbeat file; monitor SIGKILLs any worker that misses a beat |
+| Circuit breaker | 3 repeats | Identical tool name + identical arguments 3 times in a row is definitionally a loop — terminate it |
+| Budget tracking | configurable | Token count and estimated USD cost are tracked per-session; the loop halts before exceeding the configured ceiling |
+| Explicit done signal | required | An agent that exits without emitting `<POWERGLIDE_DONE>` is treated as a crash, not a completion |
+
+The step limit and heartbeat operate independently. A step-limited agent terminates even if its heartbeat is healthy. A heartbeat-failed agent is killed even if it hasn't hit its step limit. Neither mechanism depends on the agent's cooperation.
 
 ## Velocity Control
 
-Velocity controls how fast the Ralph Loop progresses:
+Velocity is a multiplier on a 1000ms base delay: `delay_ms = 1000 / velocity`. At the default `1.0`, the loop pauses 1000ms between iterations. At `2.0` it's 500ms; at `0.5` it's 2000ms.
 
 ```bash
-powerglide run --velocity 2.0  # 2x speed: 500ms between steps
-powerglide run --velocity 0.5  # 0.5x speed: 2000ms between steps
+powerglide run --velocity 2.0  # 500ms between steps — maximum throughput
+powerglide run --velocity 0.5  # 2000ms between steps — slow enough to review each action
 ```
 
-Agents self-adjust velocity by writing `VELOCITY=<value>` to their session config file at `~/.config/powerglide/session-<id>.json`. The orchestrator polls this file every N steps.
+The velocity-via-file mechanism enables a pattern that wouldn't be possible with a purely external control: **agents can throttle themselves**. An agent reasoning about a risky filesystem operation can write `VELOCITY=0.25` to `~/.config/powerglide/session-<id>.json`, slowing to 4000ms between steps. The orchestrator polls this file on each loop iteration and applies the new value without any external coordination.
 
 ## Configuration Loading
 
-Configuration loads in order of precedence:
+Configuration resolves through four layers, applied in strict precedence order:
 
-1. Command-line arguments (highest priority)
-2. Environment variables
-3. `~/.config/powerglide/config.json`
-4. Built-in defaults (lowest priority)
+1. **Command-line arguments** — Highest priority. Always wins. Useful for one-off overrides.
+2. **Environment variables** — System-wide settings. Shared across all sessions on the machine.
+3. **`~/.config/powerglide/config.json`** — User configuration. Persistent across invocations.
+4. **Built-in defaults** — Lowest priority. The fallback when nothing else specifies a value.
 
 ```zig
 const config = Config.load(.{
@@ -385,18 +409,21 @@ const config = Config.load(.{
 });
 ```
 
+This ordering means you can set a conservative default velocity in your config file, override it to fast for quick tasks via environment variable, and override both with `--velocity` on the command line for a specific session — without any of those layers clobbering the others.
+
 ## Tool Interface
 
-All tools implement a common interface:
+Every tool in powerglide's registry implements the same three-field struct: a name the LLM uses to invoke it, a JSON schema string the LLM uses to understand its parameters, and an execute function that takes raw argument bytes and returns a `ToolResult`.
 
 ```zig
 pub const Tool = struct {
     name: []const u8,
     description: []const u8,
     parameters: ?[]const u8 = null,
-    
+
     pub fn execute(self: *Tool, args: []const u8) !ToolResult {
-        // Implementation
+        _ = self;
+        // parse args as JSON, execute, return result
     }
 };
 
@@ -406,6 +433,8 @@ pub const ToolResult = struct {
     err: ?[]const u8 = null,
 };
 ```
+
+The `parameters` field is a raw JSON Schema string — the same format used by Claude's tool use API and the OpenAI function calling API. This means the tool definitions can be forwarded directly to the model without transformation. The TOOL_CALL state passes the schema to the LLM in the system prompt; the model returns a tool name and argument payload; `registry.zig` looks up the handler by name and dispatches. The entire path from LLM response to tool execution is four lines of code.
 
 ---
 

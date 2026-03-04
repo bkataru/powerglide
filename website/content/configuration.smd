@@ -6,21 +6,20 @@
 .date = @date("2026-03-02"),
 ---
 
-powerglide supports multiple configuration methods with a clear precedence order.
-
+powerglide resolves configuration through four layers in strict precedence order. The design intent is that your persistent preferences live in the config file, system-wide or CI overrides live in environment variables, and per-invocation changes go on the command line — each layer wins over everything below it without clobbering it.
 
 ## Configuration Precedence
 
 Configuration loads in the following order (highest to lowest priority):
 
-1. **Command-line arguments** — Override everything
-2. **Environment variables** — System-wide settings
-3. **Config file** — `~/.config/powerglide/config.json`
-4. **Built-in defaults** — Fallback values
+1. **Command-line arguments** — Override everything. Useful for one-off sessions without touching persistent config.
+2. **Environment variables** — System-wide settings, shared across all sessions. The natural home for API keys.
+3. **Config file** — `~/.config/powerglide/config.json` — User preferences that persist across sessions.
+4. **Built-in defaults** — Fallback values when nothing else specifies a setting.
 
 ## Environment Variables
 
-Add these to your shell profile (`~/.bashrc`, `~/.zshrc`, etc.):
+API keys belong here rather than in the config file — environment variables don't get accidentally committed to version control, and they're easy to rotate per-machine or per-CI-job without touching a shared config. Add to your shell profile (`~/.bashrc`, `~/.zshrc`, etc.):
 
 ```bash
 # API Keys
@@ -45,6 +44,8 @@ export POWERGLIDE_MAX_STEPS="200"
 | `POWERGLIDE_CONFIG_DIR` | string | `~/.config/powerglide` | Config directory |
 
 ## Config File
+
+The config file is the right home for preferences that should persist: your default agent, velocity, model provider, and safety limits. It's read on every invocation and merged with the layers above it.
 
 Location: `~/.config/powerglide/config.json`
 
@@ -100,6 +101,9 @@ Location: `~/.config/powerglide/config.json`
 ```
 
 ## Session Configuration
+
+Each running session writes its own JSON file at `~/.config/powerglide/session-<id>.json`. This file serves two purposes: it's the authoritative record of the session's current state, and it's the mechanism through which agents self-adjust velocity mid-session. The orchestrator polls it on each loop iteration.
+
 ```json
 {
   "id": "abc123",
@@ -113,7 +117,11 @@ Location: `~/.config/powerglide/config.json`
 }
 ```
 
+`steps_completed` is how the step-limit safety check tracks progress. `last_activity` is updated on each loop iteration and is what the heartbeat monitor compares against `heartbeat_timeout` to detect stalled sessions.
+
 ## Model Providers
+
+powerglide supports three provider modes. Anthropic and OpenAI use their respective native APIs; `openai_compatible` uses the same OpenAI request format but with a configurable `base_url`, which means any endpoint that speaks `/v1/chat/completions` — Ollama, NVIDIA NIM, Together AI, LM Studio, vLLM — works without any code changes.
 
 ### Anthropic (Claude)
 
@@ -147,6 +155,8 @@ export POWERGLIDE_MODEL="ollama/llama3"
 
 ## Tool Configuration
 
+Tool-specific configuration limits the blast radius of individual tool calls. The bash tool's `timeout` prevents a hung subprocess from blocking the loop indefinitely; `max_output` prevents a verbose command from flooding the model's context window. `blocked_commands` is a pattern list applied before execution — a last-resort guardrail against obviously dangerous invocations.
+
 ### Bash Tool
 
 ```json
@@ -178,7 +188,7 @@ export POWERGLIDE_MODEL="ollama/llama3"
 
 ## Rogue Prevention
 
-Configure safety limits:
+The rogue prevention settings form a layered safety net. No single mechanism catches every failure mode, so powerglide uses several independent checks that operate simultaneously.
 
 ```json
 {
@@ -193,6 +203,12 @@ Configure safety limits:
   }
 }
 ```
+
+- **`step_limit`** — Hard ceiling on loop iterations. An agent making one tool call per step hits this at 200 tool calls. Raise it for large tasks; lower it for exploratory runs you want to review.
+- **`heartbeat_timeout`** — Milliseconds since `last_activity` before the monitor considers a worker stalled. 30s is conservative; a hung subprocess would miss this quickly.
+- **`circuit_breaker_threshold`** — If the same tool is called with identical arguments N times in a row, the loop is definitionally stuck. 3 repetitions is usually enough signal.
+- **`budget.max_tokens`** — Aggregate token count across the session. Useful for preventing runaway cost on tasks that unexpectedly expand in scope.
+- **`budget.max_cost_usd`** — Estimated USD cost ceiling. The router tracks approximate cost per model based on published token pricing.
 
 ## Editing Configuration
 
