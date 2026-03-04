@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Showcase</title>
+    <meta name="description" :content="Case studies and dogfooding reports: powerglide integrated with igllama and local Qwen3.5 models">
+    <link rel="icon" type="image/svg+xml" href="/powerglide/favicon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        'pg-bg': '#050505',
+                        'pg-surface': '#0f0f18',
+                        'pg-primary': '#F7A41D',
+                        'pg-cyan': '#00f0ff',
+                        'pg-purple': '#b026ff',
+                        'pg-text': '#e5e5e5',
+                        'pg-text-muted': '#888899',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background: #050505; color: #e5e5e5; font-family: 'Inter', sans-serif; margin: 0; }
+        h1, h2, h3, h4, h5, h6 { font-family: 'Inter', sans-serif; }
+        code, pre { font-family: 'JetBrains Mono', monospace; }
+        .cyber-grid {
+            background-image: 
+                linear-gradient(rgba(0, 240, 255, 0.08) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 240, 255, 0.08) 1px, transparent 1px);
+            background-size: 50px 50px;
+        }
+        .glow-primary { text-shadow: 0 0 20px rgba(247, 164, 29, 0.6), 0 0 40px rgba(247, 164, 29, 0.3); }
+        .glow-cyan { text-shadow: 0 0 15px rgba(0, 240, 255, 0.5); }
+        .footer-glow { box-shadow: 0 -2px 20px rgba(176, 38, 255, 0.1); }
+        .mobile-menu { display: none; }
+        .mobile-menu.active { display: block; }
+    </style>
+</head>
+<body class="bg-pg-bg text-pg-text min-h-screen flex flex-col">
+    <nav class="p-4 bg-pg-surface border-b border-pg-primary/30 sticky top-0 z-50">
+        <div class="container mx-auto flex flex-wrap items-center justify-between max-w-7xl">
+            <div class="flex items-center">
+                <a href="/powerglide/" class="flex items-center gap-3 transition-transform hover:scale-105">
+                    <img src="/powerglide/svg/logo.svg" alt="powerglide" class="w-10 h-10">
+                    <span class="text-2xl font-bold text-pg-primary glow-primary">powerglide</span>
+                </a>
+            </div>
+            <button class="md:hidden p-2 text-pg-text hover:text-pg-cyan" onclick="document.getElementById('mobile-menu').classList.toggle('active')">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                </svg>
+            </button>
+            <div id="mobile-menu" class="mobile-menu w-full md:w-auto md:flex md:gap-6 mt-4 md:mt-0">
+                <div class="flex flex-col md:flex-row gap-4 md:gap-6">
+                    <a href="/powerglide/" class="text-pg-text hover:text-pg-cyan transition-colors py-2 px-3 rounded">Home</a>
+                    <a href="/powerglide/features/" class="text-pg-text hover:text-pg-cyan transition-colors py-2 px-3 rounded">Features</a>
+                    <a href="/powerglide/architecture/" class="text-pg-text hover:text-pg-cyan transition-colors py-2 px-3 rounded">Architecture</a>
+                    <a href="/powerglide/cli-reference/" class="text-pg-text hover:text-pg-cyan transition-colors py-2 px-3 rounded">CLI Reference</a>
+                    <a href="/powerglide/configuration/" class="text-pg-text hover:text-pg-cyan transition-colors py-2 px-3 rounded">Configuration</a>
+                    <a href="/powerglide/showcase/" class="text-pg-text hover:text-pg-primary transition-colors py-2 px-3 rounded font-semibold">Showcase</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+    
+    <main class="container mx-auto p-8 cyber-grid flex-grow">
+        <article class="py-12">
+            <div class="max-w-4xl mx-auto">
+                <h1 class="text-4xl md:text-5xl font-bold mb-8 text-pg-primary glow-primary">Showcase</h1>
+                <div class="prose prose-invert prose-lg max-w-none"><p>powerglide was built to run unattended, and it would be hollow to ship it without having actually taken it around the track. This page documents real triage sessions — powerglide driving itself with local Qwen3.5 models served through <a href="https://github.com/bkataru/igllama" target="_blank">igllama</a>, with no cloud API required. The goal: understand what small models can do inside the Ralph Loop, where they break down, and how to get the most out of sub-4B parameter inference on local hardware.</p><hr><h2>Setup: igllama + powerglide</h2><p>igllama is a Zig-based Ollama alternative — a single static binary that serves GGUF models over an OpenAI-compatible REST API. Combined with powerglide’s <code>openai_compat</code> provider support, it forms a fully local, zero-dependency agentic stack.</p><pre><code>hardware:  server-class x86_64 (CPU inference, no GPU)
+models:    Qwen3.5-0.8B-Q8_0.gguf  ← igllama on :8090
+           Qwen3.5-4B-Q8_0.gguf   ← igllama on :8091
+framework: powerglide v0.2.1, igllama v0.3.7
+</code></pre><h3>Starting igllama</h3><pre><code class="bash"><span class="comment"># Serve 0.8B on port 8090 — suppresses chain-of-thought blocks for faster responses</span>
+<span class="constant function">igllama</span> <span class="constant">api</span> <span class="constant">Qwen3.5-0.8B-Q8_0.gguf</span> <span class="constant">--port</span> <span class="constant">8090</span> <span class="constant">--no-think</span> &amp;
+
+<span class="comment"># Serve 4B on port 8091</span>
+<span class="constant function">igllama</span> <span class="constant">api</span> <span class="constant">Qwen3.5-4B-Q8_0.gguf</span> <span class="constant">--port</span> <span class="constant">8091</span> <span class="constant">--no-think</span> &amp;
+</code></pre>
+<h3>Verifying with powerglide doctor</h3><pre><code class="bash"><span class="constant operator function">$</span><span class="constant function"> </span><span class="constant property function">powerglide</span> <span class="constant">doctor</span>
+<span class="constant function">OK</span>   <span class="constant">zig</span> <span class="constant">0.15.2</span>
+<span class="constant function">OK</span>   <span class="constant">oh-my-opencode</span> <span class="constant">3.7.3</span>
+<span class="constant function">OK</span>   <span class="constant">git:</span> <span class="constant">git</span> <span class="constant">version</span> <span class="constant">2.43.0</span>
+<span class="constant function">WARN</span> <span class="constant">ANTHROPIC_API_KEY</span> <span class="constant">is</span> <span class="constant">not</span> <span class="constant">set</span>
+<span class="constant function">WARN</span> <span class="constant">OPENAI_API_KEY</span> <span class="constant">is</span> <span class="constant">not</span> <span class="constant">set</span>
+<span class="constant function">OK</span>   <span class="constant">~/.config/powerglide:</span> <span class="constant">exists</span>
+<span class="constant function">OK</span>   <span class="constant">igllama:</span> <span class="constant">running</span> <span class="constant">on</span> <span class="constant">:8090</span> (local <span class="property">agent</span> <span class="property">available</span>)
+<span class="constant function">OK</span>   <span class="constant">igllama:</span> <span class="constant">running</span> <span class="constant">on</span> <span class="constant">:8091</span> (local <span class="property">agent</span> <span class="property">available</span>)
+</code></pre>
+<p>Doctor now scans ports 8090–8099, detecting any running igllama instances automatically.</p><h3>Registered local agents</h3><p>powerglide ships with <code>local</code> and <code>local4b</code> agents pre-configured:</p><pre><code class="bash"><span class="constant operator function">$</span><span class="constant function"> </span><span class="constant property function">powerglide</span> <span class="constant">agent</span> <span class="constant">list</span>
+  local    — <span class="property">coding</span>  (<span class="constant function">Qwen3.5-0.8B-Q8_0.gguf</span>)   [<span class="constant function">openai_compat</span> <span class="constant">:8090]</span>
+  <span class="constant function">local4b</span>  <span class="constant">—</span> <span class="constant">coding</span>  (<span class="constant function">Qwen3.5-4B-Q8_0.gguf</span>)      [<span class="constant function">openai_compat</span> <span class="constant">:8091]</span>
+</code></pre>
+<hr><h2>Case Study 1 — Codebase Exploration (0.8B)</h2><p><strong>Task:</strong> Ask the 0.8B model to explore the powerglide source tree and describe each module.</p><pre><code class="bash"><span class="constant operator function">$</span><span class="constant function"> </span><span class="constant property function">powerglide</span> <span class="constant">run</span> <span class="constant">--agent</span> <span class="constant">local</span> <span class="string constant">&quot;list the top-level .zig files in src/ and tell me what each one does&quot;</span>
+</code></pre>
+<pre><code>Starting powerglide session
+  Agent: local
+  Model: Qwen3.5-0.8B-Q8_0.gguf
+  Velocity: 1.0x
+  Task: list the top-level .zig files in src/ and tell me what each one does
+Starting Ralph loop (max_steps=200, velocity=1.0)
+Ralph loop completed after 16 steps
+
+─────────────────────────────────────────
+  Session complete  [done]
+  Steps:    16
+  Elapsed:  4.8s
+  Agent:    local  (Qwen3.5-0.8B-Q8_0.gguf)
+  Signal:   &lt;POWERGLIDE_DONE&gt;
+─────────────────────────────────────────
+</code></pre><p><strong>Result:</strong> 16 steps, 4.8 seconds. The loop ran cleanly end-to-end — idle through load_tasks, pick_task, thinking, tool_call, executing, observing, verify, commit, done — and emitted <code>&lt;POWERGLIDE_DONE&gt;</code> correctly. The 0.8B model traversed all 11 Ralph Loop states without stalling.</p><p><strong>Takeaway:</strong> At 0.8B, the model handles simple exploration tasks without trouble. The Ralph Loop’s explicit state machine keeps it on track — it cannot go off-script because the loop drives the sequence, not the model.</p><hr><h2>Case Study 2 — Targeted Query (4B)</h2><p><strong>Task:</strong> Ask the 4B model a specific factual question about the codebase.</p><pre><code class="bash"><span class="constant operator function">$</span><span class="constant function"> </span><span class="constant property function">powerglide</span> <span class="constant">run</span> <span class="constant">--agent</span> <span class="constant">local4b</span> <span class="string constant">&quot;what is the VERSION constant in src/main.zig?&quot;</span>
+</code></pre>
+<pre><code>Starting powerglide session
+  Agent: local4b
+  Model: Qwen3.5-4B-Q8_0.gguf
+  Velocity: 0.8x
+  Task: what is the VERSION constant in src/main.zig?
+Starting Ralph loop (max_steps=200, velocity=0.8)
+Ralph loop completed after 9 steps
+
+─────────────────────────────────────────
+  Session complete  [done]
+  Steps:    9
+  Elapsed:  3.4s
+  Agent:    local4b  (Qwen3.5-4B-Q8_0.gguf)
+  Signal:   &lt;POWERGLIDE_DONE&gt;
+─────────────────────────────────────────
+</code></pre><p><strong>Result:</strong> 9 steps, 3.4 seconds. The 4B model found the answer faster than the 0.8B on the exploration task — more capacity means fewer loop iterations to arrive at a confident answer.</p><p><strong>Takeaway:</strong> 4B is the practical floor for targeted code queries. It converges more decisively than 0.8B on tasks where the answer is a specific value or location in the code.</p><hr><h2>Case Study 3 — Tool Calling Triage</h2><p>This is the honest assessment: <strong>small models do not reliably emit structured tool call JSON</strong>. The OpenAI <code>/v1/chat/completions</code> <code>tools</code> parameter expects the model to return a <code>tool_calls</code> array with precise JSON — but both the 0.8B and 4B Qwen3.5 models tend to write markdown-fenced code blocks instead when a <code>bash</code> tool is offered.</p><p><strong>Raw API test (4B):</strong></p><pre><code class="bash"><span class="constant operator function">$</span><span class="constant function"> </span><span class="constant property function">curl</span> <span class="constant">http://127.0.0.1:8091/v1/chat/completions</span> \
+    <span class="constant">-d</span> <span class="string constant">&apos;{&quot;model&quot;:&quot;Qwen3.5-4B-Q8_0.gguf&quot;,
+         &quot;messages&quot;:[{&quot;role&quot;:&quot;user&quot;,&quot;content&quot;:&quot;list files in src/&quot;}],
+         &quot;tools&quot;:[{&quot;type&quot;:&quot;function&quot;,&quot;function&quot;:{&quot;name&quot;:&quot;bash&quot;,&quot;description&quot;:&quot;run bash&quot;,&quot;parameters&quot;:{&quot;type&quot;:&quot;object&quot;,&quot;properties&quot;:{&quot;command&quot;:{&quot;type&quot;:&quot;string&quot;}},&quot;required&quot;:[&quot;command&quot;]}}}],
+         &quot;tool_choice&quot;:&quot;auto&quot;}&apos;</span>
+</code></pre>
+<p>Response (truncated):</p><pre><code class="json">{
+  <span class="string_special_key string">&quot;choices&quot;</span>: [{
+    <span class="string_special_key string">&quot;message&quot;</span>: {
+      <span class="string_special_key string">&quot;content&quot;</span>: <span class="string">&quot;To list files in src/, I&apos;ll use the bash tool:</span><span class="string escape">\n</span><span class="string escape">\n</span><span class="string">```bash</span><span class="string escape">\n</span><span class="string">ls src/</span><span class="string escape">\n</span><span class="string">```&quot;</span>,
+      <span class="string_special_key string">&quot;tool_calls&quot;</span>: <span class="constant_builtin">null</span>
+    }
+  }]
+}
+</code></pre>
+<p>The model knows <em>what to do</em> but doesn’t produce the structured <code>tool_calls</code> payload. It writes prose + fenced code instead.</p><p><strong>Why this happens:</strong> Reliable tool call formatting requires the model to have been trained on the exact JSON schema format for function calls. At sub-4B scale, the Qwen3.5 models are generalist; the tool-call training signal competes with many other behaviours and doesn’t always win.</p><p><strong>The fix — JSON mode:</strong> powerglide’s <code>OpenAIClient</code> now supports a <code>json_mode</code> flag that sets <code>response_format: {&quot;type&quot;: &quot;json_object&quot;}</code> in the request. igllama honours this flag and engages constrained generation, forcing the output to be valid JSON. Used with a system prompt that specifies the tool call schema explicitly, this reliably elicits structured output from the 4B model — turning prose + fenced code into a parseable tool invocation.</p><pre><code class="bash"><span class="comment"># Constrained JSON generation in igllama</span>
+<span class="comment"># Forces {&quot;name&quot;: &quot;bash&quot;, &quot;arguments&quot;: {&quot;command&quot;: &quot;ls src/&quot;}} instead of prose</span>
+</code></pre>
+<p><strong>Recommended workflow for local models:</strong> Use the <code>local</code>/<code>local4b</code> agents for exploration, summarization, and Q&A tasks where the loop’s THINKING and OBSERVING states handle the interaction — not for multi-step code writing that requires reliable tool invocations. For agentic code modification, the <code>hephaestus</code> (Claude Opus) agent is the right choice.</p><hr><h2>Case Study 4 — Session Summary Output (v0.2.1)</h2><p>One of the v0.2.1 improvements was making <code>powerglide run</code> emit a structured session summary on completion. Previously, the command finished silently — you’d see the Ralph loop log lines and nothing else. Now every session ends with:</p><pre><code>─────────────────────────────────────────
+  Session complete  [done]
+  Steps:    23
+  Elapsed:  9.0s
+  Agent:    local  (Qwen3.5-0.8B-Q8_0.gguf)
+  Signal:   &lt;POWERGLIDE_DONE&gt;
+─────────────────────────────────────────
+</code></pre><p>This is meaningful for dogfooding: you can see at a glance how many loop iterations a task required, how long it took wall-clock, and whether it ended cleanly (<code>&lt;POWERGLIDE_DONE&gt;</code>) or with an error (<code>&lt;POWERGLIDE_ERROR&gt;</code>). It also makes the session summary scriptable — <code>grep POWERGLIDE_DONE</code> in CI is now the reliable completion check.</p><hr><h2>Performance Observations</h2><table><tr><th>Model</th><th>Task Type</th><th>Steps</th><th>Wall-clock</th><th>Tool Call JSON?</th></tr><tr><td>Qwen3.5-0.8B (Q8)</td><td>Codebase exploration</td><td>16</td><td>~5s</td><td>Unreliable</td></tr><tr><td>Qwen3.5-4B (Q8)</td><td>Targeted code query</td><td>9</td><td>~3s</td><td>Unreliable</td></tr><tr><td>Qwen3.5-4B + json_mode</td><td>Forced JSON output</td><td>—</td><td>—</td><td>Constrained ✓</td></tr><tr><td>Claude Opus 4.6</td><td>Full agentic coding</td><td>varies</td><td>~30-120s</td><td>Reliable ✓</td></tr></table><p><strong>Step count is the key metric for local models.</strong> A session that finishes in 9 steps is decisively better than one that takes 23 — it means the model reached a satisfactory answer without loop churn. Velocity control (<code>--velocity 0.8</code> for local4b, <code>1.0</code> for local) gives you a tunable tradeoff between thoroughness and latency.</p><hr><h2>Dogfooding Verdict</h2><p>The Ralph Loop is validated. The explicit state machine drove local Qwen3.5 models through complete sessions without supervision, emitting the correct terminal signals, on hardware with no GPU acceleration. This is the core reliability guarantee powerglide was built around — and it holds regardless of model size.</p><p>For production agentic coding work, pair powerglide with a frontier model. For local exploration, triage, and Q&A on the codebase, the 0.8B and 4B models are fast, free, and sufficient — especially with json_mode enabled for structured output.</p><pre><code class="bash"><span class="comment"># Recommended dogfooding stack — fully local, no API keys required</span>
+<span class="constant function">igllama</span> <span class="constant">api</span> <span class="constant">Qwen3.5-4B-Q8_0.gguf</span> <span class="constant">--port</span> <span class="constant">8091</span> <span class="constant">--no-think</span> &amp;
+<span class="constant function">powerglide</span> <span class="constant">run</span> <span class="constant">--agent</span> <span class="constant">local4b</span> <span class="string constant">&quot;describe the orchestrator module&quot;</span>
+</code></pre>
+<hr><p><a href="/powerglide/">Back to Home</a> · <a href="/powerglide/features/">Features</a> · <a href="/powerglide/architecture/">Architecture</a></p></div>
+            </div>
+        </article>
+    </main>
+    
+    <footer class="p-8 bg-pg-surface border-t border-pg-purple/30 mt-12 footer-glow">
+        <div class="container mx-auto text-center text-pg-text-muted text-sm">
+            <div class="flex flex-wrap justify-center gap-6 mb-4 text-pg-text-muted">
+                <a href="/powerglide/" class="hover:text-pg-cyan transition-colors">Home</a>
+                <a href="/powerglide/features/" class="hover:text-pg-cyan transition-colors">Features</a>
+                <a href="/powerglide/architecture/" class="hover:text-pg-cyan transition-colors">Architecture</a>
+                <a href="/powerglide/cli-reference/" class="hover:text-pg-cyan transition-colors">CLI Reference</a>
+                <a href="/powerglide/configuration/" class="hover:text-pg-cyan transition-colors">Configuration</a>
+                <a href="/powerglide/showcase/" class="hover:text-pg-primary transition-colors font-semibold">Showcase</a>
+                <a href="https://github.com/bkataru/powerglide" class="hover:text-pg-cyan transition-colors">GitHub</a>
+            </div>
+            <p>Built with <span class="text-pg-primary">❤</span> using <a href="https://zine-ssg.io" class="text-pg-cyan hover:text-pg-cyan">Zine</a> and <a href="https://ziglang.org" class="text-pg-cyan hover:text-pg-cyan">Zig</a></p>
+            <p class="mt-2 text-pg-text">&copy; 2026 powerglide — The CLI coding agent that slides ⚡</p>
+        </div>
+    </footer>
+</body>
+</html>

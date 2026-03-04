@@ -195,9 +195,11 @@ test "Loop state transitions" {
 
 test "Loop step count increments" {
     const allocator = std.testing.allocator;
-    const config = LoopConfig{ .max_steps = 10, .velocity = 0 };
+    const config = LoopConfig{ .max_steps = 10, .velocity = 0, .session_file = "/tmp/test_loop_step_count.json" };
     var loop = Loop.init(allocator, config);
     defer loop.deinit();
+    // Clean up any leftover session file from previous runs
+    std.fs.cwd().deleteFile("/tmp/test_loop_step_count.json") catch {};
 
     var i: u32 = 0;
     while (i < 5) : (i += 1) {

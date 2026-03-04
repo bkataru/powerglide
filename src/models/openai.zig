@@ -26,6 +26,11 @@ pub const OpenAIClient = struct {
     base_url: []const u8,
     model: []const u8,
     http_client: http.HttpClient,
+    /// When true, sets response_format={"type":"json_object"} — forces structured
+    /// JSON output on igllama and other local endpoints that support it. Use for
+    /// tool-call-capable local models (Qwen3.5, Qwen2.5-Coder, etc.) where you
+    /// want reliable JSON rather than markdown-fenced code blocks.
+    json_mode: bool = false,
 
     pub fn init(allocator: std.mem.Allocator, base_url: []const u8, api_key: ?[]const u8, model: []const u8) !OpenAIClient {
         return .{
@@ -62,6 +67,14 @@ pub const OpenAIClient = struct {
         }
 
         try request_obj.put("messages", .{ .array = messages_array });
+
+        // When json_mode is enabled, request structured JSON output.
+        // igllama and other local endpoints honour the OpenAI response_format spec.
+        if (self.json_mode) {
+            var fmt_obj = std.json.ObjectMap.init(allocator);
+            try fmt_obj.put("type", .{ .string = "json_object" });
+            try request_obj.put("response_format", .{ .object = fmt_obj });
+        }
 
         // Stringify the request
         var request_json = std.ArrayList(u8){};

@@ -444,7 +444,29 @@ fn handleRun(allocator: std.mem.Allocator, args: [][:0]u8) !void {
     }
 
     // Run the loop (this would normally be async in production)
+    const start_ms = std.time.milliTimestamp();
     try loop.run();
+    const elapsed_ms = std.time.milliTimestamp() - start_ms;
+
+    // Session summary
+    const w = std.fs.File.stdout().deprecatedWriter();
+    const elapsed_s = @as(f64, @floatFromInt(elapsed_ms)) / 1000.0;
+    const state_str = switch (loop.state) {
+        .done => "done",
+        .failed => "failed",
+        else => "stopped",
+    };
+    try w.print("\n─────────────────────────────────────────\n", .{});
+    try w.print("  Session complete  [{s}]\n", .{state_str});
+    try w.print("  Steps:    {d}\n", .{loop.step_count});
+    try w.print("  Elapsed:  {d:.1}s\n", .{elapsed_s});
+    try w.print("  Agent:    {s}  ({s})\n", .{ resolved_agent_name, loop_config.model });
+    if (loop.state == .done) {
+        try w.print("  Signal:   <POWERGLIDE_DONE>\n", .{});
+    } else {
+        try w.print("  Signal:   <POWERGLIDE_ERROR>\n", .{});
+    }
+    try w.print("─────────────────────────────────────────\n", .{});
 }
 
 /// Handle the 'agent' subcommand
@@ -1100,19 +1122,35 @@ fn runDoctor(allocator: std.mem.Allocator) !void {
 }
 
 fn checkIgllama(writer: anytype) !void {
-    const result = std.process.Child.run(.{
-        .allocator = std.heap.page_allocator,
-        .argv = &.{ "curl", "-sf", "http://127.0.0.1:8090/health" },
-    }) catch {
-        try writer.writeAll("INFO igllama: not running (start with: igllama api <model.gguf> --port 8090)\n");
+    // Scan ports 8090–8099 for any running igllama instance
+    const base_port: u16 = 8090;
+    const scan_range: u16 = 10;
+    var found_ports: [10]u16 = undefined;
+    var found_count: usize = 0;
+
+    var port: u16 = base_port;
+    while (port < base_port + scan_range) : (port += 1) {
+        var url_buf: [64]u8 = undefined;
+        const url = std.fmt.bufPrint(&url_buf, "http://127.0.0.1:{d}/health", .{port}) catch continue;
+        const result = std.process.Child.run(.{
+            .allocator = std.heap.page_allocator,
+            .argv = &.{ "curl", "-sf", "--connect-timeout", "1", url },
+        }) catch continue;
+        defer std.heap.page_allocator.free(result.stdout);
+        defer std.heap.page_allocator.free(result.stderr);
+        if (result.term == .Exited and result.term.Exited == 0 and std.mem.indexOf(u8, result.stdout, "ok") != null) {
+            found_ports[found_count] = port;
+            found_count += 1;
+        }
+    }
+
+    if (found_count == 0) {
+        try writer.writeAll("INFO igllama: not running on :8090-8099 (start with: igllama api <model.gguf> --port 8090)\n");
         return;
-    };
-    defer std.heap.page_allocator.free(result.stdout);
-    defer std.heap.page_allocator.free(result.stderr);
-    if (result.term == .Exited and result.term.Exited == 0 and std.mem.indexOf(u8, result.stdout, "ok") != null) {
-        try writer.writeAll("OK   igllama: running on :8090 (local agent available)\n");
-    } else {
-        try writer.writeAll("INFO igllama: not running on :8090 (start with: igllama api <model.gguf> --port 8090)\n");
+    }
+
+    for (found_ports[0..found_count]) |p| {
+        try writer.print("OK   igllama: running on :{d} (local agent available)\n", .{p});
     }
 }
 
