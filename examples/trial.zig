@@ -1,15 +1,15 @@
 /// powerglide × igllama agentic trial harness
 ///
-/// Runs T01–T13 across multiple Qwen3.5 local endpoints, measuring pass
-/// rates, turn counts, and wall-clock latency. Reports a summary table.
+/// Runs T01–T13 across the full Qwen3.5 weight-class lineup, measuring pass
+/// rates, turn counts, and wall-clock latency per model. Reports a summary table.
 ///
 ///   zig build trial
 ///
 /// Endpoints (start externally via igllama):
-///   :8090  Qwen3.5-0.8B-Q8_0.gguf
-///   :8091  Qwen3.5-4B-Q8_0.gguf
-///   :8092  Qwen3.5-2B-UD-Q4_K_XL.gguf  (if downloaded)
-///   :8093  qwen2.5-coder-0.5b-instruct-q8_0.gguf
+///   :8090  Qwen3.5-0.8B-Q8_0.gguf           (~775 MB)
+///   :8091  Qwen3.5-2B-UD-Q4_K_XL.gguf       (~1.3 GB)
+///   :8092  Qwen3.5-4B-Q8_0.gguf             (~4.2 GB)
+///   :8093  Qwen3.5-9B-UD-Q4_K_XL.gguf       (~5.6 GB)
 ///
 /// igllama startup (tuned for CPU-only inference):
 ///   igllama api <model> --port N --no-think --max-tokens 512 \
@@ -46,10 +46,10 @@ const Endpoint = struct {
 };
 
 const ENDPOINTS = [_]Endpoint{
-    .{ .name = "0.8B-Q8",        .port = 8090, .model = "Qwen3.5-0.8B-Q8_0.gguf" },
-    .{ .name = "4B-Q8",          .port = 8091, .model = "Qwen3.5-4B-Q8_0.gguf" },
-    .{ .name = "2B-Q4",          .port = 8092, .model = "Qwen3.5-2B-UD-Q4_K_XL.gguf" },
-    .{ .name = "0.5B-coder-Q8",  .port = 8093, .model = "qwen2.5-coder-0.5b-instruct-q8_0.gguf" },
+    .{ .name = "0.8B-Q8",  .port = 8090, .model = "Qwen3.5-0.8B-Q8_0.gguf" },
+    .{ .name = "2B-Q4",    .port = 8091, .model = "Qwen3.5-2B-UD-Q4_K_XL.gguf" },
+    .{ .name = "4B-Q8",    .port = 8092, .model = "Qwen3.5-4B-Q8_0.gguf" },
+    .{ .name = "9B-Q4",    .port = 8093, .model = "Qwen3.5-9B-UD-Q4_K_XL.gguf" },
 };
 
 // ── System prompt ─────────────────────────────────────────────────────────────
