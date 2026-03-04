@@ -43,3 +43,6 @@ revert_*.py
 test_*.zig
 test_env
 test_arraylist
+
+# Runtime session data written by powerglide run/agent
+.powerglide/

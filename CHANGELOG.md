@@ -2,6 +2,20 @@
 
 All notable changes to the **powerglide** project will be documented in this file.
 
+## [0.2.2] - 2026-03-04
+
+### Added
+- **Session summary output** — `powerglide run` now emits a structured completion block showing steps taken, elapsed time, agent/model name, and `<POWERGLIDE_DONE>` or `<POWERGLIDE_ERROR>` terminal signal
+- **igllama port scanning** — `powerglide doctor` scans `:8090–8099` instead of hardcoded `:8090`; reports all running igllama instances
+- **`json_mode` on `OpenAIClient`** — sets `response_format: {"type":"json_object"}` for constrained JSON generation on igllama and other local endpoints
+- **Showcase page** — `website/content/showcase.smd` with 4 case studies: codebase exploration (0.8B), targeted query (4B), tool calling triage + json_mode, session summary output; performance table; dogfooding verdict
+- **Showcase nav link** — added to both `page.shtml` and `home.shtml` nav bars with amber highlight
+- **Tests badge** in README (195/195)
+
+### Fixed
+- **`Loop step count increments` test** — now uses `/tmp/test_loop_step_count.json` instead of default `.powerglide/session.json`; previously picked up real session state from dogfooding runs and failed
+- **README** — updated to v0.2.2 with local LLM section, session summary example, igllama integration, Showcase link, and tests badge
+
 ## [0.2.1] - 2026-03-04
 
 ### Added
