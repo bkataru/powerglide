@@ -21,6 +21,7 @@ const http_mod = @import("powerglide").http;
 // ── Configuration ─────────────────────────────────────────────────────────────
 
 const WORKDIR = "/root/powerglide";
+const MODELS_DIR = "/root/powerglide";
 const IGLLAMA_BIN = "/root/igllama/zig-out/bin/igllama";
 const QUANT_PORT: u16 = 8090;
 const MAX_TURNS: u32 = 12;
@@ -49,16 +50,17 @@ const QuantModel = struct {
 };
 
 // Run Q4/Q5/Q6/Q8 for the two quant-sensitive models (2B and 9B).
-// Q4 baseline is UD-Q4_K_XL (default igllama pull); others are standard GGUF quants.
+// Q4 uses the UD-Q4_K_XL variant (already present from main trial lineup).
+// file field is an absolute path — models live in MODELS_DIR (/root/powerglide).
 const QUANT_MODELS = [_]QuantModel{
-    .{ .name = "2B-Q4",  .file = "Qwen3.5-2B-Q4_K_M.gguf",  .group = "2B" },
-    .{ .name = "2B-Q5",  .file = "Qwen3.5-2B-Q5_K_M.gguf",  .group = "2B" },
-    .{ .name = "2B-Q6",  .file = "Qwen3.5-2B-Q6_K.gguf",    .group = "2B" },
-    .{ .name = "2B-Q8",  .file = "Qwen3.5-2B-Q8_0.gguf",    .group = "2B" },
-    .{ .name = "9B-Q4",  .file = "Qwen3.5-9B-Q4_K_M.gguf",  .group = "9B" },
-    .{ .name = "9B-Q5",  .file = "Qwen3.5-9B-Q5_K_M.gguf",  .group = "9B" },
-    .{ .name = "9B-Q6",  .file = "Qwen3.5-9B-Q6_K.gguf",    .group = "9B" },
-    .{ .name = "9B-Q8",  .file = "Qwen3.5-9B-Q8_0.gguf",    .group = "9B" },
+    .{ .name = "2B-Q4",  .file = MODELS_DIR ++ "/Qwen3.5-2B-UD-Q4_K_XL.gguf", .group = "2B" },
+    .{ .name = "2B-Q5",  .file = MODELS_DIR ++ "/Qwen3.5-2B-Q5_K_M.gguf",     .group = "2B" },
+    .{ .name = "2B-Q6",  .file = MODELS_DIR ++ "/Qwen3.5-2B-Q6_K.gguf",       .group = "2B" },
+    .{ .name = "2B-Q8",  .file = MODELS_DIR ++ "/Qwen3.5-2B-Q8_0.gguf",       .group = "2B" },
+    .{ .name = "9B-Q4",  .file = MODELS_DIR ++ "/Qwen3.5-9B-UD-Q4_K_XL.gguf", .group = "9B" },
+    .{ .name = "9B-Q5",  .file = MODELS_DIR ++ "/Qwen3.5-9B-Q5_K_M.gguf",     .group = "9B" },
+    .{ .name = "9B-Q6",  .file = MODELS_DIR ++ "/Qwen3.5-9B-Q6_K.gguf",       .group = "9B" },
+    .{ .name = "9B-Q8",  .file = MODELS_DIR ++ "/Qwen3.5-9B-Q8_0.gguf",       .group = "9B" },
 };
 
 // ── System prompt ─────────────────────────────────────────────────────────────
