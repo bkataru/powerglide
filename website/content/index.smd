@@ -62,7 +62,7 @@
 </div>
 ```
 
-**powerglide** is a CLI coding agent harness — the layer between you and a swarm of LLM-driven software engineers working your codebase in parallel. It is written in [Zig 0.15.2](https://ziglang.org/), compiles to a single static binary with zero runtime dependencies, and is designed around one constraint: the agent loop must be reliable enough to run unattended.
+A CLI coding agent harness — the layer between you and a swarm of LLM-driven software engineers working your codebase in parallel. It is written in [Zig 0.15.2](https://ziglang.org/), compiles to a single static binary with zero runtime dependencies, and is designed around one constraint: the agent loop must be reliable enough to run unattended.
 
 ```bash
 $ powerglide run --agent hephaestus --velocity 2.0 "implement a binary search tree in Zig"

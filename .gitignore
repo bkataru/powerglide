@@ -31,3 +31,15 @@ Thumbs.db
 session
 website/zig-out
 *.gguf
+
+# Agent session conversation archives — not project source
+docs/archive/
+
+# Temp scripts and debug files left by AI agents
+fix_*.py
+switch_*.py
+update_*.py
+revert_*.py
+test_*.zig
+test_env
+test_arraylist
