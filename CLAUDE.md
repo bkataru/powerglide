@@ -43,11 +43,18 @@ cp -r zig-out/docs/. ../docs/
 
 ## igllama / Local LLM
 
-- `local` agent → `Qwen3.5-0.8B-Q8_0.gguf` on `http://127.0.0.1:8090/v1`
-- `local4b` agent → `Qwen3.5-4B-Q8_0.gguf` on `http://127.0.0.1:8091/v1`
-- Start with: `igllama api <model.gguf> --port <N> --no-think`
+Full Qwen3.5 lineup (download with `igllama pull unsloth/Qwen3.5-<N>B-GGUF -f <file>`):
+
+- `:8090` → `Qwen3.5-0.8B-Q8_0.gguf`        (`local` agent)
+- `:8091` → `Qwen3.5-2B-UD-Q4_K_XL.gguf`    (`local2b` agent)
+- `:8092` → `Qwen3.5-4B-Q8_0.gguf`          (`local4b` agent)
+- `:8093` → `Qwen3.5-9B-UD-Q4_K_XL.gguf`    (`local9b` agent)
+
+Start with: `igllama api <model> --port <N> --no-think --max-tokens 512 --threads 4 --threads-batch 16 --ctx-size 2048 --mlock`
+
 - `OpenAIClient.json_mode = true` → forces `response_format: {"type":"json_object"}` for constrained output
 - Doctor scans `:8090–8099` automatically
+- Trial harness: `zig build trial` — runs T01–T13 × all 4 endpoints
 
 ## Current Version
 
@@ -64,4 +71,5 @@ cp -r zig-out/docs/. ../docs/
 7. ✅ MCP integration (`src/mcp/` — server, client, tool_bridge)
 8. ✅ igllama integration — local Qwen3.5 agents, json_mode, port scanning
 9. ✅ Session summary output on `powerglide run` completion
-10. ✅ Showcase page — dogfooding case studies with 0.8B and 4B models
+10. ✅ Showcase page — dogfooding case studies: full Qwen3.5 lineup (0.8B/2B/4B/9B)
+11. ✅ Zig trial harness (`examples/trial.zig`) — T01–T13 × 4 weight classes

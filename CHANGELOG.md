@@ -2,6 +2,22 @@
 
 All notable changes to the **powerglide** project will be documented in this file.
 
+## [0.2.3] - 2026-03-04
+
+### Added
+- **Zig trial harness** — `examples/trial.zig` runs T01–T13 across the full Qwen3.5 lineup via `zig build trial`; replaces Python scripts; pure Zig, part of the build system
+- **Full Qwen3.5 lineup** — 4 weight classes now triaged: 0.8B-Q8 (:8090), 2B-Q4 (:8091), 4B-Q8 (:8092), 9B-Q4 (:8093); GGUFs downloaded via `igllama pull`
+- **Showcase rewrite** — Case Studies 5–6 replaced with Zig trial results; 9B added; qwen2.5-coder-0.5b removed throughout; new "9B hallucinates, 4B verifies" finding documented
+
+### Fixed
+- **Harness: flat-args fallback** — models that emit `{"tool":"bash","command":"..."}` at top level (no `args` wrapper) now dispatch correctly
+- **Harness: PARSE_ERR on pretty-printed JSON** — igllama json_mode emits literal `\n` between tokens; `unescapeControlChars` + retry resolves without model restart
+- **Harness: escape-loop prevention** — feeding "unknown tool" back to small models caused exponential backslash escaping; replaced with targeted format reminder
+
+### Changed
+- **Port layout updated**: 0.8B→:8090, 2B→:8091, 4B→:8092, 9B→:8093 (was 4B on :8091, 0.5B-coder on :8092)
+- **qwen2.5-coder-0.5b removed** from lineup, GGUF deleted, all showcase references purged
+
 ## [0.2.2] - 2026-03-04
 
 ### Added
