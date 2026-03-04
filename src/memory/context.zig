@@ -120,6 +120,227 @@ pub const ContextWindow = struct {
     }
 };
 
-test "placeholder" {
-    try std.testing.expect(true);
+test "ContextWindow initialization" {
+    const allocator = std.testing.allocator;
+    const window = ContextWindow.init(allocator, 1000);
+    defer window.deinit();
+
+    try std.testing.expect(window.max_tokens == 1000);
+    try std.testing.expect(window.current_tokens == 0);
+    try std.testing.expect(window.messages.items.len == 0);
 }
+
+test "ContextWindow addMessage increments token count" {
+    const allocator = std.testing.allocator;
+    var window = ContextWindow.init(allocator, 1000);
+    defer window.deinit();
+
+    try window.addMessage("user", "Hello, world!");
+
+    try std.testing.expect(window.messages.items.len == 1);
+    try std.testing.expect(window.current_tokens > 0);
+    try std.testing.expect(std.mem.eql(u8, window.messages.items[0].role, "user"));
+}
+
+test "ContextWindow estimateTokens" {
+    const text1 = "Hello"; // 5 chars / 4 = 2 tokens
+    const tokens1 = ContextWindow.estimateTokens(text1);
+    try std.testing.expect(tokens1 == 2);
+
+    const text2 = ""; // empty string
+    const tokens2 = ContextWindow.estimateTokens(text2);
+    try std.testing.expect(tokens2 == 0);
+
+    const text3 = "abcdefghijklmnopqrstuvwxyz"; // 26 chars / 4 = 7 tokens
+    const tokens3 = ContextWindow.estimateTokens(text3);
+    try std.testing.expect(tokens3 == 7);
+}
+
+test "ContextWindow auto-compact at 90% threshold" {
+    const allocator = std.testing.allocator;
+    var window = ContextWindow.init(allocator, 100);
+    defer window.deinit();
+
+    // Add messages that will trigger compaction
+    // Each "Hello" is ~2 tokens, need 45 messages to reach 90% of 100
+    for (0..50) |_| {
+        try window.addMessage("user", "Hello, this is a longer message that uses tokens");
+    }
+
+    // Should have compacted
+    try std.testing.expect(window.current_tokens < window.max_tokens);
+    // Should keep some messages
+    try std.testing.expect(window.messages.items.len > 0);
+}
+
+test "ContextWindow compact removes oldest messages" {
+    const allocator = std.testing.allocator;
+    var window = ContextWindow.init(allocator, 100);
+    defer window.deinit();
+
+    try window.addMessage("system", "System prompt");
+    try window.addMessage("user", "First");
+    try window.addMessage("assistant", "Response");
+    try window.addMessage("user", "Second");
+    try window.addMessage("assistant", "Response 2");
+
+    const before_count = window.messages.items.len;
+    try std.testing.expect(before_count == 5);
+
+    // Compact to very low budget
+    try window.compact(20);
+
+    const after_count = window.messages.items.len;
+    try std.testing.expect(after_count < before_count);
+    try std.testing.expect(window.current_tokens <= 20);
+}
+
+test "ContextWindow getMessages returns all messages" {
+    const allocator = std.testing.allocator;
+    var window = ContextWindow.init(allocator, 1000);
+    defer window.deinit();
+
+    try window.addMessage("user", "First message");
+    try window.addMessage("assistant", "First response");
+    try window.addMessage("user", "Second message");
+
+    const messages = window.getMessages();
+    try std.testing.expect(messages.len == 3);
+    try std.testing.expect(std.mem.eql(u8, messages[0].role, "user"));
+    try std.testing.expect(std.mem.eql(u8, messages[1].role, "assistant"));
+    try std.testing.expect(std.mem.eql(u8, messages[2].role, "user"));
+}
+
+test "ContextWindow clear removes all messages" {
+    const allocator = std.testing.allocator;
+    var window = ContextWindow.init(allocator, 1000);
+    defer window.deinit();
+
+    try window.addMessage("user", "test");
+    try window.addMessage("assistant", "response");
+
+    try std.testing.expect(window.messages.items.len == 2);
+    try std.testing.expect(window.current_tokens > 0);
+
+    window.clear();
+
+    try std.testing.expect(window.messages.items.len == 0);
+    try std.testing.expect(window.current_tokens == 0);
+}
+
+test "ContextWindow tokenCount" {
+    const allocator = std.testing.allocator;
+    var window = ContextWindow.init(allocator, 1000);
+    defer window.deinit();
+
+    try window.addMessage("user", "test message");
+
+    const count = window.tokenCount();
+    try std.testing.expect(count == window.current_tokens);
+    try std.testing.expect(count > 0);
+}
+
+test "ContextWindow maxTokenCount" {
+    const allocator = std.testing.allocator;
+    const window = ContextWindow.init(allocator, 5000);
+    defer window.deinit();
+
+    try std.testing.expect(window.maxTokenCount() == 5000);
+}
+
+test "ContextWindow messageCount" {
+    const allocator = std.testing.allocator;
+    var window = ContextWindow.init(allocator, 1000);
+    defer window.deinit();
+
+    try std.testing.expect(window.messageCount() == 0);
+
+    try window.addMessage("user", "first");
+    try std.testing.expect(window.messageCount() == 1);
+
+    try window.addMessage("assistant", "second");
+    try std.testing.expect(window.messageCount() == 2);
+
+    try window.addMessage("user", "third");
+    try std.testing.expect(window.messageCount() == 3);
+}
+
+test "ContextWindow deinit frees resources" {
+    const allocator = std.testing.allocator;
+    var window = ContextWindow.init(allocator, 1000);
+
+    for (0..10) |_| {
+        try window.addMessage("user", "test message");
+    }
+
+    window.deinit(); // Should not leak
+}
+
+test "ContextMessage struct fields" {
+    const allocator = std.testing.allocator;
+    var window = ContextWindow.init(allocator, 1000);
+    defer window.deinit();
+
+    try window.addMessage("system", "You are helpful");
+
+    const msg = window.messages.items[0];
+    try std.testing.expect(std.mem.eql(u8, msg.role, "system"));
+    try std.testing.expect(std.mem.eql(u8, msg.content, "You are helpful"));
+    try std.testing.expect(msg.token_estimate > 0);
+    try std.testing.expect(msg.timestamp > 0);
+}
+
+test "ContextWindow with empty message" {
+    const allocator = std.testing.allocator;
+    var window = ContextWindow.init(allocator, 1000);
+    defer window.deinit();
+
+    try window.addMessage("user", "");
+
+    try std.testing.expect(window.messages.items.len == 1);
+    try std.testing.expect(window.current_tokens == 0);
+}
+
+test "ContextWindow compact with single message" {
+    const allocator = std.testing.allocator;
+    var window = ContextWindow.init(allocator, 1000);
+    defer window.deinit();
+
+    try window.addMessage("user", "test");
+    const before_len = window.messages.items.len;
+
+    try window.compact(10);
+
+    // Should keep at least one message
+    try std.testing.expect(window.messages.items.len >= 1);
+    try std.testing.expect(window.messages.items.len <= before_len);
+}
+
+test "ContextWindow multiple roles" {
+    const allocator = std.testing.allocator;
+    var window = ContextWindow.init(allocator, 1000);
+    defer window.deinit();
+
+    const roles = [_][]const u8{"system", "user", "assistant", "user", "assistant"};
+    for (roles) |role| {
+        try window.addMessage(role, "content");
+    }
+
+    try std.testing.expect(window.messages.items.len == 5);
+    for (window.messages.items, 0..) |msg, i| {
+        try std.testing.expect(std.mem.eql(u8, msg.role, roles[i]));
+    }
+}
+
+test "ContextWindow large message handling" {
+    const allocator = std.testing.allocator;
+    var window = ContextWindow.init(allocator, 100);
+    defer window.deinit();
+
+    // Add a message larger than the window
+    const large_msg = "x" ** 500;
+    try window.addMessage("user", large_msg);
+
+    // Should still have the message but token count is high
+    try std.testing.expect(window.messages.items.len == 1);
+

@@ -12,7 +12,7 @@ pub const Config = struct {
 
     // Loop/Velocity settings
     max_steps: u32 = 200,
-    velocity_ms: u64 = 500,
+    velocity: f64 = 1.0,
     think_budget_ms: u64 = 120_000,
 
     // Terminal settings
@@ -73,8 +73,8 @@ pub const Config = struct {
             allocator.free(max_steps_str);
         } else |_| {}
 
-        if (process.getEnvVarOwned(allocator, "POWERGLIDE_VELOCITY_MS")) |velocity_str| {
-            config.velocity_ms = try parseUint(u64, velocity_str);
+        if (process.getEnvVarOwned(allocator, "POWERGLIDE_VELOCITY")) |velocity_str| {
+            config.velocity = try std.fmt.parseFloat(f64, velocity_str);
             allocator.free(velocity_str);
         } else |_| {}
 
@@ -97,7 +97,7 @@ pub const Config = struct {
             .api_key = other.api_key orelse self.api_key,
             .api_base_url = if (other.api_base_url.len > 0 and !mem.eql(u8, other.api_base_url, "https://api.anthropic.com")) other.api_base_url else self.api_base_url,
             .max_steps = if (other.max_steps != 200) other.max_steps else self.max_steps,
-            .velocity_ms = if (other.velocity_ms != 500) other.velocity_ms else self.velocity_ms,
+            .velocity = if (other.velocity != 1.0) other.velocity else self.velocity,
             .think_budget_ms = if (other.think_budget_ms != 120_000) other.think_budget_ms else self.think_budget_ms,
             .shell = if (other.shell.len > 0 and !mem.eql(u8, other.shell, "/bin/bash")) other.shell else self.shell,
             .terminal_pool_size = if (other.terminal_pool_size != 4) other.terminal_pool_size else self.terminal_pool_size,
@@ -141,8 +141,8 @@ pub fn deinit(self: *const Config, allocator: std.mem.Allocator) void {
         try buf.appendSlice(allocator, "\"max_steps\":");
         try buf.writer(allocator).print("{}", .{self.max_steps});
         try buf.appendSlice(allocator, ",\n");
-        try buf.appendSlice(allocator, "\"velocity_ms\":");
-        try buf.writer(allocator).print("{}", .{self.velocity_ms});
+        try buf.appendSlice(allocator, "\"velocity\":");
+        try buf.writer(allocator).print("{d}", .{self.velocity});
         try buf.appendSlice(allocator, ",\n");
         try buf.appendSlice(allocator, "\"think_budget_ms\":");
         try buf.writer(allocator).print("{}", .{self.think_budget_ms});
@@ -214,10 +214,12 @@ fn parseConfig(allocator: std.mem.Allocator, content: []const u8) !Config {
         }
     }
 
-    // Parse velocity_ms
-    if (obj.get("velocity_ms")) |val| {
-        if (val == .integer) {
-            config.velocity_ms = @intCast(val.integer);
+    // Parse velocity
+    if (obj.get("velocity")) |val| {
+        if (val == .float) {
+            config.velocity = val.float;
+        } else if (val == .integer) {
+            config.velocity = @floatFromInt(val.integer);
         }
     }
 
@@ -304,7 +306,7 @@ test "Config default values" {
     try std.testing.expect(mem.eql(u8, config.model, "claude-opus-4-6"));
     try std.testing.expect(config.api_key == null);
     try std.testing.expect(config.max_steps == 200);
-    try std.testing.expect(config.velocity_ms == 500);
+    try std.testing.expect(config.velocity == 1.0);
     try std.testing.expect(config.terminal_pool_size == 4);
     try std.testing.expect(config.max_agents == 8);
 }
@@ -319,6 +321,7 @@ test "Config merge" {
         .model = "claude-sonnet-4",
         .max_steps = 100,
         .api_key = try allocator.dupe(u8, "test-key"),
+        .velocity = 2.0,
     };
 
     var merged = base.merge(override);
@@ -326,8 +329,7 @@ test "Config merge" {
 
     try std.testing.expect(mem.eql(u8, merged.model, "claude-sonnet-4"));
     try std.testing.expect(merged.max_steps == 100);
-    // velocity_ms should remain default (not in override)
-    try std.testing.expect(merged.velocity_ms == 500);
+    try std.testing.expect(merged.velocity == 2.0);
 }
 
 test "Config from JSON file" {
@@ -339,7 +341,7 @@ test "Config from JSON file" {
         \\{
         \\ "model": "claude-3-5-sonnet",
         \\ "max_steps": 150,
-        \\ "velocity_ms": 1000
+        \\ "velocity": 2.0
         \\}
     ;
 
@@ -347,5 +349,5 @@ test "Config from JSON file" {
 
     try std.testing.expect(mem.eql(u8, config.model, "claude-3-5-sonnet"));
     try std.testing.expect(config.max_steps == 150);
-    try std.testing.expect(config.velocity_ms == 1000);
+    try std.testing.expect(config.velocity == 2.0);
 }

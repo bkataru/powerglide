@@ -192,6 +192,243 @@ try std.json.stringify(request_obj, stringify_options, request_json.writer());
     }
 };
 
-test "placeholder" {
+test "AnthropicClient initialization" {
+    const allocator = std.testing.allocator;
+    const client = try AnthropicClient.init(allocator, "test-key", "claude-3-opus");
+    defer client.deinit();
+
+    try std.testing.expect(std.mem.eql(u8, client.api_key, "test-key"));
+    try std.testing.expect(std.mem.eql(u8, client.model, "claude-3-opus"));
+    try std.testing.expect(std.mem.eql(u8, client.base_url, "https://api.anthropic.com"));
+}
+
+test "AnthropicClient with different model" {
+    const allocator = std.testing.allocator;
+    const client = try AnthropicClient.init(allocator, "key", "claude-3-haiku");
+    defer client.deinit();
+
+    try std.testing.expect(std.mem.eql(u8, client.model, "claude-3-haiku"));
+}
+
+test "Message struct" {
+    const msg = Message{
+        .role = "user",
+        .content = "Hello, Claude!",
+    };
+    try std.testing.expect(std.mem.eql(u8, msg.role, "user"));
+    try std.testing.expect(std.mem.eql(u8, msg.content, "Hello, Claude!"));
+}
+
+test "Multiple messages" {
+    const messages = [_]Message{
+        .{ .role = "system", .content = "You are helpful" },
+        .{ .role = "user", .content = "test" },
+        .{ .role = "assistant", .content = "response" },
+    };
+    try std.testing.expect(messages.len == 3);
+    try std.testing.expect(std.mem.eql(u8, messages[2].role, "assistant"));
+}
+
+test "ContentBlock text variant" {
+    const block = ContentBlock{
+        .text = .{ .text = "This is text content" },
+    };
+    try std.testing.expect(block == .text);
+    try std.testing.expect(std.mem.eql(u8, block.text.text, "This is text content"));
+}
+
+test "ContentBlock tool_use variant" {
+    const allocator = std.testing.allocator;
+    const block = ContentBlock{
+        .tool_use = .{
+            .id = "tool_123",
+            .name = "search",
+            .input = .{ .string = "query" },
+        },
+    };
+    try std.testing.expect(block == .tool_use);
+    try std.testing.expect(std.mem.eql(u8, block.tool_use.id, "tool_123"));
+    try std.testing.expect(std.mem.eql(u8, block.tool_use.name, "search"));
+    _ = allocator;
+}
+
+test "ApiResponse with text content" {
+    const allocator = std.testing.allocator;
+    var content = try allocator.alloc(ContentBlock, 1);
+    content[0] = ContentBlock{ .text = .{ .text = "Response text" } };
+
+    var response = ApiResponse{
+        .id = try allocator.dupe(u8, "msg_123"),
+        .content = content,
+        .stop_reason = "end_turn",
+        .input_tokens = 10,
+        .output_tokens = 20,
+    };
+    defer response.deinit(allocator);
+
+    try std.testing.expect(std.mem.eql(u8, response.id, "msg_123"));
+    try std.testing.expect(std.mem.eql(u8, response.stop_reason, "end_turn"));
+    try std.testing.expect(response.input_tokens == 10);
+    try std.testing.expect(response.output_tokens == 20);
+}
+
+test "ApiResponse getText returns text" {
+    const allocator = std.testing.allocator;
+    var content = try allocator.alloc(ContentBlock, 1);
+    content[0] = ContentBlock{ .text = .{ .text = "Hello" } };
+
+    var response = ApiResponse{
+        .id = try allocator.dupe(u8, "id"),
+        .content = content,
+        .stop_reason = "end_turn",
+        .input_tokens = 5,
+        .output_tokens = 5,
+    };
+    defer response.deinit(allocator);
+
+    const text = response.getText();
+    try std.testing.expect(text != null);
+    try std.testing.expect(std.mem.eql(u8, text.?, "Hello"));
+}
+
+test "ApiResponse getText returns null for tool_use" {
+    const allocator = std.testing.allocator;
+    var content = try allocator.alloc(ContentBlock, 1);
+    content[0] = ContentBlock{
+        .tool_use = .{ .id = "t1", .name = "search", .input = .{ .string = "q" } },
+    };
+
+    var response = ApiResponse{
+        .id = try allocator.dupe(u8, "id"),
+        .content = content,
+        .stop_reason = "tool_use",
+        .input_tokens = 5,
+        .output_tokens = 0,
+    };
+    defer response.deinit(allocator);
+
+    const text = response.getText();
+    try std.testing.expect(text == null);
+}
+
+test "ApiResponse getText returns null for empty content" {
+    const allocator = std.testing.allocator;
+    var content = try allocator.alloc(ContentBlock, 0);
+
+    var response = ApiResponse{
+        .id = try allocator.dupe(u8, "id"),
+        .content = content,
+        .stop_reason = "end_turn",
+        .input_tokens = 0,
+        .output_tokens = 0,
+    };
+    defer response.deinit(allocator);
+
+    const text = response.getText();
+    try std.testing.expect(text == null);
+}
+
+test "ApiResponse getToolCalls" {
+    const allocator = std.testing.allocator;
+    var content = try allocator.alloc(ContentBlock, 3);
+    content[0] = ContentBlock{ .text = .{ .text = "Text" } };
+    content[1] = ContentBlock{
+        .tool_use = .{ .id = "t1", .name = "search", .input = .{ .string = "q" } },
+    };
+    content[2] = ContentBlock{
+        .tool_use = .{ .id = "t2", .name = "write", .input = .{ .string = "data" } },
+    };
+
+    var response = ApiResponse{
+        .id = try allocator.dupe(u8, "id"),
+        .content = content,
+        .stop_reason = "tool_use",
+        .input_tokens = 10,
+        .output_tokens = 5,
+    };
+    defer response.deinit(allocator);
+
+    const tool_calls = response.getToolCalls();
+    try std.testing.expect(tool_calls.len == 2);
+}
+
+test "ApiResponse deinit cleans up resources" {
+    const allocator = std.testing.allocator;
+    var content = try allocator.alloc(ContentBlock, 2);
+    content[0] = ContentBlock{ .text = .{ .text = "Text" } };
+    content[1] = ContentBlock{
+        .tool_use = .{ .id = "t1", .name = "search", .input = .{ .string = "q" } },
+    };
+
+    var response = ApiResponse{
+        .id = try allocator.dupe(u8, "msg_id"),
+        .content = content,
+        .stop_reason = "end_turn",
+        .input_tokens = 5,
+        .output_tokens = 5,
+    };
+    response.deinit(allocator); // Should not leak
+}
+
+test "ApiResponse with mixed content" {
+    const allocator = std.testing.allocator;
+    var content = try allocator.alloc(ContentBlock, 3);
+    content[0] = ContentBlock{ .text = .{ .text = "First" } };
+    content[1] = ContentBlock{
+        .tool_use = .{ .id = "t1", .name = "calc", .input = .{ .integer = 42 } },
+    };
+    content[2] = ContentBlock{ .text = .{ .text = "Second" } };
+
+    var response = ApiResponse{
+        .id = try allocator.dupe(u8, "id"),
+        .content = content,
+        .stop_reason = "end_turn",
+        .input_tokens = 15,
+        .output_tokens = 10,
+    };
+    defer response.deinit(allocator);
+
+    const text = response.getText();
+    try std.testing.expect(text != null);
+    try std.testing.expect(std.mem.eql(u8, text.?, "First"));
+}
+
+test "ApiResponse stop_reason values" {
+    const allocator = std.testing.allocator;
+    var content = try allocator.alloc(ContentBlock, 1);
+    content[0] = ContentBlock{ .text = .{ .text = "" } };
+
+    var response = ApiResponse{
+        .id = try allocator.dupe(u8, "id"),
+        .content = content,
+        .stop_reason = "max_tokens",
+        .input_tokens = 100,
+        .output_tokens = 1000,
+    };
+    defer response.deinit(allocator);
+
+    try std.testing.expect(std.mem.eql(u8, response.stop_reason, "max_tokens"));
+}
+
+test "AnthropicClient deinit is safe" {
+    const allocator = std.testing.allocator;
+    var client = try AnthropicClient.init(allocator, "key", "model");
+    client.deinit(); // Should not panic
+}
+
+test "ContentBlock union memory layout" {
+    // Ensure both variants can be stored
+    const allocator = std.testing.allocator;
+    
+    var block1 = ContentBlock{ .text = .{ .text = "text" } };
+    try std.testing.expect(block1 == .text);
+    
+    var block2 = ContentBlock{
+        .tool_use = .{ .id = "id", .name = "name", .input = .{ .bool = true } },
+    };
+    try std.testing.expect(block2 == .tool_use);
+    
+    _ = allocator;
+}
     try std.testing.expect(true);
 }

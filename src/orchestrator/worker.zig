@@ -15,7 +15,7 @@ pub const WorkerConfig = struct {
     task_description: []const u8,
     working_dir: []const u8 = "/tmp",
     max_steps: u32 = 100,
-    velocity_ms: u64 = 500,
+    velocity: f64 = 1.0,
     timeout_ms: u64 = 600_000, // 10 min default
     agent_name: []const u8 = "hephaestus",
 };
@@ -226,7 +226,7 @@ test "Worker.init creates worker with config" {
         .task_description = "Test task",
         .working_dir = "/tmp",
         .max_steps = 100,
-        .velocity_ms = 500,
+        .velocity = 1.0,
         .timeout_ms = 600_000,
         .agent_name = "hephaestus",
     };

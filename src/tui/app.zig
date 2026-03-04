@@ -66,7 +66,7 @@ const Dashboard = struct {
 
         // ── Header (1 row) ──────────────────────────────────────────────
         const header_text = buildHeaderText(ctx.arena, self.refresh_count) catch
-            "powerglide v0.1.0 — multi-agent coding dashboard";
+            "powerglide v0.1.1 — multi-agent coding dashboard";
 
         const header = vxfw.Text{
             .text = header_text,
@@ -212,7 +212,7 @@ fn buildHeaderText(arena: std.mem.Allocator, refresh_count: u32) ![]const u8 {
     const seconds = secs % 60;
     return std.fmt.allocPrint(
         arena,
-        "powerglide v0.1.0 — multi-agent coding dashboard [{d:0>2}:{d:0>2}:{d:0>2} UTC] [refreshes: {d}]",
+        "powerglide v0.1.1 — multi-agent coding dashboard [{d:0>2}:{d:0>2}:{d:0>2} UTC] [refreshes: {d}]",
         .{ hours, minutes, seconds, refresh_count },
     );
 }
@@ -307,7 +307,7 @@ pub const TUIApp = struct {
         }
         defer log_list.deinit(self.allocator);
 
-        try log_list.append(self.allocator, try std.fmt.allocPrint(self.allocator, "[INFO] powerglide v0.1.0 started", .{}));
+        try log_list.append(self.allocator, try std.fmt.allocPrint(self.allocator, "[INFO] powerglide v0.1.1 started", .{}));
         try log_list.append(self.allocator, try std.fmt.allocPrint(self.allocator, "[INFO] loaded {d} session(s)", .{sessions.len}));
 
         for (sessions) |session_id| {

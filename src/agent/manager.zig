@@ -9,7 +9,7 @@ pub const Agent = struct {
     model: []const u8 = "claude-opus-4-6",
     role: []const u8 = "coding",
     instructions: []const u8 = "",
-    velocity: u64 = 500,
+    velocity: f64 = 1.0,
 
     pub fn deinit(self: *Agent, allocator: std.mem.Allocator) void {
         allocator.free(self.name);
@@ -84,7 +84,7 @@ pub const AgentManager = struct {
             try file.writeAll("\",\"instructions\":\"");
             try escapeJsonStringDirect(agent.instructions, file);
             try file.writeAll("\",\"velocity\":");
-            var buf: [32]u8 = undefined;
+            var buf: [64]u8 = undefined;
             const s = try std.fmt.bufPrint(&buf, "{d}", .{agent.velocity});
             try file.writeAll(s);
             try file.writeAll("}");
@@ -101,10 +101,10 @@ pub const AgentManager = struct {
     }
 
     pub fn createDefaultAgents(self: *AgentManager) !void {
-        try self.addAgent(.{ .name = "hephaestus", .model = "claude-opus-4-6", .role = "senior_engineer", .instructions = "You are a senior staff engineer.", .velocity = 500 });
-        try self.addAgent(.{ .name = "artistry", .model = "claude-3-5-sonnet-20241022", .role = "creative", .instructions = "You are a creative problem solver.", .velocity = 800 });
-        try self.addAgent(.{ .name = "ultrabrain", .model = "claude-3-5-sonnet-20241022", .role = "analyst", .instructions = "You are a logic-heavy reasoning agent.", .velocity = 1000 });
-        try self.addAgent(.{ .name = "deep", .model = "claude-3-5-sonnet-20241022", .role = "researcher", .instructions = "You are a deep research agent.", .velocity = 1500 });
+        try self.addAgent(.{ .name = "hephaestus", .model = "claude-opus-4-6", .role = "senior_engineer", .instructions = "You are a senior staff engineer.", .velocity = 2.0 });
+        try self.addAgent(.{ .name = "artistry", .model = "claude-3-5-sonnet-20241022", .role = "creative", .instructions = "You are a creative problem solver.", .velocity = 1.2 });
+        try self.addAgent(.{ .name = "ultrabrain", .model = "claude-3-5-sonnet-20241022", .role = "analyst", .instructions = "You are a logic-heavy reasoning agent.", .velocity = 1.0 });
+        try self.addAgent(.{ .name = "deep", .model = "claude-3-5-sonnet-20241022", .role = "researcher", .instructions = "You are a deep research agent.", .velocity = 0.6 });
     }
 
     pub fn addAgent(self: *AgentManager, agent: Agent) !void {
@@ -170,7 +170,7 @@ pub const AgentManager = struct {
                         const model = parseStringField(agent_obj, "model") orelse "claude-opus-4-6";
                         const role = parseStringField(agent_obj, "role") orelse "coding";
                         const instructions = parseStringField(agent_obj, "instructions") orelse "";
-                        const velocity = parseUintField(agent_obj, "velocity", 500);
+                        const velocity = parseFloatField(agent_obj, "velocity", 1.0);
                         try self.addAgent(.{ .name = name, .model = model, .role = role, .instructions = instructions, .velocity = velocity });
                     }
                 }
@@ -186,9 +186,10 @@ fn parseStringField(obj: std.json.ObjectMap, field: []const u8) ?[]const u8 {
     return null;
 }
 
-fn parseUintField(obj: std.json.ObjectMap, field: []const u8, default_val: u64) u64 {
+fn parseFloatField(obj: std.json.ObjectMap, field: []const u8, default_val: f64) f64 {
     if (obj.get(field)) |val| {
-        if (val == .integer) return @intCast(val.integer);
+        if (val == .float) return val.float;
+        if (val == .integer) return @floatFromInt(val.integer);
     }
     return default_val;
 }
@@ -239,7 +240,7 @@ test "AgentManager add and remove" {
     const allocator = std.testing.allocator;
     var manager = try AgentManager.init(allocator);
     defer manager.deinit();
-    try manager.addAgent(.{ .name = "test_agent", .model = "claude-3-5-sonnet-20241022", .role = "tester", .instructions = "Test", .velocity = 600 });
+    try manager.addAgent(.{ .name = "test_agent", .model = "claude-3-5-sonnet-20241022", .role = "tester", .instructions = "Test", .velocity = 1.0 });
     const agent = manager.getAgent("test_agent");
     try std.testing.expect(agent != null);
     try manager.removeAgent("test_agent");

@@ -82,7 +82,7 @@ pub const Session = struct {
     tasks: std.ArrayList(Task),
     messages: std.ArrayList(Message),
     step_count: u32,
-    velocity_ms: u64,
+    velocity: f64,
     status: SessionStatus = .pending,
 
     /// Initialize a new session
@@ -95,7 +95,7 @@ pub const Session = struct {
             .tasks = std.ArrayList(Task){},
             .messages = std.ArrayList(Message){},
             .step_count = 0,
-            .velocity_ms = 500,
+            .velocity = 1.0,
         };
     }
 
@@ -206,9 +206,9 @@ pub const Session = struct {
         try buf.appendSlice(allocator, "\"step_count\":");
         try w.print("{d},", .{self.step_count});
 
-        // velocity_ms
-        try buf.appendSlice(allocator, "\"velocity_ms\":");
-        try w.print("{d},", .{self.velocity_ms});
+        // velocity
+        try buf.appendSlice(allocator, "\"velocity\":");
+        try w.print("{d},", .{self.velocity});
 
         // tasks array
         try buf.appendSlice(allocator, "\"tasks\":[");
@@ -287,14 +287,14 @@ fn parseSession(allocator: std.mem.Allocator, content: []const u8) !Session {
     const created_at = parseIntField(i64, obj, "created_at", 0);
     const updated_at = parseIntField(i64, obj, "updated_at", 0);
     const step_count = parseIntField(u32, obj, "step_count", 0);
-    const velocity_ms = parseIntField(u64, obj, "velocity_ms", 500);
+    const velocity = parseFloatField(f64, obj, "velocity", 1.0);
 
     var session = try Session.init(allocator, id);
     allocator.free(id); // Session.init dupes id, so free the intermediate copy
     session.created_at = created_at;
     session.updated_at = updated_at;
     session.step_count = step_count;
-    session.velocity_ms = velocity_ms;
+    session.velocity = velocity;
 
     // Parse status
     if (obj.get("status")) |status_val| {
@@ -364,6 +364,18 @@ fn parseIntField(comptime T: type, obj: std.json.ObjectMap, field: []const u8, d
     if (obj.get(field)) |val| {
         if (val == .integer) {
             return @intCast(val.integer);
+        }
+    }
+    return default_val;
+}
+
+/// Helper function to parse a float field with default
+fn parseFloatField(comptime T: type, obj: std.json.ObjectMap, field: []const u8, default_val: T) T {
+    if (obj.get(field)) |val| {
+        if (val == .float) {
+            return @floatCast(val.float);
+        } else if (val == .integer) {
+            return @floatFromInt(val.integer);
         }
     }
     return default_val;

@@ -1,139 +1,94 @@
-# AGENTS.md — Guide for AI Agents Working on powerglide
+# powerglide Agent Protocol & Integration Guide
 
 ## Overview
 
-powerglide is a CLI coding agent written in Zig 0.15.2. It orchestrates swarms of SWE (Software Engineering) agents with:
+**powerglide** is designed to be both a standalone CLI tool and a high-performance substrate for other agents (like Claude Code, oh-my-opencode, etc.) to build upon. This guide details the Ralph Loop protocol, PTY management, and how to integrate with powerglide programmatically.
 
-- Configurable velocity (response speed)
-- Reliable exit-code capture
-- Fault-tolerant state machines
-- Multi-model support (Anthropic, OpenAI, OpenAI-compatible)
+## The Ralph Loop Protocol
 
-## Build Commands
+Every session follows an explicit 11-state transition model. Agents MUST NOT skip states or exit implicitly.
+
+| State | Purpose | Transition Signal |
+|-------|---------|-------------------|
+| `idle` | Waiting for initialization | Start session |
+| `load_tasks` | Fetching from `task-queue.json` | Queue not empty |
+| `pick_task` | Selecting highest priority task | Task assigned |
+| `thinking` | LLM cognition / completion | LLM response received |
+| `tool_call` | Parsing tool use blocks | Tools ready |
+| `executing` | Subprocess in isolated PTY | Tool finished |
+| `observing` | Result aggregation / analysis | Next action decided |
+| `verify` | Running automated checks | Success/Failure |
+| `commit` | State persistence | Task status updated |
+| `done` | Clean termination | `<POWERGLIDE_DONE>` |
+| `failed` | Unrecoverable error | `<POWERGLIDE_ERROR>` |
+
+### Termination Signals
+
+- **Success**: The session MUST output `<POWERGLIDE_DONE>` to stdout upon completion of all tasks.
+- **Failure**: The session MUST output `<POWERGLIDE_ERROR>` followed by a diagnostic message.
+
+## Velocity Control
+
+Velocity is a floating-point multiplier (f64) on a 1000ms base delay.
+
+- Formula: `delay_ms = 1000 / velocity`
+- Default: `1.0` (1000ms)
+- Speeding up: `2.0` (500ms), `4.0` (250ms)
+- Slowing down: `0.5` (2000ms), `0.25` (4000ms)
+
+CLI flags: `--velocity` accepts floating-point values.
+
+- `delay_ms = 1000 / velocity`
+- Default: `1.0` (1000ms)
+- Speeding up: `2.0` (500ms), `4.0` (250ms)
+- Slowing down: `0.5` (2000ms), `0.25` (4000ms)
+
+Agents can self-throttle by writing to their session file:
+`echo '{"velocity": 0.5}' > ~/.config/powerglide/session-<id>.json`
+
+## Reliable PTY Execution
+
+powerglide runs all tools in a pseudoterminal (PTY). This ensures:
+1. **Interactive behavior**: Tools like `git` or `npm` behave as if they are in a real terminal.
+2. **ANSI colors**: preserved in logs.
+3. **Exit Code capture**: Reliability via `waitpid` with `WNOHANG` polling and `/proc/<pid>/status` fallback.
+
+When building tools for powerglide, assume a standard POSIX environment.
+
+## Integration Examples
+
+### Spawning from another Agent
 
 ```bash
-# Build the project
-zig build
+# Launch powerglide in background
+powerglide run --agent hephaestus --velocity 2.0 "refactor src/main.zig" > session.log 2>&1 &
+PID=$!
 
-# Run with arguments
-zig build run -- --help
-zig build run -- --version
-
-# Run tests
-zig build test
+# Monitor progress
+tail -f session.log | grep --line-buffered "Ralph Loop State"
 ```
 
-## Module Structure
+### Checking Heartbeats
 
-### Core Modules
+Workers write a timestamp to `~/.powerglide/workers/<id>/heartbeat` every 30 seconds. If the timestamp is older than 60 seconds, the worker is considered "stale" and should be SIGKILLed.
 
-| Module | Purpose |
-|--------|---------|
-| `src/main.zig` | Entry point, CLI argument parsing |
-| `src/agent/loop.zig` | Ralph loop state machine |
-| `src/terminal/pty.zig` | PTY management for interactive sessions |
-| `src/models/router.zig` | Multi-model routing |
+## Module Architecture
 
-### Key Interfaces
+| Module | Location | Description |
+|--------|----------|-------------|
+| Cognition | `src/agent/loop.zig` | Ralph Loop implementation |
+| I/O | `src/terminal/pty.zig` | PTY allocation & PTY polling |
+| Models | `src/models/router.zig` | Multi-model routing & fallbacks |
+| Memory | `src/memory/store.zig` | JSONL persistent memory |
+| Swarm | `src/orchestrator/swarm.zig` | Multi-agent coordination |
 
-#### LoopState (src/agent/loop.zig)
+## Testing Protocol
 
-```zig
-pub const LoopState = enum {
-    idle,
-    thinking,
-    acting,
-    observing,
-    finished,
-    failed,
-};
-```
+All new features MUST include:
+1. Unit tests in the same file.
+2. Integration tests in `test/integration/`.
+3. Zero memory leaks (verified via `zig build test`).
 
-The Ralph loop cycles through states: idle → thinking → acting → observing → (repeat or finish)
+---
 
-#### ModelProvider (src/models/router.zig)
-
-```zig
-pub const ModelProvider = enum {
-    anthropic,
-    openai,
-    openai_compatible,
-};
-```
-
-#### Tool (src/tools/tool.zig)
-
-```zig
-pub const Tool = struct {
-    name: []const u8,
-    description: []const u8,
-    parameters: ?[]const u8 = null,
-};
-```
-
-#### ToolResult (src/tools/tool.zig)
-
-```zig
-pub const ToolResult = struct {
-    success: bool,
-    output: []const u8,
-    err: ?[]const u8 = null,
-};
-```
-
-## Testing
-
-All modules should have placeholder tests:
-
-```zig
-test "placeholder" {
-    try std.testing.expect(true);
-}
-```
-
-Run all tests with `zig build test`.
-
-## Adding New Modules
-
-1. Create the module file in the appropriate `src/` subdirectory
-2. Export the module from `src/root.zig` using `@import()`
-3. Add a test block to verify compilation
-4. Update this file if adding significant new functionality
-
-## Zig 0.15.2 Compatibility Notes
-
-- `error` is a reserved keyword — use `failed`, `err`, or `failed_state` instead
-- Use `std.heap.ArenaAllocator` for temporary allocations
-- Use `std.process.argsAlloc()` for command-line arguments
-- Reader/Writer API uses `std.io.AnyReader` / `std.io.AnyWriter`
-
-## Architecture Vision
-
-The ultimate goal is a production-ready CLI coding agent that can:
-
-1. Accept high-level tasks from the user
-2. Break down tasks into subtasks
-3. Orchestrate multiple agents to work in parallel
-4. Capture and report exit codes reliably
-5. Maintain context across sessions
-6. Support multiple LLM providers
-7. Provide both CLI and TUI interfaces
-
-This is inspired by projects like:
-- [oh-my-pi](https://github.com/oh-my-pi)
-- [forge code](https://github.com/forgeai/forge-code)
-- [Claude Code](https://github.com/anthropics/claude-code)
-
-## Performance Considerations
-
-- Use `ArenaAllocator` to reduce allocation overhead
-- Pool terminal resources with `TerminalPool`
-- Configure velocity to balance responsiveness vs. API rate limits
-- Consider streaming responses for long outputs
-
-## Debugging Tips
-
-- Use `std.debug.print()` for simple output
-- Use `try` for error propagation
-- Check `zig build` for compilation errors
-- Use `zig build test` to verify changes
+*Named after the Lamborghini Powerglide transmission — built for maximum throughput. 🦀⚡*

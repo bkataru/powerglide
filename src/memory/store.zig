@@ -285,6 +285,354 @@ const MemoryEntryJson = struct {
     tags: []const []const u8,
 };
 
-test "placeholder" {
-    try std.testing.expect(true);
+test "MemoryStore initialization with new file" {
+    const allocator = std.testing.allocator;
+    const tmp_file = "/tmp/test_memory_store_1.jsonl";
+    
+    // Clean up if file exists from previous test run
+    std.fs.cwd().deleteFile(tmp_file) catch |e| {
+        if (e != error.FileNotFound) {
+            return e;
+        }
+    };
+    
+    var store = try MemoryStore.init(allocator, tmp_file);
+    defer store.deinit();
+    
+    try std.testing.expect(store.entries.items.len == 0);
+    try std.testing.expect(store.next_id == 1);
+    
+    // Clean up test file
+    std.fs.cwd().deleteFile(tmp_file) catch {};
 }
+
+test "MemoryStore append returns incrementing ids" {
+    const allocator = std.testing.allocator;
+    const tmp_file = "/tmp/test_memory_store_2.jsonl";
+    
+    std.fs.cwd().deleteFile(tmp_file) catch {};
+    defer std.fs.cwd().deleteFile(tmp_file) catch {};
+    
+    var store = try MemoryStore.init(allocator, tmp_file);
+    defer store.deinit();
+    
+    const id1 = try store.append("first entry", &[_][]const u8{"tag1"});
+    const id2 = try store.append("second entry", &[_][]const u8{"tag2"});
+    const id3 = try store.append("third entry", &[_][]const u8{"tag3"});
+    
+    try std.testing.expect(id1 == 1);
+    try std.testing.expect(id2 == 2);
+    try std.testing.expect(id3 == 3);
+}
+
+test "MemoryStore append persists to disk" {
+    const allocator = std.testing.allocator;
+    const tmp_file = "/tmp/test_memory_store_3.jsonl";
+    
+    std.fs.cwd().deleteFile(tmp_file) catch {};
+    defer std.fs.cwd().deleteFile(tmp_file) catch {};
+    
+    {
+        var store = try MemoryStore.init(allocator, tmp_file);
+        defer store.deinit();
+        _ = try store.append("persistent entry", &[_][]const u8{"test"});
+    }
+    
+    // Reload and verify
+    var store2 = try MemoryStore.init(allocator, tmp_file);
+    defer store2.deinit();
+    
+    try std.testing.expect(store2.entries.items.len == 1);
+    try std.testing.expect(std.mem.eql(u8, store2.entries.items[0].content, "persistent entry"));
+    try std.testing.expect(store2.entries.items[0].tags.len == 1);
+    try std.testing.expect(std.mem.eql(u8, store2.entries.items[0].tags[0], "test"));
+}
+
+test "MemoryStore load from existing file" {
+    const allocator = std.testing.allocator;
+    const tmp_file = "/tmp/test_memory_store_4.jsonl";
+    
+    std.fs.cwd().deleteFile(tmp_file) catch {};
+    defer std.fs.cwd().deleteFile(tmp_file) catch {};
+    
+    // Create file with entries
+    {
+        var store = try MemoryStore.init(allocator, tmp_file);
+        defer store.deinit();
+        _ = try store.append("entry1", &[_][]const u8{"a"});
+        _ = try store.append("entry2", &[_][]const u8{"b"});
+    }
+    
+    // Reload
+    var store2 = try MemoryStore.init(allocator, tmp_file);
+    defer store2.deinit();
+    
+    try std.testing.expect(store2.entries.items.len == 2);
+    try std.testing.expect(store2.next_id == 3); // Next id should be 3
+}
+
+test "MemoryStore searchByTag" {
+    const allocator = std.testing.allocator;
+    const tmp_file = "/tmp/test_memory_store_5.jsonl";
+    
+    std.fs.cwd().deleteFile(tmp_file) catch {};
+    defer std.fs.cwd().deleteFile(tmp_file) catch {};
+    
+    var store = try MemoryStore.init(allocator, tmp_file);
+    defer store.deinit();
+    
+    _ = try store.append("entry with tag1", &[_][]const u8{"tag1", "common"});
+    _ = try store.append("entry with tag2", &[_][]const u8{"tag2", "common"});
+    _ = try store.append("another tag1 entry", &[_][]const u8{"tag1"});
+    
+    const results = try store.searchByTag(allocator, "tag1");
+    defer allocator.free(results);
+    
+    try std.testing.expect(results.len == 2);
+    try std.testing.expect(std.mem.eql(u8, results[0].content, "entry with tag1"));
+    try std.testing.expect(std.mem.eql(u8, results[1].content, "another tag1 entry"));
+}
+
+test "MemoryStore searchByTag returns empty for no matches" {
+    const allocator = std.testing.allocator;
+    const tmp_file = "/tmp/test_memory_store_6.jsonl";
+    
+    std.fs.cwd().deleteFile(tmp_file) catch {};
+    defer std.fs.cwd().deleteFile(tmp_file) catch {};
+    
+    var store = try MemoryStore.init(allocator, tmp_file);
+    defer store.deinit();
+    
+    _ = try store.append("entry", &[_][]const u8{"tag1"});
+    
+    const results = try store.searchByTag(allocator, "nonexistent");
+    defer allocator.free(results);
+    
+    try std.testing.expect(results.len == 0);
+}
+
+test "MemoryStore searchByKeyword" {
+    const allocator = std.testing.allocator;
+    const tmp_file = "/tmp/test_memory_store_7.jsonl";
+    
+    std.fs.cwd().deleteFile(tmp_file) catch {};
+    defer std.fs.cwd().deleteFile(tmp_file) catch {};
+    
+    var store = try MemoryStore.init(allocator, tmp_file);
+    defer store.deinit();
+    
+    _ = try store.append("The quick brown fox", &[_][]const u8{});
+    _ = try store.append("A lazy dog", &[_][]const u8{});
+    _ = try store.append("quick action", &[_][]const u8{});
+    
+    const results = try store.searchByKeyword(allocator, "quick");
+    defer allocator.free(results);
+    
+    try std.testing.expect(results.len == 2);
+}
+
+test "MemoryStore searchByKeyword case sensitive" {
+    const allocator = std.testing.allocator;
+    const tmp_file = "/tmp/test_memory_store_8.jsonl";
+    
+    std.fs.cwd().deleteFile(tmp_file) catch {};
+    defer std.fs.cwd().deleteFile(tmp_file) catch {};
+    
+    var store = try MemoryStore.init(allocator, tmp_file);
+    defer store.deinit();
+    
+    _ = try store.append("Hello World", &[_][]const u8{});
+    _ = try store.append("hello world", &[_][]const u8{});
+    
+    const results_lower = try store.searchByKeyword(allocator, "hello");
+    defer allocator.free(results_lower);
+    try std.testing.expect(results_lower.len == 1);
+    
+    const results_upper = try store.searchByKeyword(allocator, "Hello");
+    defer allocator.free(results_upper);
+    try std.testing.expect(results_upper.len == 1);
+}
+
+test "MemoryStore recent returns last N entries" {
+    const allocator = std.testing.allocator;
+    const tmp_file = "/tmp/test_memory_store_9.jsonl";
+    
+    std.fs.cwd().deleteFile(tmp_file) catch {};
+    defer std.fs.cwd().deleteFile(tmp_file) catch {};
+    
+    var store = try MemoryStore.init(allocator, tmp_file);
+    defer store.deinit();
+    
+    _ = try store.append("first", &[_][]const u8{});
+    _ = try store.append("second", &[_][]const u8{});
+    _ = try store.append("third", &[_][]const u8{});
+    _ = try store.append("fourth", &[_][]const u8{});
+    _ = try store.append("fifth", &[_][]const u8{});
+    
+    const results = try store.recent(allocator, 3);
+    defer allocator.free(results);
+    
+    try std.testing.expect(results.len == 3);
+    try std.testing.expect(std.mem.eql(u8, results[0].content, "third"));
+    try std.testing.expect(std.mem.eql(u8, results[1].content, "fourth"));
+    try std.testing.expect(std.mem.eql(u8, results[2].content, "fifth"));
+}
+
+test "MemoryStore recent with N larger than entries" {
+    const allocator = std.testing.allocator;
+    const tmp_file = "/tmp/test_memory_store_10.jsonl";
+    
+    std.fs.cwd().deleteFile(tmp_file) catch {};
+    defer std.fs.cwd().deleteFile(tmp_file) catch {};
+    
+    var store = try MemoryStore.init(allocator, tmp_file);
+    defer store.deinit();
+    
+    _ = try store.append("a", &[_][]const u8{});
+    _ = try store.append("b", &[_][]const u8{});
+    
+    const results = try store.recent(allocator, 100);
+    defer allocator.free(results);
+    
+    try std.testing.expect(results.len == 2);
+}
+
+test "MemoryStore recent returns empty for empty store" {
+    const allocator = std.testing.allocator;
+    const tmp_file = "/tmp/test_memory_store_11.jsonl";
+    
+    std.fs.cwd().deleteFile(tmp_file) catch {};
+    defer std.fs.cwd().deleteFile(tmp_file) catch {};
+    
+    var store = try MemoryStore.init(allocator, tmp_file);
+    defer store.deinit();
+    
+    const results = try store.recent(allocator, 10);
+    defer allocator.free(results);
+    
+    try std.testing.expect(results.len == 0);
+}
+
+test "MemoryStore delete removes entry" {
+    const allocator = std.testing.allocator;
+    const tmp_file = "/tmp/test_memory_store_12.jsonl";
+    
+    std.fs.cwd().deleteFile(tmp_file) catch {};
+    defer std.fs.cwd().deleteFile(tmp_file) catch {};
+    
+    var store = try MemoryStore.init(allocator, tmp_file);
+    defer store.deinit();
+    
+    const id1 = try store.append("first", &[_][]const u8{"tag1"});
+    const id2 = try store.append("second", &[_][]const u8{"tag2"});
+    
+    try store.delete(id1);
+    
+    try std.testing.expect(store.entries.items.len == 1);
+    try std.testing.expect(std.mem.eql(u8, store.entries.items[0].content, "second"));
+}
+
+test "MemoryStore delete persists to disk" {
+    const allocator = std.testing.allocator;
+    const tmp_file = "/tmp/test_memory_store_13.jsonl";
+    
+    std.fs.cwd().deleteFile(tmp_file) catch {};
+    defer std.fs.cwd().deleteFile(tmp_file) catch {};
+    
+    {
+        var store = try MemoryStore.init(allocator, tmp_file);
+        defer store.deinit();
+        const id1 = try store.append("first", &[_][]const u8{});
+        _ = try store.append("second", &[_][]const u8{});
+        try store.delete(id1);
+    }
+    
+    // Reload and verify
+    var store2 = try MemoryStore.init(allocator, tmp_file);
+    defer store2.deinit();
+    
+    try std.testing.expect(store2.entries.items.len == 1);
+    try std.testing.expect(std.mem.eql(u8, store2.entries.items[0].content, "second"));
+}
+
+test "MemoryStore delete nonexistent id is no-op" {
+    const allocator = std.testing.allocator;
+    const tmp_file = "/tmp/test_memory_store_14.jsonl";
+    
+    std.fs.cwd().deleteFile(tmp_file) catch {};
+    defer std.fs.cwd().deleteFile(tmp_file) catch {};
+    
+    var store = try MemoryStore.init(allocator, tmp_file);
+    defer store.deinit();
+    
+    _ = try store.append("entry", &[_][]const u8{});
+    
+    // Delete non-existent id (should not panic)
+    store.delete(999) catch |e| {
+        try std.testing.expect(e == error.EntryNotFound);
+    };
+}
+
+test "MemoryEntry deinit frees resources" {
+    const allocator = std.testing.allocator;
+    
+    var entry = MemoryEntry{
+        .id = 1,
+        .timestamp = 0,
+        .content = try allocator.dupe(u8, "test content"),
+        .tags = try allocator.alloc([]const u8, 2),
+        .embedding = null,
+    };
+    entry.tags[0] = try allocator.dupe(u8, "tag1");
+    entry.tags[1] = try allocator.dupe(u8, "tag2");
+    
+    entry.deinit(allocator); // Should not leak
+}
+
+test "MemoryStore append with multiple tags" {
+    const allocator = std.testing.allocator;
+    const tmp_file = "/tmp/test_memory_store_15.jsonl";
+    
+    std.fs.cwd().deleteFile(tmp_file) catch {};
+    defer std.fs.cwd().deleteFile(tmp_file) catch {};
+    
+    var store = try MemoryStore.init(allocator, tmp_file);
+    defer store.deinit();
+    
+    const tags = [_][]const u8{"tag1", "tag2", "tag3", "tag4"};
+    _ = try store.append("multi-tag entry", &tags);
+    
+    try std.testing.expect(store.entries.items.len == 1);
+    try std.testing.expect(store.entries.items[0].tags.len == 4);
+}
+
+test "MemoryStore content with special characters" {
+    const allocator = std.testing.allocator;
+    const tmp_file = "/tmp/test_memory_store_16.jsonl";
+    
+    std.fs.cwd().deleteFile(tmp_file) catch {};
+    defer std.fs.cwd().deleteFile(tmp_file) catch {};
+    
+    var store = try MemoryStore.init(allocator, tmp_file);
+    defer store.deinit();
+    
+    const special_content = "Line 1\nLine 2\tTabbed\"Quoted\\Backslash";
+    _ = try store.append(special_content, &[_][]const u8{});
+    
+    try std.testing.expect(std.mem.eql(u8, store.entries.items[0].content, special_content));
+}
+
+test "MemoryStore deinit frees all entries" {
+    const allocator = std.testing.allocator;
+    const tmp_file = "/tmp/test_memory_store_17.jsonl";
+    
+    std.fs.cwd().deleteFile(tmp_file) catch {};
+    defer std.fs.cwd().deleteFile(tmp_file) catch {};
+    
+    var store = try MemoryStore.init(allocator, tmp_file);
+    
+    for (0..10) |_| {
+        _ = try store.append("entry", &[_][]const u8{"tag"});
+    }
+    
+

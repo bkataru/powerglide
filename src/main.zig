@@ -5,7 +5,7 @@ const clap = @import("clap");
 const pg_lib = @import("powerglide");
 const tui_app = pg_lib.tui;
 
-const VERSION = "0.1.0";
+const VERSION = "0.1.1";
 const ConfigDir = ".config/powerglide";
 
 /// Main entry point
@@ -110,7 +110,7 @@ pub fn main() !void {
 /// Print main help message
 fn printMainHelp(writer: anytype) !void {
     try writer.writeAll(
-        \\powerglide 0.1.0 — the CLI coding agent that slides
+        \\powerglide 0.1.1 — the CLI coding agent that slides
         \\
         \\USAGE:
         \\ powerglide [OPTIONS] [COMMAND]
@@ -131,14 +131,15 @@ fn printMainHelp(writer: anytype) !void {
         \\ -h, --help Show this help message
         \\ --version Show version
         \\
-        \\EXAMPLES:
-        \\ powerglide run "Fix the bug in auth.zig"
-        \\ powerglide run --agent hephaestus --velocity 1000 "Add unit tests"
-        \\ powerglide session list
-        \\ powerglide session resume ses_abc123 "Continue adding tests"
-        \\ powerglide doctor
-        \\ powerglide config get velocity_ms
-        \\ powerglide config set velocity_ms 500
+        \\ EXAMPLES:
+        \\  powerglide run "Fix the bug in auth.zig"
+        \\  powerglide run --agent hephaestus --velocity 2.0 "Add unit tests"
+        \\  powerglide session list
+        \\  powerglide session resume ses_abc123 "Continue adding tests"
+        \\  powerglide doctor
+        \\  powerglide config get velocity
+        \\  powerglide config set velocity 2.0
+
         \\
         \\CONFIG:
         \\ Configuration is read from ~/.config/powerglide/config.json
@@ -166,13 +167,13 @@ fn printCommandHelp(cmd: []const u8, writer: anytype) !void {
             \\OPTIONS:
             \\ -h, --help Show this help message
             \\ -a, --agent <name> Agent name to use (default: hephaestus)
-            \\ -v, --velocity <ms> Velocity in milliseconds (default: 500)
+            \\ -v, --velocity <val> Velocity multiplier (default: 1.0)
             \\ -s, --session-id <id> Continue existing session
-            \\ -m, --model <provider/model> Model to use (default: anthropic/claude-3-5-sonnet-20241022)
+            \\ -m, --model <provider/model> Model to use
             \\
             \\EXAMPLES:
             \\ powerglide run "Fix the bug in auth.zig"
-            \\ powerglide run --agent hephaestus --velocity 1000 "Add unit tests"
+            \\ powerglide run --agent hephaestus --velocity 2.0 "Add unit tests"
             \\ powerglide run --session-id ses_abc123 "Continue working"
             \\ powerglide run -m openai/gpt-4 "Use a different model"
             \\
@@ -255,14 +256,14 @@ fn printCommandHelp(cmd: []const u8, writer: anytype) !void {
             \\ init Initialize default config
             \\
             \\CONFIG KEYS:
-            \\ velocity_ms Agent response delay in milliseconds
+            \\ velocity Velocity multiplier (base 1000ms)
             \\ default_agent Default agent name
-            \\ default_model Default model (provider/model)
-            \\ api_timeout API request timeout in seconds
+            \\ model Default model
+            \\ max_steps Max steps per session
             \\
             \\EXAMPLES:
-            \\ powerglide config get velocity_ms
-            \\ powerglide config set velocity_ms 500
+            \\ powerglide config get velocity
+            \\ powerglide config set velocity 2.0
             \\ powerglide config list
             \\
             \\CONFIG FILE:
@@ -313,7 +314,7 @@ fn printCommandHelp(cmd: []const u8, writer: anytype) !void {
 /// Handle the 'run' command
 fn handleRun(allocator: std.mem.Allocator, args: [][:0]u8) !void {
     var agent_name: ?[]const u8 = null;
-    var velocity: ?u32 = null;
+    var velocity: ?f64 = null;
     var session_id: ?[]const u8 = null;
     var model: ?[]const u8 = null;
     var message: ?[]const u8 = null;
@@ -335,7 +336,7 @@ fn handleRun(allocator: std.mem.Allocator, args: [][:0]u8) !void {
             }
         } else if (std.mem.eql(u8, arg, "-v") or std.mem.eql(u8, arg, "--velocity")) {
             if (i + 1 < args.len) {
-                velocity = std.fmt.parseInt(u32, args[i + 1], 10) catch {
+                velocity = std.fmt.parseFloat(f64, args[i + 1]) catch {
                     try std.fs.File.stderr().deprecatedWriter().print("powerglide run: error: invalid velocity value\n", .{});
                     std.process.exit(1);
                 };
@@ -402,7 +403,7 @@ fn handleRun(allocator: std.mem.Allocator, args: [][:0]u8) !void {
     // Setup loop configuration
     const loop_config = powerglide.agent.LoopConfig{
         .max_steps = config.max_steps,
-        .velocity_ms = velocity orelse (if (agent) |a| a.velocity else config.velocity_ms),
+        .velocity = velocity orelse (if (agent) |a| a.velocity else config.velocity),
         .model = model orelse (if (agent) |a| a.model else config.model),
     };
 
@@ -413,7 +414,7 @@ fn handleRun(allocator: std.mem.Allocator, args: [][:0]u8) !void {
     std.debug.print("Starting powerglide session\n", .{});
     std.debug.print("  Agent: {s}\n", .{resolved_agent_name});
     std.debug.print("  Model: {s}\n", .{loop_config.model});
-    std.debug.print("  Velocity: {d}ms\n", .{loop_config.velocity_ms});
+    std.debug.print("  Velocity: {d:.1}x\n", .{loop_config.velocity});
     if (message) |msg| {
         std.debug.print("  Task: {s}\n", .{msg});
     }
@@ -825,8 +826,8 @@ fn handleConfig(allocator: std.mem.Allocator, args: [][:0]u8) !void {
         const config = try powerglide.config.load(allocator);
         defer config.deinit(allocator);
         
-        const value = if (std.mem.eql(u8, args[1], "velocity_ms")) 
-            try std.fmt.allocPrint(allocator, "{d}", .{config.velocity_ms})
+        const value = if (std.mem.eql(u8, args[1], "velocity")) 
+            try std.fmt.allocPrint(allocator, "{d:.1}x", .{config.velocity})
         else if (std.mem.eql(u8, args[1], "default_agent")) 
             "hephaestus"
         else if (std.mem.eql(u8, args[1], "default_model")) 
@@ -850,9 +851,9 @@ fn handleConfig(allocator: std.mem.Allocator, args: [][:0]u8) !void {
         const value = args[2];
         
         // Update the config field based on key
-        if (std.mem.eql(u8, key, "velocity_ms")) {
-            config.velocity_ms = std.fmt.parseInt(u64, value, 10) catch {
-                try std.fs.File.stderr().deprecatedWriter().print("powerglide config: error: invalid value for velocity_ms\n", .{});
+        if (std.mem.eql(u8, key, "velocity")) {
+            config.velocity = std.fmt.parseFloat(f64, value) catch {
+                try std.fs.File.stderr().deprecatedWriter().print("powerglide config: error: invalid value for velocity\n", .{});
                 std.process.exit(1);
             };
         } else if (std.mem.eql(u8, key, "max_steps")) {
@@ -866,7 +867,7 @@ fn handleConfig(allocator: std.mem.Allocator, args: [][:0]u8) !void {
             config.shell = try allocator.dupe(u8, value);
         } else {
             try std.fs.File.stderr().deprecatedWriter().print("powerglide config: error: unknown key '{s}'\n", .{key});
-            try std.fs.File.stderr().deprecatedWriter().writeAll("Valid keys: velocity_ms, max_steps, model, default_model, shell\n");
+            try std.fs.File.stderr().deprecatedWriter().writeAll("Valid keys: velocity, max_steps, model, default_model, shell\n");
             std.process.exit(1);
         }
         
@@ -880,8 +881,8 @@ fn handleConfig(allocator: std.mem.Allocator, args: [][:0]u8) !void {
         defer config.deinit(allocator);
         
         try std.fs.File.stdout().deprecatedWriter().print(
-            "Configuration:\n  model: {s}\n  velocity_ms: {d}\n  max_steps: {d}\n  shell: {s}\n\nConfig file: ~/.config/powerglide/config.json\n\n",
-            .{ config.model, config.velocity_ms, config.max_steps, config.shell },
+            "Configuration:\n  model: {s}\n  velocity: {d:.1}x\n  max_steps: {d}\n  shell: {s}\n\nConfig file: ~/.config/powerglide/config.json\n\n",
+            .{ config.model, config.velocity, config.max_steps, config.shell },
         );
     } else if (std.mem.eql(u8, subcommand, "edit")) {
         const config_path = try powerglide.config.defaultConfigPath(allocator);
@@ -1153,7 +1154,7 @@ fn checkConfigDir(writer: anytype) !void {
 }
 
 test "VERSION constant is defined" {
-    try std.testing.expectEqualStrings("0.1.0", VERSION);
+    try std.testing.expectEqualStrings("0.1.1", VERSION);
 }
 
 test "VERSION matches expected format" {

@@ -378,10 +378,328 @@ pub const PlainProcess = struct {
     }
 };
 
-test "PtyProcess placeholder" {
-    try std.testing.expect(true);
+test "PtyProcess spawn and close with echo" {
+    const allocator = std.testing.allocator;
+    const cmd = [_][]const u8{ "echo", "hello" };
+    
+    var process = try PtyProcess.spawn(allocator, &cmd);
+    defer process.deinit();
+    
+    const status = try process.close();
+    try std.testing.expect(status == .{ .exited = 0 });
 }
 
-test "PlainProcess placeholder" {
+test "PtyProcess spawn with ls" {
+    const allocator = std.testing.allocator;
+    const cmd = [_][]const u8{ "ls", "/tmp" };
+    
+    var process = try PtyProcess.spawn(allocator, &cmd);
+    defer process.deinit();
+    
+    const status = try process.close();
+    try std.testing.expect(status == .{ .exited = 0 });
+}
+
+test "PtyProcess spawn with cat" {
+    const allocator = std.testing.allocator;
+    const cmd = [_][]const u8{ "cat" };
+    
+    var process = try PtyProcess.spawn(allocator, &cmd);
+    defer process.deinit();
+    
+    // Write to stdin
+    try process.write("test input");
+    
+    // Close stdin by sending EOF
+    _ = process.write("") catch {};
+    
+    const status = try process.close();
+    try std.testing.expect(status == .{ .exited = 0 });
+}
+
+test "PtyProcess isAlive" {
+    const allocator = std.testing.allocator;
+    const cmd = [_][]const u8{ "sleep", "1" };
+    
+    var process = try PtyProcess.spawn(allocator, &cmd);
+    defer process.deinit();
+    
+    // Process should be alive
+    try std.testing.expect(process.isAlive());
+    
+    const status = try process.close();
+    try std.testing.expect(status == .{ .exited = 0 });
+}
+
+test "PtyProcess getPid" {
+    const allocator = std.testing.allocator;
+    const cmd = [_][]const u8{ "echo", "test" };
+    
+    var process = try PtyProcess.spawn(allocator, &cmd);
+    defer process.deinit();
+    
+    const pid = process.getPid();
+    try std.testing.expect(pid > 0);
+    
+    _ = try process.close();
+}
+
+test "PtyProcess read returns zero on empty" {
+    const allocator = std.testing.allocator;
+    const cmd = [_][]const u8{ "echo", "" };
+    
+    var process = try PtyProcess.spawn(allocator, &cmd);
+    defer process.deinit();
+    
+    var buffer: [1024]u8 = undefined;
+    const n = process.read(&buffer) catch |e| {
+        if (e == error.WouldBlock) return; // OK for non-blocking read
+        return e;
+    };
+    _ = n;
+    
+    _ = try process.close();
+}
+
+test "PtyProcess deinit is safe" {
+    const allocator = std.testing.allocator;
+    const cmd = [_][]const u8{ "echo", "test" };
+    
+    var process = try PtyProcess.spawn(allocator, &cmd);
+    process.deinit(); // Should not leak
+}
+
+test "PtyProcess with non-existent command" {
+    const allocator = std.testing.allocator;
+    const cmd = [_][]const u8{ "nonexistent_command_xyz" };
+    
+    const result = PtyProcess.spawn(allocator, &cmd);
+    // This might succeed (fork happens) but exec fails
+    // The process will exit with error code
+    if (result) |*process| {
+        process.deinit();
+    } else |_| {
+        // OK if spawn fails
+    }
+}
+
+test "PtyProcess write and read" {
+    const allocator = std.testing.allocator;
+    const cmd = [_][]const u8{ "cat" };
+    
+    var process = try PtyProcess.spawn(allocator, &cmd);
+    defer process.deinit();
+    
+    try process.write("hello\n");
+    
+    // Close stdin to signal EOF
+    _ = process.write("") catch {};
+    
+    _ = try process.close();
+}
+
+test "PlainProcess spawn and wait" {
+    const allocator = std.testing.allocator;
+    const cmd = [_][]const u8{ "echo", "hello" };
+    
+    var process = try PlainProcess.spawn(allocator, &cmd);
+    defer process.deinit();
+    
+    const status = try process.wait();
+    try std.testing.expect(status == .{ .exited = 0 });
+}
+
+test "PlainProcess spawn with ls" {
+    const allocator = std.testing.allocator;
+    const cmd = [_][]const u8{ "ls", "/tmp" };
+    
+    var process = try PlainProcess.spawn(allocator, &cmd);
+    defer process.deinit();
+    
+    const status = try process.wait();
+    try std.testing.expect(status == .{ .exited = 0 });
+}
+
+test "PlainProcess isAlive" {
+    const allocator = std.testing.allocator;
+    const cmd = [_][]const u8{ "sleep", "1" };
+    
+    var process = try PlainProcess.spawn(allocator, &cmd);
+    defer process.deinit();
+    
+    try std.testing.expect(process.isAlive());
+    
+    _ = try process.wait();
+}
+
+test "PlainProcess getPid" {
+    const allocator = std.testing.allocator;
+    const cmd = [_][]const u8{ "echo", "test" };
+    
+    var process = try PlainProcess.spawn(allocator, &cmd);
+    defer process.deinit();
+    
+    const pid = process.getPid();
+    try std.testing.expect(pid > 0);
+    
+    _ = try process.wait();
+}
+
+test "PlainProcess deinit is safe" {
+    const allocator = std.testing.allocator;
+    const cmd = [_][]const u8{ "echo", "test" };
+    
+    var process = try PlainProcess.spawn(allocator, &cmd);
+    process.deinit(); // Should not leak
+}
+
+test "PlainProcess with non-zero exit" {
+    const allocator = std.testing.allocator;
+    const cmd = [_][]const u8{ "sh", "-c", "exit 42" };
+    
+    var process = try PlainProcess.spawn(allocator, &cmd);
+    defer process.deinit();
+    
+    const status = try process.wait();
+    try std.testing.expect(status == .{ .exited = 42 });
+}
+
+test "PlainProcess readStdout" {
+    const allocator = std.testing.allocator;
+    const cmd = [_][]const u8{ "echo", "hello world" };
+    
+    var process = try PlainProcess.spawn(allocator, &cmd);
+    defer process.deinit();
+    
+    const output = try process.readStdout(allocator);
+    defer allocator.free(output);
+    
+    // Should contain "hello world"
+    try std.testing.expect(std.mem.indexOf(u8, output, "hello") != null);
+    try std.testing.expect(std.mem.indexOf(u8, output, "world") != null);
+    
+    _ = try process.wait();
+}
+
+test "PlainProcess readStderr" {
+    const allocator = std.testing.allocator;
+    const cmd = [_][]const u8{ "sh", "-c", "echo error >&2" };
+    
+    var process = try PlainProcess.spawn(allocator, &cmd);
+    defer process.deinit();
+    
+    const stderr = try process.readStderr(allocator);
+    defer allocator.free(stderr);
+    
+    try std.testing.expect(std.mem.indexOf(u8, stderr, "error") != null);
+    
+    _ = try process.wait();
+}
+
+test "PlainProcess with both stdout and stderr" {
+    const allocator = std.testing.allocator;
+    const cmd = [_][]const u8{ "sh", "-c", "echo out; echo err >&2" };
+    
+    var process = try PlainProcess.spawn(allocator, &cmd);
+    defer process.deinit();
+    
+    const stdout = try process.readStdout(allocator);
+    defer allocator.free(stdout);
+    
+    const stderr = try process.readStderr(allocator);
+    defer allocator.free(stderr);
+    
+    try std.testing.expect(std.mem.indexOf(u8, stdout, "out") != null);
+    try std.testing.expect(std.mem.indexOf(u8, stderr, "err") != null);
+    
+    _ = try process.wait();
+}
+
+test "PtyError enum" {
+    _ = PtyError.OpenPtmxFailed;
+    _ = PtyError.GrantptFailed;
+    _ = PtyError.UnlockptFailed;
+    _ = PtyError.PtsnameError;
+    _ = PtyError.ForkFailed;
+    _ = PtyError.ExecFailed;
+    _ = PtyError.InvalidFd;
+    _ = PtyError.ReadError;
+    _ = PtyError.WriteError;
+}
+
+test "PtyProcess with true command" {
+    const allocator = std.testing.allocator;
+    const cmd = [_][]const u8{ "true" };
+    
+    var process = try PtyProcess.spawn(allocator, &cmd);
+    defer process.deinit();
+    
+    const status = try process.close();
+    try std.testing.expect(status == .{ .exited = 0 });
+}
+
+test "PtyProcess with false command" {
+    const allocator = std.testing.allocator;
+    const cmd = [_][]const u8{ "false" };
+    
+    var process = try PtyProcess.spawn(allocator, &cmd);
+    defer process.deinit();
+    
+    const status = try process.close();
+    try std.testing.expect(status == .{ .exited = 1 });
+}
+
+test "PlainProcess with true command" {
+    const allocator = std.testing.allocator;
+    const cmd = [_][]const u8{ "true" };
+    
+    var process = try PlainProcess.spawn(allocator, &cmd);
+    defer process.deinit();
+    
+    const status = try process.wait();
+    try std.testing.expect(status == .{ .exited = 0 });
+}
+
+test "PlainProcess with false command" {
+    const allocator = std.testing.allocator;
+    const cmd = [_][]const u8{ "false" };
+    
+    var process = try PlainProcess.spawn(allocator, &cmd);
+    defer process.deinit();
+    
+    const status = try process.wait();
+    try std.testing.expect(status == .{ .exited = 1 });
+}
+
+test "PlainProcess readStdout returns empty for no output" {
+    const allocator = std.testing.allocator;
+    const cmd = [_][]const u8{ "true" };
+    
+    var process = try PlainProcess.spawn(allocator, &cmd);
+    defer process.deinit();
+    
+    const output = try process.readStdout(allocator);
+    defer allocator.free(output);
+    
+    // May be empty or contain only newline
+    try std.testing.expect(output.len <= 2);
+    
+    _ = try process.wait();
+}
+
+test "PtyProcess with multiple writes" {
+    const allocator = std.testing.allocator;
+    const cmd = [_][]const u8{ "cat" };
+    
+    var process = try PtyProcess.spawn(allocator, &cmd);
+    defer process.deinit();
+    
+    try process.write("first\n");
+    try process.write("second\n");
+    try process.write("third\n");
+    
+    _ = process.write("") catch {};
+    
+
     try std.testing.expect(true);
 }

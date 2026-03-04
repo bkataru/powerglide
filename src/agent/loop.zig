@@ -21,7 +21,7 @@ pub const LoopState = enum {
 /// Configuration for the Ralph loop
 pub const LoopConfig = struct {
     max_steps: u32 = 200,
-    velocity_ms: u64 = 500,
+    velocity: f64 = 1.0,
     heartbeat_interval_ms: u64 = 30_000,
     think_budget_ms: u64 = 120_000,
     model: []const u8 = "claude-opus-4-6",
@@ -58,9 +58,9 @@ pub const Loop = struct {
     }
 
     pub fn run(self: *Loop) !void {
-        std.debug.print("Starting Ralph loop (max_steps={}, velocity_ms={})\n", .{
+        std.debug.print("Starting Ralph loop (max_steps={}, velocity={d:.1})\n", .{
             self.config.max_steps,
-            self.config.velocity_ms,
+            self.config.velocity,
         });
 
         while (true) {
@@ -79,8 +79,9 @@ pub const Loop = struct {
                 },
                 .continue_loop => |next_state| {
                     self.state = next_state;
-                    if (self.config.velocity_ms > 0) {
-                        std.Thread.sleep(self.config.velocity_ms * 1_000_000);
+                    if (self.config.velocity > 0) {
+                        const delay_ns = @as(u64, @intFromFloat(1000.0 / self.config.velocity * 1_000_000.0));
+                        std.Thread.sleep(delay_ns);
                     }
                     self.step_count += 1;
                 },
@@ -183,7 +184,7 @@ pub const Loop = struct {
 
 test "Loop state transitions" {
     const allocator = std.testing.allocator;
-    const config = LoopConfig{ .max_steps = 10, .velocity_ms = 0 };
+    const config = LoopConfig{ .max_steps = 10, .velocity = 0 };
     var loop = Loop.init(allocator, config);
     defer loop.deinit();
 
@@ -194,7 +195,7 @@ test "Loop state transitions" {
 
 test "Loop step count increments" {
     const allocator = std.testing.allocator;
-    const config = LoopConfig{ .max_steps = 10, .velocity_ms = 0 };
+    const config = LoopConfig{ .max_steps = 10, .velocity = 0 };
     var loop = Loop.init(allocator, config);
     defer loop.deinit();
 
@@ -207,7 +208,323 @@ test "Loop step count increments" {
 
 test "Rogue guard step limit" {
     const allocator = std.testing.allocator;
-    const config = LoopConfig{ .max_steps = 2, .velocity_ms = 0 };
+    const config = LoopConfig{ .max_steps = 2, .velocity = 0 };
+    var loop = Loop.init(allocator, config);
+    defer loop.deinit();
+
+    loop.step_count = 2;
+    try std.testing.expectError(error.StepLimitExceeded, loop.checkRogueGuard());
+}
+
+test "Loop all 11 states transition correctly" {
+    const allocator = std.testing.allocator;
+    const tmp_session = "/tmp/test_loop_session.json";
+    const config = LoopConfig{
+        .max_steps = 20,
+        .velocity = 0,
+        .session_file = tmp_session,
+    };
+    var loop = Loop.init(allocator, config);
+    defer loop.deinit();
+
+    // Clean up old session file
+    std.fs.cwd().deleteFile(tmp_session) catch {};
+    defer std.fs.cwd().deleteFile(tmp_session) catch {};
+
+    // idle -> load_tasks
+    try std.testing.expect(loop.state == .idle);
+    const result1 = try loop.step();
+    try std.testing.expect(result1.continue_loop == .load_tasks);
+    try std.testing.expect(loop.state == .load_tasks);
+
+    // load_tasks -> pick_task
+    const result2 = try loop.step();
+    try std.testing.expect(result2.continue_loop == .pick_task);
+    try std.testing.expect(loop.state == .pick_task);
+
+    // pick_task -> thinking
+    const result3 = try loop.step();
+    try std.testing.expect(result3.continue_loop == .thinking);
+    try std.testing.expect(loop.state == .thinking);
+
+    // thinking -> tool_call
+    const result4 = try loop.step();
+    try std.testing.expect(result4.continue_loop == .tool_call);
+    try std.testing.expect(loop.state == .tool_call);
+
+    // tool_call -> executing
+    const result5 = try loop.step();
+    try std.testing.expect(result5.continue_loop == .executing);
+    try std.testing.expect(loop.state == .executing);
+
+    // executing -> observing
+    const result6 = try loop.step();
+    try std.testing.expect(result6.continue_loop == .observing);
+    try std.testing.expect(loop.state == .observing);
+
+    // observing -> verify
+    const result7 = try loop.step();
+    try std.testing.expect(result7.continue_loop == .verify);
+    try std.testing.expect(loop.state == .verify);
+
+    // verify -> commit
+    const result8 = try loop.step();
+    try std.testing.expect(result8.continue_loop == .commit);
+    try std.testing.expect(loop.state == .commit);
+
+    // commit -> done
+    const result9 = try loop.step();
+    try std.testing.expect(result9.continue_loop == .done);
+    try std.testing.expect(loop.state == .done);
+
+    // done should return done
+    const result10 = try loop.step();
+    try std.testing.expect(result10 == .done);
+}
+
+test "LoopState enum values" {
+    try std.testing.expect(@intFromEnum(LoopState.idle) == 0);
+    try std.testing.expect(@intFromEnum(LoopState.load_tasks) == 1);
+    try std.testing.expect(@intFromEnum(LoopState.pick_task) == 2);
+    try std.testing.expect(@intFromEnum(LoopState.thinking) == 3);
+    try std.testing.expect(@intFromEnum(LoopState.tool_call) == 4);
+    try std.testing.expect(@intFromEnum(LoopState.executing) == 5);
+    try std.testing.expect(@intFromEnum(LoopState.observing) == 6);
+    try std.testing.expect(@intFromEnum(LoopState.verify) == 7);
+    try std.testing.expect(@intFromEnum(LoopState.commit) == 8);
+    try std.testing.expect(@intFromEnum(LoopState.done) == 9);
+    try std.testing.expect(@intFromEnum(LoopState.failed) == 10);
+}
+
+test "LoopConfig default values" {
+    const allocator = std.testing.allocator;
+    const config = LoopConfig{};
+    var loop = Loop.init(allocator, config);
+    defer loop.deinit();
+
+    try std.testing.expect(loop.config.max_steps == 200);
+    try std.testing.expect(loop.config.velocity == 1.0);
+    try std.testing.expect(loop.config.heartbeat_interval_ms == 30_000);
+    try std.testing.expect(loop.config.think_budget_ms == 120_000);
+    try std.testing.expect(std.mem.eql(u8, loop.config.model, "claude-opus-4-6"));
+}
+
+test "LoopConfig custom values" {
+    const allocator = std.testing.allocator;
+    const config = LoopConfig{
+        .max_steps = 50,
+        .velocity = 2.5,
+        .heartbeat_interval_ms = 60_000,
+        .think_budget_ms = 240_000,
+        .model = "gpt-4",
+        .session_file = "/tmp/custom.json",
+    };
+    var loop = Loop.init(allocator, config);
+    defer loop.deinit();
+
+    try std.testing.expect(loop.config.max_steps == 50);
+    try std.testing.expect(loop.config.velocity == 2.5);
+    try std.testing.expect(loop.config.heartbeat_interval_ms == 60_000);
+    try std.testing.expect(std.mem.eql(u8, loop.config.model, "gpt-4"));
+}
+
+test "Loop saveState creates file" {
+    const allocator = std.testing.allocator;
+    const tmp_session = "/tmp/test_loop_save.json";
+    const config = LoopConfig{
+        .max_steps = 10,
+        .velocity = 0,
+        .session_file = tmp_session,
+    };
+    var loop = Loop.init(allocator, config);
+    defer loop.deinit();
+
+    std.fs.cwd().deleteFile(tmp_session) catch {};
+    defer std.fs.cwd().deleteFile(tmp_session) catch {};
+
+    loop.step_count = 5;
+    loop.state = .thinking;
+
+    try loop.saveState();
+
+    // Check file exists
+    const file = try std.fs.cwd().openFile(tmp_session, .{});
+    defer file.close();
+
+    const content = try file.readToEndAlloc(allocator, 1024);
+    defer allocator.free(content);
+
+    try std.testing.expect(std.mem.indexOf(u8, content, "step_count") != null);
+    try std.testing.expect(std.mem.indexOf(u8, content, "5") != null);
+}
+
+test "Loop loadState loads from file" {
+    const allocator = std.testing.allocator;
+    const tmp_session = "/tmp/test_loop_load.json";
+    const config = LoopConfig{
+        .max_steps = 10,
+        .velocity = 0,
+        .session_file = tmp_session,
+    };
+
+    std.fs.cwd().deleteFile(tmp_session) catch {};
+    defer std.fs.cwd().deleteFile(tmp_session) catch {};
+
+    // Create session file
+    {
+        var loop1 = Loop.init(allocator, config);
+        defer loop1.deinit();
+        loop1.step_count = 7;
+        loop1.state = .observing;
+        try loop1.saveState();
+    }
+
+    // Load session
+    var loop2 = Loop.init(allocator, config);
+    defer loop2.deinit();
+
+    try loop2.loadState();
+
+    try std.testing.expect(loop2.step_count == 7);
+}
+
+test "Loop loadState handles missing file" {
+    const allocator = std.testing.allocator;
+    const tmp_session = "/tmp/test_loop_missing.json";
+    const config = LoopConfig{
+        .max_steps = 10,
+        .velocity = 0,
+        .session_file = tmp_session,
+    };
+    var loop = Loop.init(allocator, config);
+    defer loop.deinit();
+
+    std.fs.cwd().deleteFile(tmp_session) catch {};
+
+    // Should not error when file doesn't exist
+    try loop.loadState();
+    try std.testing.expect(loop.step_count == 0);
+}
+
+test "LoopStepResult union" {
+    const result1: StepResult = .{ .continue_loop = .idle };
+    try std.testing.expect(result1 == .continue_loop);
+
+    const result2: StepResult = .{ .done = {} };
+    try std.testing.expect(result2 == .done);
+
+    const result3: StepResult = .{ .failed = "error message" };
+    try std.testing.expect(result3 == .failed);
+}
+
+test "Loop failed state returns failed" {
+    const allocator = std.testing.allocator;
+    const config = LoopConfig{ .max_steps = 10, .velocity = 0 };
+    var loop = Loop.init(allocator, config);
+    defer loop.deinit();
+
+    loop.state = .failed;
+
+    const result = try loop.step();
+    try std.testing.expect(result == .failed);
+}
+
+test "Loop initialization state is idle" {
+    const allocator = std.testing.allocator;
+    const config = LoopConfig{};
+    var loop = Loop.init(allocator, config);
+    defer loop.deinit();
+
+    try std.testing.expect(loop.state == .idle);
+    try std.testing.expect(loop.step_count == 0);
+}
+
+test "Loop deinit is safe to call" {
+    const allocator = std.testing.allocator;
+    const config = LoopConfig{};
+    var loop = Loop.init(allocator, config);
+    loop.deinit(); // Should not panic
+}
+
+test "Loop heartbeat initialization" {
+    const allocator = std.testing.allocator;
+    const config = LoopConfig{};
+    var loop = Loop.init(allocator, config);
+    defer loop.deinit();
+
+    try std.testing.expect(loop.last_heartbeat_ms > 0);
+}
+
+test "Loop heartbeat updates on check" {
+    const allocator = std.testing.allocator;
+    const config = LoopConfig{ .heartbeat_interval_ms = 1000 };
+    var loop = Loop.init(allocator, config);
+    defer loop.deinit();
+
+    const old_heartbeat = loop.last_heartbeat_ms;
+    std.time.sleep(100 * std.time.ns_per_ms);
+    try loop.checkRogueGuard();
+
+    try std.testing.expect(loop.last_heartbeat_ms > old_heartbeat);
+}
+
+test "Loop heartbeat timeout" {
+    const allocator = std.testing.allocator;
+    const config = LoopConfig{ .heartbeat_interval_ms = 10 };
+    var loop = Loop.init(allocator, config);
+    defer loop.deinit();
+
+    // Set heartbeat to old time
+    loop.last_heartbeat_ms = loop.last_heartbeat_ms - 100_000;
+
+    try std.testing.expectError(error.HeartbeatTimeout, loop.checkRogueGuard());
+}
+
+test "Loop session file with subdirectory" {
+    const allocator = std.testing.allocator;
+    const tmp_session = "/tmp/test_subdir/session.json";
+    const config = LoopConfig{
+        .max_steps = 10,
+        .velocity = 0,
+        .session_file = tmp_session,
+    };
+    var loop = Loop.init(allocator, config);
+    defer loop.deinit();
+
+    std.fs.cwd().deleteTree("/tmp/test_subdir") catch {};
+    defer std.fs.cwd().deleteTree("/tmp/test_subdir") catch {};
+
+    try loop.saveState();
+
+    const file = try std.fs.cwd().openFile(tmp_session, .{});
+    defer file.close();
+    _ = file;
+
+    const config = LoopConfig{ .max_steps = 10, .velocity = 0 };
+    var loop = Loop.init(allocator, config);
+    defer loop.deinit();
+
+    try std.testing.expect(loop.state == .idle);
+    _ = try loop.step();
+    try std.testing.expect(loop.state == .load_tasks);
+}
+
+test "Loop step count increments" {
+    const allocator = std.testing.allocator;
+    const config = LoopConfig{ .max_steps = 10, .velocity = 0 };
+    var loop = Loop.init(allocator, config);
+    defer loop.deinit();
+
+    var i: u32 = 0;
+    while (i < 5) : (i += 1) {
+        _ = try loop.step();
+    }
+    try std.testing.expect(loop.step_count == 0);
+}
+
+test "Rogue guard step limit" {
+    const allocator = std.testing.allocator;
+    const config = LoopConfig{ .max_steps = 2, .velocity = 0 };
     var loop = Loop.init(allocator, config);
     defer loop.deinit();
 
