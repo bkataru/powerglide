@@ -81,11 +81,11 @@ pub fn build(b: *std.Build) void {
     trial_cmd.step.dependOn(b.getInstallStep());
     trial_step.dependOn(&trial_cmd.step);
 
-    // BF16 trial harness executable (examples/trial_bf16.zig)
-    const trial_bf16_exe = b.addExecutable(.{
-        .name = "trial-bf16",
+    // Quantization variant trial harness (examples/trial_quant.zig)
+    const trial_quant_exe = b.addExecutable(.{
+        .name = "trial-quant",
         .root_module = b.createModule(.{
-            .root_source_file = b.path("examples/trial_bf16.zig"),
+            .root_source_file = b.path("examples/trial_quant.zig"),
             .target = target,
             .optimize = optimize,
             .link_libc = true,
@@ -94,9 +94,9 @@ pub fn build(b: *std.Build) void {
             },
         }),
     });
-    b.installArtifact(trial_bf16_exe);
-    const trial_bf16_step = b.step("trial-bf16", "Run the igllama BF16 trial harness");
-    const trial_bf16_cmd = b.addRunArtifact(trial_bf16_exe);
-    trial_bf16_cmd.step.dependOn(b.getInstallStep());
-    trial_bf16_step.dependOn(&trial_bf16_cmd.step);
+    b.installArtifact(trial_quant_exe);
+    const trial_quant_step = b.step("trial-quant", "Run the igllama quantization sensitivity harness (Q4/Q5/Q6/Q8 on 2B and 9B)");
+    const trial_quant_cmd = b.addRunArtifact(trial_quant_exe);
+    trial_quant_cmd.step.dependOn(b.getInstallStep());
+    trial_quant_step.dependOn(&trial_quant_cmd.step);
 }

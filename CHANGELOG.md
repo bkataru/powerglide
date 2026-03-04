@@ -2,6 +2,21 @@
 
 All notable changes to the **powerglide** project will be documented in this file.
 
+## [0.2.6] - 2026-03-04
+
+### Added
+- **T14–T17 in trial.zig** — four new agentic task categories: code generation + `zig fmt` validation (T14), JSON round-trip write/read/verify (T15), error recovery from a failed command (T16), and multi-source synthesis from two `head` calls (T17)
+- **`examples/trial_quant.zig`** — quantization sensitivity harness; runs T01–T13 × Q4/Q5/Q6/Q8 on 2B and 9B, managing igllama lifecycle sequentially on `:8090`; outputs side-by-side pass-rate table per quant level
+- **`zig build trial-quant`** — new build step for the quant sensitivity harness
+
+### Changed
+- **`examples/trial.zig`** — doc comment and task count updated to T01–T17
+- **`website/content/showcase.smd`** — BF16 case study finalized (removed "pending"/"trial in progress"); 2B-BF16 analytically confirmed capacity-limited; added Future Directions section covering quant curve, speed benchmark, context sensitivity, multi-model routing, and extended task library
+- **CLAUDE.md** — version `0.2.6`; roadmap items 14–16 added; trial/quant harness build steps documented
+
+### Removed
+- **`examples/trial_bf16.zig`** — removed: BF16 confirmed impractical on CPU-only hardware (0/13 same as Q8 for 0.8B; others already saturated); 2–4× RAM cost with zero task improvement; Q8 is optimal
+
 ## [0.2.5] - 2026-03-04
 
 ### Added

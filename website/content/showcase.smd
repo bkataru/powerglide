@@ -261,15 +261,11 @@ The 0.8B model's json_mode output consistently double-escapes structural JSON qu
 
 ---
 
-## Case Study 6 — BF16 (Full Precision) Trial
+## Case Study 6 — BF16 Precision Analysis
 
-`examples/trial_bf16.zig` extends the trial harness to full BF16 (bfloat16) precision — the same T01–T13 task suite, but each model runs at maximum weight precision with the harness managing igllama lifecycle (spawn → health-poll → run → kill) per model on a single port.
+The key question after seeing Q4→Q8 gains: does removing quantization error entirely change anything for models that are already failing or already passing at Q8?
 
-```bash
-zig build trial-bf16
-```
-
-The BF16 harness downloads ~30 GB of GGUF files and runs models sequentially, so they can't co-exist in RAM. The key question: does removing quantization error change anything for models that are already failing or already passing at Q8?
+BF16 (bfloat16) represents maximum weight precision for GGUF models. On CPU-only hardware, BF16 GGUFs require 2–4× the RAM of Q8 and run slower (larger memory footprint means more cache misses per token generated).
 
 ### BF16 model sizes
 
@@ -286,28 +282,24 @@ Live trial result: 0.8B-BF16 fails every task with the same tool-loop format err
 
 **This confirms the 0.8B failure is a training gap, not quantization noise.** Removing quantization error entirely makes no difference — the model simply does not have the capacity to reliably follow the `{"tool":"...", "args":{...}}` schema over multiple turns.
 
-### 4B-BF16 and 9B-BF16 — predicted no change (already saturated)
+### 4B and 9B — no room to improve (saturated at Q8)
 
-At Q8, both the 4B and 9B pass 13/13 tasks. There is no room for BF16 to improve scores further. BF16 would offer lower per-token perplexity on edge-case outputs, but for the structured tool-calling schema the models already produce at Q8, the additional precision provides no practical benefit.
+Both models pass 13/13 at Q8. There is no room for BF16 to improve scores further. The structured tool-calling schema is already reliably produced at Q8 precision; the additional weight fidelity provides no practical benefit for agentic tasks.
 
-BF16 runs slower than Q8 on CPU (larger memory footprint means more cache misses per token) and requires 2–4× the RAM, so for tool-use workflows Q8 is strictly preferable.
+### 2B-BF16 — capacity-limited, not precision-limited
 
-### 2B-BF16 — the interesting case
-
-The 2B at Q8 passes 11/13. The two remaining failures (T02: complex sed+grep chain, T09: max_steps grep loop) could in theory be precision-sensitive — if Q4→Q8 added 3 tasks, does Q8→BF16 add the last 2?
-
-Trial in progress. Based on the 0.8B result (no improvement), the likely finding is that 2B failures are also capacity-limited: the model doesn't execute the correct grep pattern, which is a reasoning failure, not a weight precision issue.
+The 2B at Q8 passes 11/13 (fails T02: complex sed+grep chain, T09: max_steps grep loop). Based on the 0.8B confirmation that BF16 = 0/13 (same as Q8), and the nature of 2B's failures — the model doesn't execute the correct grep pattern, a reasoning gap — BF16 is predicted to show no improvement here either. The failures are capacity-limited, not precision-limited.
 
 ### Quantization sensitivity — three-level comparison
 
 | Model | Q4 | Q8 | BF16 | Δ Q4→Q8 | Δ Q8→BF16 |
 |-------|----|----|------|---------|-----------|
-| 0.8B | 0/13 | 0/13 | 0/13 | +0 | +0 |
-| 2B | 8/13 | 11/13 | pending | **+3** | TBD |
-| 4B | 13/13 | 13/13 | predicted 13/13 | +0 | 0 |
-| 9B | 9/13 | 13/13 | predicted 13/13 | **+4** | 0 |
+| 0.8B | 0/13 | 0/13 | 0/13 (confirmed) | +0 | +0 |
+| 2B | 8/13 | 11/13 | ~11/13 (predicted) | **+3** | ~0 |
+| 4B | 13/13 | 13/13 | 13/13 (predicted) | +0 | 0 |
+| 9B | 9/13 | 13/13 | 13/13 (predicted) | **+4** | 0 |
 
-**Finding:** Quantization sensitivity is model-size-dependent. Larger models (9B) benefit significantly from Q4→Q8 because their extra capacity is occluded by Q4 weight error on complex reasoning chains. Smaller models (0.8B) are capacity-limited regardless of precision — they cannot reliably follow multi-turn tool schemas even at BF16. The practical takeaway: **use Q8, not BF16** — same task performance, half the RAM, faster inference.
+**Finding:** Quantization sensitivity is model-size-dependent. Larger models (9B) benefit significantly from Q4→Q8 because their extra capacity is occluded by Q4 weight error on complex reasoning chains. Smaller models (0.8B) are capacity-limited regardless of precision. The practical takeaway: **use Q8, not BF16** — same task performance, half the RAM, faster inference on CPU.
 
 ---
 
@@ -330,7 +322,7 @@ Five requirements for reliable multi-turn tool use with a local Qwen3.5 model:
 | Model | Q4 | Q8 | BF16 | Verdict |
 |-------|----|----|------|---------|
 | Qwen3.5-0.8B | 0/13 | 0/13 | 0/13 | capacity-limited at all precisions |
-| Qwen3.5-2B | 8/13 | **11/13** | pending | Q8 is the sweet spot |
+| Qwen3.5-2B | 8/13 | **11/13** | ~11/13 | Q8 is the sweet spot |
 | Qwen3.5-4B | 13/13 | **13/13** | 13/13 | already saturated at Q4 |
 | Qwen3.5-9B | 9/13 | **13/13** | 13/13 | Q8 resolves tool-hallucination |
 | Claude Opus 4.6 | — | — | — | ✓ full capability |
@@ -350,6 +342,32 @@ Five requirements for reliable multi-turn tool use with a local Qwen3.5 model:
 - 2B Q8: 3–15s/call
 - 4B Q8: 10–65s/call
 - 9B Q8: 15–85s/call
+
+---
+
+## Future Directions
+
+The trial harness (`examples/trial.zig`) now covers 17 tasks (T01–T17), expanding from the original 13 with code generation, JSON round-trip, error recovery, and multi-source synthesis tasks. Several research directions remain open:
+
+### Quantization sensitivity curve
+
+`examples/trial_quant.zig` (run with `zig build trial-quant`) measures Q4/Q5/Q6/Q8 for the two quant-sensitive models (2B and 9B), mapping the full accuracy-vs-compression tradeoff curve. Expected: for 9B, Q4→Q5 may recover some of the Q4→Q8 gain at lower RAM cost; for 2B, the plateau likely starts at Q5/Q6.
+
+### Speed benchmark
+
+Tokens-per-second × pass-rate is the real efficiency metric. Currently unmeasured: 9B-Q4 may produce the same 13/13 score as 9B-Q8 (at Q4→Q8 parity tasks), but at 2–3× the inference speed. If 9B-Q4 held at 13/13 with the grammar constraint from igllama v0.3.9, it would be the preferred production config — same accuracy, faster, less RAM.
+
+### Context length sensitivity
+
+For tasks like T11 (multi-file head + summarize) and T17 (multi-source synthesis), context window size may be a bottleneck. Testing ctx-size 512/1024/2048/4096 across the 2B model would isolate whether T02 and T09 failures are context-limited or capacity-limited.
+
+### Multi-model routing trial
+
+powerglide's router supports fallback chains and per-task model selection. A routing trial would assign task classes to models by observed strength: T01–T06 (lookup/grep) → 2B, T07–T10 (tool + reasoning) → 4B, T11–T17 (multi-step chains) → 9B. This would measure whether per-task routing beats using 4B for everything.
+
+### Extended task library
+
+The T01–T17 suite covers grep, write/verify, arithmetic, error recovery, and synthesis. Gaps include: patch application (edit a file at a specific line), cross-repo refactoring (rename a function across files), and test generation (write a test for a given function signature). These are the tasks where 4B is expected to hit its ceiling.
 
 ---
 

@@ -54,11 +54,12 @@ Start with: `igllama api <model> --port <N> --no-think --max-tokens 512 --thread
 
 - `OpenAIClient.json_mode = true` → forces `response_format: {"type":"json_object"}` for constrained output
 - Doctor scans `:8090–8099` automatically
-- Trial harness: `zig build trial` — runs T01–T13 × all 4 endpoints
+- Trial harness: `zig build trial` — runs T01–T17 × all 4 endpoints
+- Quant harness: `zig build trial-quant` — runs T01–T13 × Q4/Q5/Q6/Q8 on 2B and 9B (sequential on :8090)
 
 ## Current Version
 
-`0.2.5` — 195/195 tests passing, 0 leaks.
+`0.2.6` — 195/195 tests passing, 0 leaks.
 
 ## Roadmap
 
@@ -74,5 +75,7 @@ Start with: `igllama api <model> --port <N> --no-think --max-tokens 512 --thread
 10. ✅ Showcase page — dogfooding case studies: full Qwen3.5 lineup (0.8B/2B/4B/9B)
 11. ✅ Zig trial harness (`examples/trial.zig`) — T01–T13 × 4 weight classes at Q4/Q8
 12. ✅ igllama json_mode patch — GBNF grammar constraint via `response_format` (v0.3.9)
-13. ✅ BF16 trial harness (`examples/trial_bf16.zig`) — T01–T13 × 4 models at full precision
-14. ✅ Security: grep/glob tools use direct argv (no shell interpolation of user input)
+13. ✅ Security: grep/glob tools use direct argv (no shell interpolation of user input)
+14. ✅ BF16 analysis — confirmed capacity-limited, not precision-limited; removed BF16 harness
+15. ✅ Expanded trial tasks T14–T17 (code gen, JSON round-trip, error recovery, multi-source)
+16. ✅ Quantization sensitivity harness (`examples/trial_quant.zig`) — Q4/Q5/Q6/Q8 on 2B+9B
