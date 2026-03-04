@@ -2,6 +2,17 @@
 
 All notable changes to the **powerglide** project will be documented in this file.
 
+## [0.2.7] - 2026-03-04
+
+### Added
+- **BF16 trials in `trial_quant.zig`** — `2B-BF16` and `9B-BF16` added to `QUANT_MODELS`; harness now covers the full Q4/Q5/Q6/Q8/BF16 precision curve for both weight classes
+
+### Fixed
+- **igllama v0.3.10 — streaming json_mode use-after-free** — streaming handler called `loadGrammar(allocator, "json")` then `defer allocator.free(gs)` inside the if-block, freeing the grammar string while the sampler still held a pointer. Replaced with direct `JSON_GRAMMAR` comptime constant (matching the non-streaming handler); no allocation, no lifetime issue. igllama no longer crashes when `response_format: {"type":"json_object"}` is sent on a streaming endpoint.
+
+### Changed
+- **CLAUDE.md** — version `0.2.7`; roadmap item 14–15 updated
+
 ## [0.2.6] - 2026-03-04
 
 ### Added

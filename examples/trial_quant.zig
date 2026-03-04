@@ -1,20 +1,22 @@
 /// powerglide × igllama — quantization sensitivity trial harness
 ///
-/// Runs T01–T13 across Q4/Q5/Q6/Q8 quantization variants for the two
+/// Runs T01–T13 across Q4/Q5/Q6/Q8/BF16 quantization variants for the two
 /// quant-sensitive models (2B and 9B), mapping the accuracy-vs-size tradeoff.
 /// All variants run sequentially on :8090; the harness manages igllama lifecycle.
 ///
 ///   zig build trial-quant
 ///
 /// Download GGUFs first:
-///   igllama pull unsloth/Qwen3.5-2B-GGUF -f Qwen3.5-2B-Q4_K_M.gguf
+///   igllama pull unsloth/Qwen3.5-2B-GGUF -f Qwen3.5-2B-UD-Q4_K_XL.gguf
 ///   igllama pull unsloth/Qwen3.5-2B-GGUF -f Qwen3.5-2B-Q5_K_M.gguf
 ///   igllama pull unsloth/Qwen3.5-2B-GGUF -f Qwen3.5-2B-Q6_K.gguf
 ///   igllama pull unsloth/Qwen3.5-2B-GGUF -f Qwen3.5-2B-Q8_0.gguf
-///   igllama pull unsloth/Qwen3.5-9B-GGUF -f Qwen3.5-9B-Q4_K_M.gguf
+///   igllama pull unsloth/Qwen3.5-2B-GGUF -f Qwen3.5-2B-BF16.gguf
+///   igllama pull unsloth/Qwen3.5-9B-GGUF -f Qwen3.5-9B-UD-Q4_K_XL.gguf
 ///   igllama pull unsloth/Qwen3.5-9B-GGUF -f Qwen3.5-9B-Q5_K_M.gguf
 ///   igllama pull unsloth/Qwen3.5-9B-GGUF -f Qwen3.5-9B-Q6_K.gguf
 ///   igllama pull unsloth/Qwen3.5-9B-GGUF -f Qwen3.5-9B-Q8_0.gguf
+///   igllama pull unsloth/Qwen3.5-9B-GGUF -f Qwen3.5-9B-BF16.gguf
 const std = @import("std");
 const http_mod = @import("powerglide").http;
 
@@ -49,18 +51,20 @@ const QuantModel = struct {
     group: []const u8, // "2B" or "9B"
 };
 
-// Run Q4/Q5/Q6/Q8 for the two quant-sensitive models (2B and 9B).
+// Run Q4/Q5/Q6/Q8/BF16 for the two quant-sensitive models (2B and 9B).
 // Q4 uses the UD-Q4_K_XL variant (already present from main trial lineup).
 // file field is an absolute path — models live in MODELS_DIR (/root/powerglide).
 const QUANT_MODELS = [_]QuantModel{
-    .{ .name = "2B-Q4",  .file = MODELS_DIR ++ "/Qwen3.5-2B-UD-Q4_K_XL.gguf", .group = "2B" },
-    .{ .name = "2B-Q5",  .file = MODELS_DIR ++ "/Qwen3.5-2B-Q5_K_M.gguf",     .group = "2B" },
-    .{ .name = "2B-Q6",  .file = MODELS_DIR ++ "/Qwen3.5-2B-Q6_K.gguf",       .group = "2B" },
-    .{ .name = "2B-Q8",  .file = MODELS_DIR ++ "/Qwen3.5-2B-Q8_0.gguf",       .group = "2B" },
-    .{ .name = "9B-Q4",  .file = MODELS_DIR ++ "/Qwen3.5-9B-UD-Q4_K_XL.gguf", .group = "9B" },
-    .{ .name = "9B-Q5",  .file = MODELS_DIR ++ "/Qwen3.5-9B-Q5_K_M.gguf",     .group = "9B" },
-    .{ .name = "9B-Q6",  .file = MODELS_DIR ++ "/Qwen3.5-9B-Q6_K.gguf",       .group = "9B" },
-    .{ .name = "9B-Q8",  .file = MODELS_DIR ++ "/Qwen3.5-9B-Q8_0.gguf",       .group = "9B" },
+    .{ .name = "2B-Q4",   .file = MODELS_DIR ++ "/Qwen3.5-2B-UD-Q4_K_XL.gguf", .group = "2B" },
+    .{ .name = "2B-Q5",   .file = MODELS_DIR ++ "/Qwen3.5-2B-Q5_K_M.gguf",     .group = "2B" },
+    .{ .name = "2B-Q6",   .file = MODELS_DIR ++ "/Qwen3.5-2B-Q6_K.gguf",       .group = "2B" },
+    .{ .name = "2B-Q8",   .file = MODELS_DIR ++ "/Qwen3.5-2B-Q8_0.gguf",       .group = "2B" },
+    .{ .name = "2B-BF16", .file = MODELS_DIR ++ "/Qwen3.5-2B-BF16.gguf",       .group = "2B" },
+    .{ .name = "9B-Q4",   .file = MODELS_DIR ++ "/Qwen3.5-9B-UD-Q4_K_XL.gguf", .group = "9B" },
+    .{ .name = "9B-Q5",   .file = MODELS_DIR ++ "/Qwen3.5-9B-Q5_K_M.gguf",     .group = "9B" },
+    .{ .name = "9B-Q6",   .file = MODELS_DIR ++ "/Qwen3.5-9B-Q6_K.gguf",       .group = "9B" },
+    .{ .name = "9B-Q8",   .file = MODELS_DIR ++ "/Qwen3.5-9B-Q8_0.gguf",       .group = "9B" },
+    .{ .name = "9B-BF16", .file = MODELS_DIR ++ "/Qwen3.5-9B-BF16.gguf",       .group = "9B" },
 };
 
 // ── System prompt ─────────────────────────────────────────────────────────────
@@ -202,7 +206,6 @@ fn spawnIgllama(allocator: std.mem.Allocator, model_file: []const u8) !std.proce
         "--threads", "4",
         "--threads-batch", "16",
         "--ctx-size", "2048",
-        "--mlock",
     };
 
     var child = std.process.Child.init(&argv, allocator);
@@ -338,7 +341,7 @@ fn callModel(allocator: std.mem.Allocator, model: []const u8, messages: []const 
         .model = model, .max_tokens = MAX_TOKENS,
         .temperature = TEMPERATURE, .top_p = TOP_P,
         .top_k = TOP_K, .min_p = MIN_P, .stream = false,
-        .response_format = .{ .@"type" = "json_object" },
+        .response_format = .{ .@"type" = "text" },
         .messages = messages,
     };
     var body_buf = std.ArrayList(u8){};
@@ -606,7 +609,7 @@ pub fn main() !void {
     const w = std.fs.File.stdout().deprecatedWriter();
 
     try w.writeAll("\npowerglide x igllama — quantization sensitivity trial\n");
-    try w.print("Tasks: T01-T{d}   Models: 2B + 9B × Q4/Q5/Q6/Q8\n\n", .{TASKS.len});
+    try w.print("Tasks: T01-T{d}   Models: 2B + 9B × Q4/Q5/Q6/Q8/BF16\n\n", .{TASKS.len});
 
     var results: [QUANT_MODELS.len][TASKS.len]?TaskResult = .{.{null} ** TASKS.len} ** QUANT_MODELS.len;
     defer {
@@ -653,7 +656,7 @@ pub fn main() !void {
 
     // ── Summary table ─────────────────────────────────────────────────────────
     try w.print("\n\n{s}\n", .{SEP_THICK});
-    try w.writeAll("  RESULTS — quantization sensitivity (2B and 9B)\n");
+    try w.writeAll("  RESULTS — quantization sensitivity (2B and 9B) Q4/Q5/Q6/Q8/BF16\n");
     try w.print("{s}\n", .{SEP_THICK});
 
     // Header

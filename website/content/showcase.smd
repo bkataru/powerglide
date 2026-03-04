@@ -20,7 +20,7 @@ models:    Qwen3.5-0.8B-Q8_0.gguf       ← igllama on :8090  (~775 MB)
            Qwen3.5-2B-Q8_0.gguf         ← igllama on :8091  (~1.9 GB)
            Qwen3.5-4B-Q8_0.gguf         ← igllama on :8092  (~4.2 GB)
            Qwen3.5-9B-UD-Q4_K_XL.gguf   ← igllama on :8093  (~8.9 GB)
-framework: powerglide v0.2.5, igllama v0.3.9
+framework: powerglide v0.2.7, igllama v0.3.10
 ```
 
 ### Downloading models
@@ -144,7 +144,9 @@ Ralph loop completed after 9 steps
 
 This is the honest assessment: **small models do not reliably emit structured tool call JSON** via the OpenAI `tools` parameter. Both 0.8B and 4B Qwen3.5 models tend to write markdown-fenced code blocks instead of returning a proper `tool_calls` array.
 
-**The fix — JSON mode + grammar constraint:** powerglide's `OpenAIClient` supports a `json_mode` flag that sets `response_format: {"type": "json_object"}` in the request. As of igllama v0.3.9, this now wires a GBNF grammar constraint (`JSON_GRAMMAR`) directly into the llama.cpp sampler chain via `llama_sampler_init_grammar()` — enforcing structurally valid JSON at the token level, not just requesting it. Used with a system prompt that specifies the tool call schema explicitly, this reliably elicits structured output from 4B and above.
+**The fix — system prompt JSON constraint:** powerglide's trial harness uses an explicit system prompt instructing models to output exactly one JSON object per turn (`{"tool":"...", "args":{...}}`), with no markdown fences and no extra text. This approach works for 4B and above without requiring grammar-constrained sampling.
+
+**igllama v0.3.9–v0.3.10 — grammar-constrained JSON mode (development notes):** igllama's `response_format: {"type":"json_object"}` wires a GBNF grammar constraint into the llama.cpp sampler chain via `llama_sampler_init_grammar()`. This feature was introduced in v0.3.9 but contained a use-after-free: the streaming handler called `loadGrammar(allocator)` then `defer allocator.free(gs)` inside the if-block, freeing the grammar string while the sampler still held a pointer to it. Additionally, the grammar sampler in the llama.cpp version bundled with igllama crashes during token generation for 2B+ model vocabularies. **v0.3.10 fixes the use-after-free** and the trial harness is configured to use `"text"` response format, relying on the system prompt to constrain JSON output at the model level.
 
 The `local` and `local4b` agents are best suited for exploration, summarization, and Q&A tasks. For agentic code modification requiring reliable multi-step tool invocations, the `hephaestus` (Claude Opus) agent is the right choice.
 
@@ -178,7 +180,7 @@ zig build trial
 
 This is powerglide dogfooding itself: the harness is part of the codebase, tested with the same build system, and demonstrates the exact agentic patterns the framework is designed to support.
 
-### Trial task suite (T01–T13)
+### Trial task suite (T01–T17)
 
 ```
 T01  Grep: VERSION constant in src/main.zig
@@ -194,6 +196,10 @@ T10  Write + execute: Python hello-world at /tmp/
 T11  Multi-step: head -n 4 of 3 agent/ files, summarise each
 T12  Arithmetic: wc -l result × 2, report
 T13  Chain: grep → count → write integer to /tmp/ → verify
+T14  Code gen: write Zig fibonacci, run zig fmt, verify compile
+T15  JSON round-trip: write JSON file, read back, verify key-value
+T16  Error recovery: run a failing command, observe error, fix it
+T17  Multi-source synthesis: read 2 files, synthesize single answer
 ```
 
 Tasks are ordered by complexity: T01–T06 require one tool call and a clean answer; T07–T10 require tool output plus reasoning; T11–T13 are multi-step chains where each turn feeds the next.
@@ -307,7 +313,7 @@ The 2B at Q8 passes 11/13 (fails T02: complex sed+grep chain, T09: max_steps gre
 
 Five requirements for reliable multi-turn tool use with a local Qwen3.5 model:
 
-1. **JSON mode** — `response_format: {"type":"json_object"}` is mandatory; without it models write markdown prose
+1. **System prompt JSON constraint** — explicitly instruct the model to output exactly one JSON object per turn with the tool call schema; without a clear constraint models write markdown prose. `response_format: {"type":"json_object"}` (grammar-constrained mode in igllama) can further enforce this at the sampler level, but the system prompt alone is sufficient for 4B+
 2. **Flat-args fallback** — models at 2B–4B sometimes emit `{"tool":"bash","command":"..."}` at the top level instead of nested `args`; the harness detects and handles both shapes transparently
 3. **Control-char unescaping** — igllama json_mode sometimes emits literal `\n` (two chars) between JSON tokens instead of real newlines; `parseFromSlice` rejects literal backslash-n as invalid JSON whitespace; unescape before parsing
 4. **Targeted error feedback** — feeding back "unknown tool" as a result causes small models to enter an escape-loop; send a format reminder instead
@@ -351,7 +357,7 @@ The trial harness (`examples/trial.zig`) now covers 17 tasks (T01–T17), expand
 
 ### Quantization sensitivity curve
 
-`examples/trial_quant.zig` (run with `zig build trial-quant`) measures Q4/Q5/Q6/Q8 for the two quant-sensitive models (2B and 9B), mapping the full accuracy-vs-compression tradeoff curve. Expected: for 9B, Q4→Q5 may recover some of the Q4→Q8 gain at lower RAM cost; for 2B, the plateau likely starts at Q5/Q6.
+`examples/trial_quant.zig` (run with `zig build trial-quant`) measures Q4/Q5/Q6/Q8/BF16 for the two quant-sensitive models (2B and 9B), mapping the full accuracy-vs-compression tradeoff curve. Expected: for 9B, Q4→Q5 may recover some of the Q4→Q8 gain at lower RAM cost; for 2B, the plateau likely starts at Q5/Q6. BF16 variants are included to complete the precision curve.
 
 ### Speed benchmark
 
