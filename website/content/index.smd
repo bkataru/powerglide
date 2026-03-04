@@ -26,19 +26,19 @@
                 </feMerge>
             </filter>
         </defs>
-        
+
         <!-- Background circle -->
         <circle cx="100" cy="100" r="95" fill="#0a0a0f" stroke="#F7A41D" stroke-width="2">
             <animate attributeName="stroke" values="#F7A41D;#06b6d4;#7c3aed;#F7A41D" dur="4s" repeatCount="indefinite"/>
         </circle>
-        
+
         <!-- Speed lines -->
         <g stroke="#F7A41D" stroke-width="2" fill="none" filter="url(#neon-glow)">
             <path d="M60 80 L80 100 L60 120"/>
             <path d="M140 80 L120 100 L140 120"/>
             <path d="M80 60 L100 80 L120 60"/>
         </g>
-        
+
         <!-- Central power symbol -->
         <g filter="url(#neon-glow)">
             <circle cx="100" cy="100" r="40" fill="none" stroke="url(#pg-gradient)" stroke-width="4"/>
@@ -47,7 +47,7 @@
             <circle cx="100" cy="70" r="3" fill="#F7A41D"/>
             <circle cx="130" cy="110" r="3" fill="#F7A41D"/>
         </g>
-        
+
         <!-- Corner accents -->
         <g stroke="#7c3aed" stroke-width="2" fill="none">
             <path d="M30 30 L40 30 L40 40"/>
@@ -55,14 +55,14 @@
             <path d="M30 170 L40 170 L40 160"/>
             <path d="M170 170 L160 170 L160 160"/>
         </g>
-        
+
         <!-- Text -->
         <text x="100" y="180" text-anchor="middle" fill="#F7A41D" font-size="14" font-weight="bold" font-family="monospace" filter="url(#neon-glow)">POWERGLIDE</text>
     </svg>
 </div>
 ```
 
-A CLI coding agent harness — the layer between you and a swarm of LLM-driven software engineers working your codebase in parallel. It is written in [Zig 0.15.2](https://ziglang.org/), compiles to a single static binary with zero runtime dependencies, and is designed around one constraint: the agent loop must be reliable enough to run unattended.
+Like a finely tuned transmission at full throttle, powerglide swerves through your codebase with precision, force, and grace. It is the layer between you and a swarm of LLM-driven engineers working in parallel — written in [Zig 0.15.2](https://ziglang.org/), compiled to a single static binary with zero runtime dependencies, built around one non-negotiable constraint: the agent loop must be reliable enough to run unattended while you do something else.
 
 ```bash
 $ powerglide run --agent hephaestus --velocity 2.0 "implement a binary search tree in Zig"
@@ -72,24 +72,24 @@ $ powerglide run --agent hephaestus --velocity 2.0 "implement a binary search tr
 
 ## Key Features
 
-- **Multi-Agent Swarms** 🐜 — Run N agents in parallel, each in an isolated workspace, pulling from a shared file-backed task queue. Workers are monitored via heartbeat; rogue agents are killed before their diverged work accumulates.
+- **Multi-Agent Swarms** 🐜 — Lay your foot flat. Run N agents in parallel, each in an isolated workspace, pulling from a shared file-backed task queue. Workers are monitored via heartbeat; rogue agents are killed before their diverged work accumulates. No daemon, no sockets — just observable, restartable file I/O.
 
-- **Velocity Control** 🚀 — Tune agent speed: `--velocity 2.0` halves the step delay (500ms); `0.5` doubles it (2000ms). Agents can self-throttle mid-session by writing a new velocity to their session file — no external signal required.
+- **Velocity Control** 🚀 — Tune the gear ratio: `--velocity 2.0` halves the step delay to 500ms for maximum throughput; `0.5` stretches it to 2000ms — long enough to read output and brake before the agent over-commits. Agents can self-throttle mid-session by writing their own velocity back to disk.
 
-- **Ralph Loop State Machine** 🔄 — An explicit 11-state machine drives every session: `idle → load_tasks → pick_task → thinking → tool_call → executing → observing → verify → commit → done`. No implicit flow, no silent exits. Every session ends with `<POWERGLIDE_DONE>` or `<POWERGLIDE_ERROR>`.
+- **Ralph Loop State Machine** 🔄 — An explicit 11-state machine is the cognitive engine inside every session: `idle → load_tasks → pick_task → thinking → tool_call → executing → observing → verify → commit → done`. No implicit flow, no silent exits. Every session terminates with `<POWERGLIDE_DONE>` or `<POWERGLIDE_ERROR>`. The loop is what makes powerglide auditable — you can see which state any agent is in, at any moment, and intervene.
 
-- **Reliable PTY Management** 💻 — Every tool runs in a full pseudoterminal. Exit codes are captured via `waitpid` with WNOHANG polling and a `/proc/<pid>/status` fallback — so `bash`, `zig build`, and `pytest` all report reliable exit codes that the verify state can trust.
+- **Reliable PTY Management** 💻 — Every tool runs in a full pseudoterminal. Exit codes are captured via `waitpid` with WNOHANG polling and a `/proc/<pid>/status` fallback — so `bash`, `zig build`, `pytest`, and any arbitrary command deliver reliable, trustable exit codes to the verify state that follows.
 
-- **Multi-Model Routing** 🤖 — Route to Anthropic (Claude), OpenAI, or any OpenAI-compatible endpoint (Ollama, NVIDIA NIM, Together AI). Fallback chains in `config.json` mean a rate-limited primary provider degrades gracefully to the next available one.
+- **Multi-Model Routing** 🤖 — Route to Anthropic (Claude), OpenAI, or any OpenAI-compatible endpoint (Ollama, igllama, NVIDIA NIM, Together AI). Fallback chains in `config.json` mean a rate-limited primary provider degrades gracefully to the next available one — without stopping the session.
 
-- **Terminal TUI** 📊 — A `vxfw`-based multi-panel dashboard showing each agent's current loop state, live log output, velocity, task progress, and token usage — across all workers simultaneously.
+- **Terminal TUI** 📊 — A `vxfw`-based multi-panel dashboard showing each agent's current loop state, live log output, velocity, task progress, and token usage — across all workers simultaneously. Because watching interleaved terminal output across five agents isn't situational awareness, it's noise.
 
 ## Quick Start
 
 ### Get Started
 
 - [Zig 0.15.2](https://ziglang.org/download/) — Install with `mise install zig@0.15.2` or from the official site
-- An API key for your model provider (set `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`)
+- An API key for your model provider (set `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`), or run [igllama](https://github.com/bkataru/igllama) locally with any GGUF
 
 ### Build
 
@@ -135,6 +135,8 @@ The binary lands at `./zig-out/bin/powerglide`.
 ## The Ralph Loop
 
 Every powerglide agent session is driven by the **Ralph Loop** — an explicit state machine that enforces a strict sequence from task intake through tool execution to completion. The loop structure is what makes powerglide agents auditable and stoppable: you can see exactly which state an agent is in, you can attach rate limiting or logging to any specific transition, and you always know whether a session ended cleanly.
+
+The loop does not trust the model to self-terminate gracefully. It drives the model — state by state, transition by transition — and only the loop decides when a session is done.
 
 ```=html
 <svg viewBox="0 0 520 620" xmlns="http://www.w3.org/2000/svg">

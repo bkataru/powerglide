@@ -6,7 +6,7 @@
 .date = @date("2026-03-02"),
 ---
 
-powerglide is written in [Zig 0.15.2](https://ziglang.org/) and compiles to a single static binary with zero runtime dependencies. The design prioritizes explicitness over abstraction: every subsystem has a clearly defined boundary, every failure mode has a named path, and nothing happens implicitly.
+powerglide is written in [Zig 0.15.2](https://ziglang.org/) and compiles to a single static binary with zero runtime dependencies. Think of it as a hand-assembled gearbox: every component has a specific tolerance, every interaction a defined load path, and nothing moves without intention. The design prioritizes explicitness over abstraction — every subsystem has a clearly defined boundary, every failure mode has a named path, and nothing happens implicitly.
 
 The codebase is organized into eight modules, each owning a distinct concern. The two rows in the diagram below reflect a natural layering — the top row handles agent cognition and I/O; the bottom row handles configuration, tooling, presentation, and coordination.
 

@@ -6,12 +6,12 @@
 .date = @date("2026-03-02"),
 ---
 
-Coding agents hit the same walls repeatedly: runaway processes, opaque internal state, no real parallelism, and fragile tool execution that silently drops exit codes. powerglide is designed specifically to remove those walls — not by abstracting over them, but by addressing each one with a deliberate mechanism.
+Coding agents hit the same walls repeatedly: runaway processes, opaque internal state, no real parallelism, and fragile tool execution that silently drops exit codes. Like a high-displacement engine that refuses to redline without a reason, powerglide is engineered to run hard and run long — not by abstracting over those walls, but by addressing each one with a deliberate, inspectable mechanism. Every gear in the transmission has a purpose.
 
 
 ## Multi-Agent Swarms 🐜
 
-A single agent serializes everything. One task at a time, one tool call at a time, one model round-trip at a time. For large codebases or multi-component work, that's a hard ceiling on throughput. Swarms break it — but only if the orchestration layer keeps workers from trampling each other's edits, getting stuck silently, or diverging into incoherence.
+A single agent serializes everything. One task at a time, one tool call at a time, one model round-trip at a time. For large codebases or multi-component work, that's a hard ceiling on throughput — the engineering equivalent of driving a 12-cylinder engine in first gear. Swarms break it — but only if the orchestration layer keeps workers from trampling each other's edits, getting stuck silently, or diverging into incoherence.
 
 powerglide's swarm model gives each worker a **fully isolated workspace**, a **private file-backed task queue**, and a **heartbeat protocol** that lets the monitor process detect and kill stuck workers without taking down the whole team.
 
