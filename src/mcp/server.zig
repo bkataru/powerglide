@@ -192,6 +192,193 @@ pub const McpServer = struct {
     }
 };
 
+// ==================== Tests ====================
+
+test "McpServer init" {
+    const allocator = std.testing.allocator;
+    var registry = @import("../tools/registry.zig").Registry.init(allocator);
+    defer registry.deinit();
+    const server = McpServer.init(allocator, &registry);
+    try std.testing.expect(server.registry == &registry);
+}
+
+test "McpServer handleRequest parse error" {
+    const allocator = std.testing.allocator;
+    var registry = @import("../tools/registry.zig").Registry.init(allocator);
+    defer registry.deinit();
+    var server = McpServer.init(allocator, &registry);
+    const resp = try server.handleRequest("not json");
+    defer allocator.free(resp);
+    try std.testing.expect(mem.indexOf(u8, resp, "Parse error") != null);
+    try std.testing.expect(mem.indexOf(u8, resp, "-32700") != null);
+}
+
+test "McpServer handleRequest invalid request - not object" {
+    const allocator = std.testing.allocator;
+    var registry = @import("../tools/registry.zig").Registry.init(allocator);
+    defer registry.deinit();
+    var server = McpServer.init(allocator, &registry);
+    const resp = try server.handleRequest("[1,2,3]");
+    defer allocator.free(resp);
+    try std.testing.expect(mem.indexOf(u8, resp, "Invalid Request") != null);
+    try std.testing.expect(mem.indexOf(u8, resp, "-32600") != null);
+}
+
+test "McpServer handleRequest missing method" {
+    const allocator = std.testing.allocator;
+    var registry = @import("../tools/registry.zig").Registry.init(allocator);
+    defer registry.deinit();
+    var server = McpServer.init(allocator, &registry);
+    const resp = try server.handleRequest("{\"jsonrpc\":\"2.0\",\"id\":1}");
+    defer allocator.free(resp);
+    try std.testing.expect(mem.indexOf(u8, resp, "Missing method") != null);
+}
+
+test "McpServer handleRequest unknown method" {
+    const allocator = std.testing.allocator;
+    var registry = @import("../tools/registry.zig").Registry.init(allocator);
+    defer registry.deinit();
+    var server = McpServer.init(allocator, &registry);
+    const resp = try server.handleRequest("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"unknown/method\"}");
+    defer allocator.free(resp);
+    try std.testing.expect(mem.indexOf(u8, resp, "Method not found") != null);
+    try std.testing.expect(mem.indexOf(u8, resp, "-32601") != null);
+}
+
+test "McpServer initialize response" {
+    const allocator = std.testing.allocator;
+    var registry = @import("../tools/registry.zig").Registry.init(allocator);
+    defer registry.deinit();
+    var server = McpServer.init(allocator, &registry);
+    const resp = try server.handleRequest("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{}}");
+    defer allocator.free(resp);
+    try std.testing.expect(mem.indexOf(u8, resp, "2024-11-05") != null);
+    try std.testing.expect(mem.indexOf(u8, resp, "powerglide") != null);
+    try std.testing.expect(mem.indexOf(u8, resp, "capabilities") != null);
+}
+
+test "McpServer tools/list response" {
+    // Use arena because handleToolsList deep-clones JSON schemas into response objects
+    // that are freed together at arena teardown
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+    var registry = @import("../tools/registry.zig").Registry.init(allocator);
+    // registry.deinit() handled by arena
+    var server = McpServer.init(allocator, &registry);
+    const resp = try server.handleRequest("{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\"}");
+    try std.testing.expect(mem.indexOf(u8, resp, "tools") != null);
+    try std.testing.expect(mem.indexOf(u8, resp, "bash") != null);
+}
+
+test "McpServer tools/call missing params" {
+    const allocator = std.testing.allocator;
+    var registry = @import("../tools/registry.zig").Registry.init(allocator);
+    defer registry.deinit();
+    var server = McpServer.init(allocator, &registry);
+    const resp = try server.handleRequest("{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\"}");
+    defer allocator.free(resp);
+    try std.testing.expect(mem.indexOf(u8, resp, "Missing params") != null);
+}
+
+test "McpServer tools/call unknown tool" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+    var registry = @import("../tools/registry.zig").Registry.init(allocator);
+    var server = McpServer.init(allocator, &registry);
+    const resp = try server.handleRequest("{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"no_such_tool\",\"arguments\":{}}}");
+    try std.testing.expect(resp.len > 0);
+}
+
+test "McpServer tools/call bash echo" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+    var registry = @import("../tools/registry.zig").Registry.init(allocator);
+    var server = McpServer.init(allocator, &registry);
+    const resp = try server.handleRequest("{\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"tools/call\",\"params\":{\"name\":\"bash\",\"arguments\":{\"command\":\"echo mcp_test\"}}}");
+    try std.testing.expect(mem.indexOf(u8, resp, "mcp_test") != null);
+}
+
+test "McpServer response contains jsonrpc 2.0" {
+    const allocator = std.testing.allocator;
+    var registry = @import("../tools/registry.zig").Registry.init(allocator);
+    defer registry.deinit();
+    var server = McpServer.init(allocator, &registry);
+    const resp = try server.handleRequest("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{}}");
+    defer allocator.free(resp);
+    try std.testing.expect(mem.indexOf(u8, resp, "2.0") != null);
+}
+
+test "McpServer response id echoed" {
+    const allocator = std.testing.allocator;
+    var registry = @import("../tools/registry.zig").Registry.init(allocator);
+    defer registry.deinit();
+    var server = McpServer.init(allocator, &registry);
+    const resp = try server.handleRequest("{\"jsonrpc\":\"2.0\",\"id\":42,\"method\":\"initialize\",\"params\":{}}");
+    defer allocator.free(resp);
+    try std.testing.expect(mem.indexOf(u8, resp, "42") != null);
+}
+
+test "deepCloneValue null" {
+    const allocator = std.testing.allocator;
+    const cloned = try deepCloneValue(allocator, .null);
+    try std.testing.expect(cloned == .null);
+}
+
+test "deepCloneValue bool" {
+    const allocator = std.testing.allocator;
+    const cloned = try deepCloneValue(allocator, .{ .bool = true });
+    try std.testing.expect(cloned.bool == true);
+}
+
+test "deepCloneValue integer" {
+    const allocator = std.testing.allocator;
+    const cloned = try deepCloneValue(allocator, .{ .integer = 42 });
+    try std.testing.expect(cloned.integer == 42);
+}
+
+test "deepCloneValue string" {
+    const allocator = std.testing.allocator;
+    const cloned = try deepCloneValue(allocator, .{ .string = "hello" });
+    defer allocator.free(cloned.string);
+    try std.testing.expect(mem.eql(u8, cloned.string, "hello"));
+}
+
+test "deepCloneValue array" {
+    const allocator = std.testing.allocator;
+    var arr = json.Array.init(allocator);
+    defer arr.deinit();
+    try arr.append(.{ .integer = 1 });
+    try arr.append(.{ .string = "x" });
+    const cloned = try deepCloneValue(allocator, .{ .array = arr });
+    defer {
+        allocator.free(cloned.array.items[1].string);
+        var ca = cloned.array;
+        ca.deinit();
+    }
+    try std.testing.expect(cloned.array.items[0].integer == 1);
+    try std.testing.expect(mem.eql(u8, cloned.array.items[1].string, "x"));
+}
+
+test "deepCloneValue object" {
+    const allocator = std.testing.allocator;
+    var obj = json.ObjectMap.init(allocator);
+    defer obj.deinit();
+    try obj.put("key", .{ .string = "val" });
+    const cloned = try deepCloneValue(allocator, .{ .object = obj });
+    defer {
+        const v = cloned.object.get("key").?;
+        allocator.free(v.string);
+        const k = cloned.object.keys()[0];
+        allocator.free(k);
+        var co = cloned.object;
+        co.deinit();
+    }
+    try std.testing.expect(cloned.object.get("key") != null);
+}
+
 fn deepCloneValue(allocator: std.mem.Allocator, val: json.Value) !json.Value {
     switch (val) {
         .null, .bool, .integer, .float, .number_string => return val,

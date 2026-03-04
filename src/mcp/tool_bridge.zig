@@ -73,3 +73,115 @@ pub fn convertMcpTools(allocator: std.mem.Allocator, client: *McpClient, mcp_too
 
     return tools;
 }
+
+// ==================== Tests ====================
+
+test "McpToolContext init and deinit" {
+    const allocator = std.testing.allocator;
+    // We can't create a real McpClient without a process, so test the context struct directly
+    const ctx = try allocator.create(McpToolContext);
+    ctx.* = .{
+        .client = undefined, // not called
+        .tool_name = try allocator.dupe(u8, "test_tool"),
+    };
+    ctx.deinit(allocator);
+    // No leak = pass
+}
+
+test "mcpToolToTool creates prefixed name" {
+    const allocator = std.testing.allocator;
+    var schema_obj = std.json.ObjectMap.init(allocator);
+    defer schema_obj.deinit();
+    try schema_obj.put("type", .{ .string = "object" });
+
+    const mcp_tool = McpTool{
+        .name = "read_file",
+        .description = "Reads a file",
+        .inputSchema = .{ .object = schema_obj },
+    };
+
+    // We pass undefined for client since mcpToolToTool only stores it in context
+    const tool = try mcpToolToTool(allocator, undefined, mcp_tool, "filesystem");
+    defer {
+        allocator.free(tool.name);
+        allocator.free(tool.description);
+        allocator.free(tool.input_schema);
+        if (tool.ctx) |ctx| {
+            const mcp_ctx: *McpToolContext = @ptrCast(@alignCast(ctx));
+            allocator.free(mcp_ctx.tool_name);
+            allocator.destroy(mcp_ctx);
+        }
+    }
+
+    try std.testing.expect(std.mem.eql(u8, tool.name, "mcp_filesystem_read_file"));
+    try std.testing.expect(std.mem.eql(u8, tool.description, "Reads a file"));
+    try std.testing.expect(tool.ctx != null);
+    try std.testing.expect(tool.handler == mcpToolHandler);
+}
+
+test "mcpToolToTool stores original tool name in context" {
+    const allocator = std.testing.allocator;
+    var schema_obj = std.json.ObjectMap.init(allocator);
+    defer schema_obj.deinit();
+    try schema_obj.put("type", .{ .string = "object" });
+
+    const mcp_tool = McpTool{
+        .name = "search_code",
+        .description = "Search code",
+        .inputSchema = .{ .object = schema_obj },
+    };
+
+    const tool = try mcpToolToTool(allocator, undefined, mcp_tool, "myserver");
+    defer {
+        allocator.free(tool.name);
+        allocator.free(tool.description);
+        allocator.free(tool.input_schema);
+        if (tool.ctx) |ctx| {
+            const mcp_ctx: *McpToolContext = @ptrCast(@alignCast(ctx));
+            allocator.free(mcp_ctx.tool_name);
+            allocator.destroy(mcp_ctx);
+        }
+    }
+
+    const mcp_ctx: *McpToolContext = @ptrCast(@alignCast(tool.ctx.?));
+    try std.testing.expect(std.mem.eql(u8, mcp_ctx.tool_name, "search_code"));
+    try std.testing.expect(std.mem.eql(u8, tool.name, "mcp_myserver_search_code"));
+}
+
+test "mcpToolToTool schema is valid JSON" {
+    const allocator = std.testing.allocator;
+    var props = std.json.ObjectMap.init(allocator);
+    defer props.deinit();
+    var path_prop = std.json.ObjectMap.init(allocator);
+    defer path_prop.deinit();
+    try path_prop.put("type", .{ .string = "string" });
+    try props.put("path", .{ .object = path_prop });
+
+    var schema_obj = std.json.ObjectMap.init(allocator);
+    defer schema_obj.deinit();
+    try schema_obj.put("type", .{ .string = "object" });
+    try schema_obj.put("properties", .{ .object = props });
+
+    const mcp_tool = McpTool{
+        .name = "read_file",
+        .description = "Read a file",
+        .inputSchema = .{ .object = schema_obj },
+    };
+
+    const tool = try mcpToolToTool(allocator, undefined, mcp_tool, "fs");
+    defer {
+        allocator.free(tool.name);
+        allocator.free(tool.description);
+        allocator.free(tool.input_schema);
+        if (tool.ctx) |ctx| {
+            const mcp_ctx: *McpToolContext = @ptrCast(@alignCast(ctx));
+            allocator.free(mcp_ctx.tool_name);
+            allocator.destroy(mcp_ctx);
+        }
+    }
+
+    // Schema should be parseable JSON
+    const parsed = try std.json.parseFromSlice(std.json.Value, allocator, tool.input_schema, .{});
+    defer parsed.deinit();
+    try std.testing.expect(parsed.value == .object);
+}

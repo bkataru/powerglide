@@ -1095,7 +1095,25 @@ fn runDoctor(allocator: std.mem.Allocator) !void {
     try checkGit(w);
     try checkApiKeys(w);
     try checkConfigDir(w);
+    try checkIgllama(w);
     try w.writeAll("\nDoctor check complete.\n");
+}
+
+fn checkIgllama(writer: anytype) !void {
+    const result = std.process.Child.run(.{
+        .allocator = std.heap.page_allocator,
+        .argv = &.{ "curl", "-sf", "http://127.0.0.1:8090/health" },
+    }) catch {
+        try writer.writeAll("INFO igllama: not running (start with: igllama api <model.gguf> --port 8090)\n");
+        return;
+    };
+    defer std.heap.page_allocator.free(result.stdout);
+    defer std.heap.page_allocator.free(result.stderr);
+    if (result.term == .Exited and result.term.Exited == 0 and std.mem.indexOf(u8, result.stdout, "ok") != null) {
+        try writer.writeAll("OK   igllama: running on :8090 (local agent available)\n");
+    } else {
+        try writer.writeAll("INFO igllama: not running on :8090 (start with: igllama api <model.gguf> --port 8090)\n");
+    }
 }
 
 fn checkZig(writer: anytype) !void {

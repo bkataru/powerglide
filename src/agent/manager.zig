@@ -113,7 +113,8 @@ pub const AgentManager = struct {
         try self.addAgent(.{ .name = "artistry", .model = "claude-3-5-sonnet-20241022", .role = "creative", .instructions = "You are a creative problem solver.", .velocity = 1.2 });
         try self.addAgent(.{ .name = "ultrabrain", .model = "claude-3-5-sonnet-20241022", .role = "analyst", .instructions = "You are a logic-heavy reasoning agent.", .velocity = 1.0 });
         try self.addAgent(.{ .name = "deep", .model = "claude-3-5-sonnet-20241022", .role = "researcher", .instructions = "You are a deep research agent.", .velocity = 0.6 });
-        try self.addAgent(.{ .name = "local", .model = "Qwen3.5-4B-Q8_0.gguf", .role = "coding", .instructions = "You are a fast local assistant.", .velocity = 1.0, .provider = "openai_compat", .base_url = "http://127.0.0.1:8080/v1" });
+        try self.addAgent(.{ .name = "local", .model = "Qwen3.5-0.8B-Q8_0.gguf", .role = "coding", .instructions = "You are a fast local coding assistant.", .velocity = 1.0, .provider = "openai_compat", .base_url = "http://127.0.0.1:8090/v1" });
+        try self.addAgent(.{ .name = "local4b", .model = "Qwen3.5-4B-Q8_0.gguf", .role = "coding", .instructions = "You are a capable local coding assistant.", .velocity = 0.8, .provider = "openai_compat", .base_url = "http://127.0.0.1:8091/v1" });
     }
 
     pub fn addAgent(self: *AgentManager, agent: Agent) !void {

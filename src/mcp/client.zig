@@ -255,3 +255,104 @@ fn deepCloneValue(allocator: mem.Allocator, val: json.Value) !json.Value {
         },
     }
 }
+
+// ==================== Tests ====================
+
+test "McpTool deinit frees fields" {
+    const allocator = std.testing.allocator;
+    var schema_obj = json.ObjectMap.init(allocator);
+    try schema_obj.put(try allocator.dupe(u8, "type"), .{ .string = try allocator.dupe(u8, "object") });
+
+    var tool = McpTool{
+        .name = try allocator.dupe(u8, "test_tool"),
+        .description = try allocator.dupe(u8, "A test tool"),
+        .inputSchema = .{ .object = schema_obj },
+    };
+    tool.deinit(allocator);
+    // No leak = pass
+}
+
+test "deepCloneValue null passthrough" {
+    const allocator = std.testing.allocator;
+    const result = try deepCloneValue(allocator, .null);
+    try std.testing.expect(result == .null);
+}
+
+test "deepCloneValue bool passthrough" {
+    const allocator = std.testing.allocator;
+    const t = try deepCloneValue(allocator, .{ .bool = true });
+    const f = try deepCloneValue(allocator, .{ .bool = false });
+    try std.testing.expect(t.bool == true);
+    try std.testing.expect(f.bool == false);
+}
+
+test "deepCloneValue integer passthrough" {
+    const allocator = std.testing.allocator;
+    const result = try deepCloneValue(allocator, .{ .integer = 99 });
+    try std.testing.expect(result.integer == 99);
+}
+
+test "deepCloneValue float passthrough" {
+    const allocator = std.testing.allocator;
+    const result = try deepCloneValue(allocator, .{ .float = 3.14 });
+    try std.testing.expect(result.float == 3.14);
+}
+
+test "deepCloneValue string is duped" {
+    const allocator = std.testing.allocator;
+    const result = try deepCloneValue(allocator, .{ .string = "original" });
+    defer allocator.free(result.string);
+    try std.testing.expect(mem.eql(u8, result.string, "original"));
+}
+
+test "deepCloneValue array is deep copied" {
+    const allocator = std.testing.allocator;
+    var arr = json.Array.init(allocator);
+    defer arr.deinit();
+    try arr.append(.{ .string = "item" });
+    try arr.append(.{ .integer = 7 });
+
+    const result = try deepCloneValue(allocator, .{ .array = arr });
+    defer {
+        allocator.free(result.array.items[0].string);
+        var ra = result.array;
+        ra.deinit();
+    }
+    try std.testing.expect(mem.eql(u8, result.array.items[0].string, "item"));
+    try std.testing.expect(result.array.items[1].integer == 7);
+}
+
+test "deepCloneValue object is deep copied" {
+    const allocator = std.testing.allocator;
+    var obj = json.ObjectMap.init(allocator);
+    defer obj.deinit();
+    try obj.put("name", .{ .string = "value" });
+
+    const result = try deepCloneValue(allocator, .{ .object = obj });
+    defer {
+        if (result.object.get("name")) |v| allocator.free(v.string);
+        const keys = result.object.keys();
+        for (keys) |k| allocator.free(k);
+        var ro = result.object;
+        ro.deinit();
+    }
+    try std.testing.expect(result.object.get("name") != null);
+    try std.testing.expect(mem.eql(u8, result.object.get("name").?.string, "value"));
+}
+
+test "ToolCallResult success" {
+    const result = ToolCallResult{
+        .content = "output",
+        .isError = false,
+    };
+    try std.testing.expect(!result.isError);
+    try std.testing.expect(mem.eql(u8, result.content, "output"));
+}
+
+test "ToolCallResult error" {
+    const result = ToolCallResult{
+        .content = "error message",
+        .isError = true,
+    };
+    try std.testing.expect(result.isError);
+}
