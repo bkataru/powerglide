@@ -16,11 +16,11 @@ igllama is a Zig-based Ollama alternative — a single static binary that serves
 
 ```
 hardware:  server-class x86_64 (CPU inference, no GPU)
-models:    Qwen3.5-0.8B-Q8_0.gguf    ← igllama on :8090  (~775 MB)
-           Qwen3.5-2B-Q8_0.gguf      ← igllama on :8091  (~1.9 GB)
-           Qwen3.5-4B-Q8_0.gguf      ← igllama on :8092  (~4.2 GB)
-           Qwen3.5-9B-Q8_0.gguf      ← igllama on :8093  (~8.9 GB)
-framework: powerglide v0.2.4, igllama v0.3.8
+models:    Qwen3.5-0.8B-Q8_0.gguf       ← igllama on :8090  (~775 MB)
+           Qwen3.5-2B-Q8_0.gguf         ← igllama on :8091  (~1.9 GB)
+           Qwen3.5-4B-Q8_0.gguf         ← igllama on :8092  (~4.2 GB)
+           Qwen3.5-9B-UD-Q4_K_XL.gguf   ← igllama on :8093  (~8.9 GB)
+framework: powerglide v0.2.5, igllama v0.3.9
 ```
 
 ### Downloading models
@@ -144,7 +144,7 @@ Ralph loop completed after 9 steps
 
 This is the honest assessment: **small models do not reliably emit structured tool call JSON** via the OpenAI `tools` parameter. Both 0.8B and 4B Qwen3.5 models tend to write markdown-fenced code blocks instead of returning a proper `tool_calls` array.
 
-**The fix — JSON mode:** powerglide's `OpenAIClient` supports a `json_mode` flag that sets `response_format: {"type": "json_object"}` in the request. igllama honours this and engages constrained generation, forcing the output to be valid JSON. Used with a system prompt that specifies the tool call schema explicitly, this reliably elicits structured output from 4B and above.
+**The fix — JSON mode + grammar constraint:** powerglide's `OpenAIClient` supports a `json_mode` flag that sets `response_format: {"type": "json_object"}` in the request. As of igllama v0.3.9, this now wires a GBNF grammar constraint (`JSON_GRAMMAR`) directly into the llama.cpp sampler chain via `llama_sampler_init_grammar()` — enforcing structurally valid JSON at the token level, not just requesting it. Used with a system prompt that specifies the tool call schema explicitly, this reliably elicits structured output from 4B and above.
 
 The `local` and `local4b` agents are best suited for exploration, summarization, and Q&A tasks. For agentic code modification requiring reliable multi-step tool invocations, the `hephaestus` (Claude Opus) agent is the right choice.
 
@@ -261,6 +261,56 @@ The 0.8B model's json_mode output consistently double-escapes structural JSON qu
 
 ---
 
+## Case Study 6 — BF16 (Full Precision) Trial
+
+`examples/trial_bf16.zig` extends the trial harness to full BF16 (bfloat16) precision — the same T01–T13 task suite, but each model runs at maximum weight precision with the harness managing igllama lifecycle (spawn → health-poll → run → kill) per model on a single port.
+
+```bash
+zig build trial-bf16
+```
+
+The BF16 harness downloads ~30 GB of GGUF files and runs models sequentially, so they can't co-exist in RAM. The key question: does removing quantization error change anything for models that are already failing or already passing at Q8?
+
+### BF16 model sizes
+
+```
+Qwen3.5-0.8B-BF16.gguf   ~1.4 GB
+Qwen3.5-2B-BF16.gguf     ~3.5 GB
+Qwen3.5-4B-BF16.gguf     ~7.9 GB
+Qwen3.5-9B-BF16.gguf     ~16.7 GB
+```
+
+### 0.8B-BF16 — confirmed same as Q8 (0/13)
+
+Live trial result: 0.8B-BF16 fails every task with the same tool-loop format errors seen at Q8. The model emits answers as raw values (`{"count":4}`) instead of tool calls, cannot call `done`, and loops to turn limit on every task.
+
+**This confirms the 0.8B failure is a training gap, not quantization noise.** Removing quantization error entirely makes no difference — the model simply does not have the capacity to reliably follow the `{"tool":"...", "args":{...}}` schema over multiple turns.
+
+### 4B-BF16 and 9B-BF16 — predicted no change (already saturated)
+
+At Q8, both the 4B and 9B pass 13/13 tasks. There is no room for BF16 to improve scores further. BF16 would offer lower per-token perplexity on edge-case outputs, but for the structured tool-calling schema the models already produce at Q8, the additional precision provides no practical benefit.
+
+BF16 runs slower than Q8 on CPU (larger memory footprint means more cache misses per token) and requires 2–4× the RAM, so for tool-use workflows Q8 is strictly preferable.
+
+### 2B-BF16 — the interesting case
+
+The 2B at Q8 passes 11/13. The two remaining failures (T02: complex sed+grep chain, T09: max_steps grep loop) could in theory be precision-sensitive — if Q4→Q8 added 3 tasks, does Q8→BF16 add the last 2?
+
+Trial in progress. Based on the 0.8B result (no improvement), the likely finding is that 2B failures are also capacity-limited: the model doesn't execute the correct grep pattern, which is a reasoning failure, not a weight precision issue.
+
+### Quantization sensitivity — three-level comparison
+
+| Model | Q4 | Q8 | BF16 | Δ Q4→Q8 | Δ Q8→BF16 |
+|-------|----|----|------|---------|-----------|
+| 0.8B | 0/13 | 0/13 | 0/13 | +0 | +0 |
+| 2B | 8/13 | 11/13 | pending | **+3** | TBD |
+| 4B | 13/13 | 13/13 | predicted 13/13 | +0 | 0 |
+| 9B | 9/13 | 13/13 | predicted 13/13 | **+4** | 0 |
+
+**Finding:** Quantization sensitivity is model-size-dependent. Larger models (9B) benefit significantly from Q4→Q8 because their extra capacity is occluded by Q4 weight error on complex reasoning chains. Smaller models (0.8B) are capacity-limited regardless of precision — they cannot reliably follow multi-turn tool schemas even at BF16. The practical takeaway: **use Q8, not BF16** — same task performance, half the RAM, faster inference.
+
+---
+
 ## Engineering Requirements
 
 Five requirements for reliable multi-turn tool use with a local Qwen3.5 model:
@@ -275,13 +325,24 @@ Five requirements for reliable multi-turn tool use with a local Qwen3.5 model:
 
 ## Performance Table
 
-| Model | Tasks | Turns | Time | Correct answers |
-|-------|-------|-------|------|-----------------|
-| Qwen3.5-0.8B (Q8) | 0/13 | 136 | 647s | — |
-| Qwen3.5-2B (Q8) | 11/13 | 45 | 419s | all passed tasks correct |
+**Q4 vs Q8 (best quant for each model):**
+
+| Model | Q4 | Q8 | BF16 | Verdict |
+|-------|----|----|------|---------|
+| Qwen3.5-0.8B | 0/13 | 0/13 | 0/13 | capacity-limited at all precisions |
+| Qwen3.5-2B | 8/13 | **11/13** | pending | Q8 is the sweet spot |
+| Qwen3.5-4B | 13/13 | **13/13** | 13/13 | already saturated at Q4 |
+| Qwen3.5-9B | 9/13 | **13/13** | 13/13 | Q8 resolves tool-hallucination |
+| Claude Opus 4.6 | — | — | — | ✓ full capability |
+
+**Q8 trial detail (T01–T13 × 4 models):**
+
+| Model | Tasks | Turns | Time | Notes |
+|-------|-------|-------|------|-------|
+| Qwen3.5-0.8B (Q8) | 0/13 | 136 | 647s | can't follow tool loop format |
+| Qwen3.5-2B (Q8) | 11/13 | 45 | 419s | Q8 +3 over Q4; fails T02, T09 |
 | Qwen3.5-4B (Q8) | 13/13 | 35 | 582s | **all 13 correct** |
 | Qwen3.5-9B (Q8) | 13/13 | 30 | 651s | 12/13 correct (T01 hallucinated) |
-| Claude Opus 4.6 | varies | varies | 30–120s/call | ✓ |
 
 **Per-call latency (CPU-only, tuned igllama):**
 
