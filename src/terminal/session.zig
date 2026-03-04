@@ -42,7 +42,7 @@ pub const TerminalSession = struct {
         }
 
         // Spawn the command using /bin/sh -c
-        const shell_cmd = ["/bin/sh", "-c"];
+        const shell_cmd = [2][]const u8{ "/bin/sh", "-c" };
         self.process = try PlainProcess.spawn(allocator, &shell_cmd);
 
         // Write the command to stdin if needed, then close stdin
@@ -116,7 +116,7 @@ pub const TerminalSession = struct {
 
 test "TerminalSession.init creates session with correct id" {
     const allocator = std.testing.allocator;
-    const session = TerminalSession.init(allocator, 42);
+    var session = TerminalSession.init(allocator, 42);
 
     try std.testing.expectEqual(@as(SessionId, 42), session.id);
     try std.testing.expectEqual(allocator, session.allocator);
@@ -127,7 +127,7 @@ test "TerminalSession.init creates session with correct id" {
 
 test "TerminalSession.isAlive returns false for uninitialized session" {
     const allocator = std.testing.allocator;
-    const session = TerminalSession.init(allocator, 1);
+    var session = TerminalSession.init(allocator, 1);
     defer session.deinit();
 
     const alive = session.isAlive();
@@ -145,6 +145,4 @@ test "CommandResult struct fields are accessible" {
 
     try std.testing.expectEqual(@as(u8, 0), result.exit_code);
     try std.testing.expect(!result.timed_out);
-}
-    try std.testing.expect(true);
 }

@@ -63,3 +63,53 @@ test "HttpClient initialization" {
     var client = HttpClient.init(allocator);
     defer client.deinit();
 }
+
+test "Response isSuccess with 200" {
+    const allocator = std.testing.allocator;
+    var resp = Response{
+        .status = 200,
+        .body = try allocator.dupe(u8, "ok"),
+    };
+    defer resp.deinit(allocator);
+    try std.testing.expect(resp.isSuccess());
+}
+
+test "Response isSuccess with 201" {
+    const allocator = std.testing.allocator;
+    var resp = Response{
+        .status = 201,
+        .body = try allocator.dupe(u8, "created"),
+    };
+    defer resp.deinit(allocator);
+    try std.testing.expect(resp.isSuccess());
+}
+
+test "Response isSuccess false for 400" {
+    const allocator = std.testing.allocator;
+    var resp = Response{
+        .status = 400,
+        .body = try allocator.dupe(u8, "bad request"),
+    };
+    defer resp.deinit(allocator);
+    try std.testing.expect(!resp.isSuccess());
+}
+
+test "Response isSuccess false for 500" {
+    const allocator = std.testing.allocator;
+    var resp = Response{
+        .status = 500,
+        .body = try allocator.dupe(u8, "server error"),
+    };
+    defer resp.deinit(allocator);
+    try std.testing.expect(!resp.isSuccess());
+}
+
+test "Response deinit frees body" {
+    const allocator = std.testing.allocator;
+    var resp = Response{
+        .status = 200,
+        .body = try allocator.dupe(u8, "test body"),
+    };
+    resp.deinit(allocator);
+    // No leak = pass
+}

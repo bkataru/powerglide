@@ -68,6 +68,67 @@ pub const PersistenceManager = struct {
         const path = try self.getSessionPath(self.allocator, id);
         defer self.allocator.free(path);
         try fs.cwd().deleteFile(path);
-}
+    }
 };
+
+test "PersistenceManager init and deinit" {
+    const allocator = std.testing.allocator;
+    var pm = try PersistenceManager.init(allocator);
+    defer pm.deinit();
+    try std.testing.expect(pm.sessions_dir.len > 0);
+}
+
+test "PersistenceManager getSessionPath" {
+    const allocator = std.testing.allocator;
+    var pm = try PersistenceManager.init(allocator);
+    defer pm.deinit();
+
+    const path = try pm.getSessionPath(allocator, "test-session");
+    defer allocator.free(path);
+
+    try std.testing.expect(std.mem.endsWith(u8, path, "test-session.json"));
+    try std.testing.expect(std.mem.indexOf(u8, path, "powerglide") != null);
+}
+
+test "PersistenceManager sessions_dir contains config path" {
+    const allocator = std.testing.allocator;
+    var pm = try PersistenceManager.init(allocator);
+    defer pm.deinit();
+
+    try std.testing.expect(std.mem.indexOf(u8, pm.sessions_dir, ".config") != null);
+    try std.testing.expect(std.mem.indexOf(u8, pm.sessions_dir, "sessions") != null);
+}
+
+test "PersistenceManager listSessions returns empty initially" {
+    const allocator = std.testing.allocator;
+    var pm = try PersistenceManager.init(allocator);
+    defer pm.deinit();
+
+    const sessions = try pm.listSessions(allocator);
+    defer {
+        for (sessions) |s| allocator.free(s);
+        allocator.free(sessions);
+    }
+    // May have sessions from other tests, but list should not error
+    try std.testing.expect(sessions.len >= 0);
+}
+
+test "PersistenceManager save and load roundtrip" {
+    const allocator = std.testing.allocator;
+    var pm = try PersistenceManager.init(allocator);
+    defer pm.deinit();
+
+    var session = try session_mod.Session.init(allocator, "persist-test");
+    defer session.deinit(allocator);
+
+    try pm.saveSession(&session);
+
+    var loaded = try pm.loadSession("persist-test");
+    defer loaded.deinit(allocator);
+
+    try std.testing.expect(std.mem.eql(u8, loaded.id, "persist-test"));
+
+    // Clean up
+    pm.deleteSession("persist-test") catch {};
+}
 

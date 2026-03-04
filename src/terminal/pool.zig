@@ -34,7 +34,7 @@ pub const Pool = struct {
 
     /// Create a new terminal session
     pub fn create(self: *Pool) !SessionId {
-        if (self.sessions.size >= self.max_sessions) {
+        if (self.sessions.count() >= self.max_sessions) {
             return error.PoolFull;
         }
 
@@ -87,13 +87,12 @@ pub const PoolError = error{
 
 test "Pool.init creates pool with default config" {
     const allocator = std.testing.allocator;
-    const pool = Pool.init(allocator, 10);
+    var pool = Pool.init(allocator, 10);
+    defer pool.deinit();
 
     try std.testing.expectEqual(@as(usize, 10), pool.max_sessions);
     try std.testing.expectEqual(@as(SessionId, 1), pool.next_id);
-    try std.testing.expectEqual(@as(usize, 0), pool.sessions.size);
-
-    pool.deinit();
+    try std.testing.expectEqual(@as(usize, 0), pool.sessions.count());
 }
 
 test "Pool.create adds new session" {
@@ -103,7 +102,7 @@ test "Pool.create adds new session" {
 
     const id = try pool.create();
     try std.testing.expectEqual(@as(SessionId, 1), id);
-    try std.testing.expectEqual(@as(usize, 1), pool.sessions.size);
+    try std.testing.expectEqual(@as(usize, 1), pool.sessions.count());
 }
 
 test "Pool.get retrieves session by id" {
@@ -122,10 +121,8 @@ test "Pool.get retrieves session by id" {
 
 test "Pool.activeCount returns zero for empty pool" {
     const allocator = std.testing.allocator;
-    const pool = Pool.init(allocator, 10);
+    var pool = Pool.init(allocator, 10);
     defer pool.deinit();
 
     try std.testing.expectEqual(@as(usize, 0), pool.activeCount());
-}
-    try std.testing.expect(true);
 }

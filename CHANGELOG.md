@@ -2,6 +2,21 @@
 
 All notable changes to the **powerglide** project will be documented in this file.
 
+## [0.2.1] - 2026-03-04
+
+### Added
+- **SSE parser tests** — 8 tests covering `SseParser`: text_delta, DONE event, multi-event feeds, CRLF handling, non-data line filtering
+- **HTTP response tests** — 5 tests for `Response.isSuccess()` and `deinit`
+- **Persistence tests** — 5 tests for `PersistenceManager`: init, path generation, save/load roundtrip
+- **Root module coverage** — added `stream`, `http`, `anthropic_mod`, `openai_mod`, `mcp_tool_bridge`, `monitor`, `worker`, `terminal_session`, `terminal_pool`, `terminal_exit_code` to `root.zig` so `refAllDecls` catches them
+
+### Fixed
+- **Pre-existing bugs uncovered by expanded coverage**:
+  - `stream.zig`: `deinit()` and `appendSlice()` missing allocator args (Zig 0.15.2 unmanaged ArrayList)
+  - `terminal/pool.zig`: `sessions.size` → `sessions.count()`, stray orphaned test code, `const pool` → `var pool` for mutable methods
+  - `terminal/session.zig`: `["/bin/sh", "-c"]` array literal syntax, stray orphaned test code, `const session` → `var session`
+  - `models/stream.zig`: `SseParser.init` unused allocator parameter
+
 ## [0.2.0] - 2026-03-04
 
 ### Added
