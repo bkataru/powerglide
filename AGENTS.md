@@ -8,6 +8,8 @@
 
 Every session follows an explicit 11-state transition model. Agents MUST NOT skip states or exit implicitly.
 
+![Ralph Loop](docs/svg/ralph-loop.svg)
+
 | State | Purpose | Transition Signal |
 |-------|---------|-------------------|
 | `idle` | Waiting for initialization | Start session |
@@ -38,11 +40,6 @@ Velocity is a floating-point multiplier (f64) on a 1000ms base delay.
 
 CLI flags: `--velocity` accepts floating-point values.
 
-- `delay_ms = 1000 / velocity`
-- Default: `1.0` (1000ms)
-- Speeding up: `2.0` (500ms), `4.0` (250ms)
-- Slowing down: `0.5` (2000ms), `0.25` (4000ms)
-
 Agents can self-throttle by writing to their session file:
 `echo '{"velocity": 0.5}' > ~/.config/powerglide/session-<id>.json`
 
@@ -54,6 +51,10 @@ powerglide runs all tools in a pseudoterminal (PTY). This ensures:
 3. **Exit Code capture**: Reliability via `waitpid` with `WNOHANG` polling and `/proc/<pid>/status` fallback.
 
 When building tools for powerglide, assume a standard POSIX environment.
+
+## Module Architecture
+
+![Module Structure](docs/svg/module-structure.svg)
 
 ## Integration Examples
 
@@ -71,23 +72,6 @@ tail -f session.log | grep --line-buffered "Ralph Loop State"
 ### Checking Heartbeats
 
 Workers write a timestamp to `~/.powerglide/workers/<id>/heartbeat` every 30 seconds. If the timestamp is older than 60 seconds, the worker is considered "stale" and should be SIGKILLed.
-
-## Module Architecture
-
-| Module | Location | Description |
-|--------|----------|-------------|
-| Cognition | `src/agent/loop.zig` | Ralph Loop implementation |
-| I/O | `src/terminal/pty.zig` | PTY allocation & PTY polling |
-| Models | `src/models/router.zig` | Multi-model routing & fallbacks |
-| Memory | `src/memory/store.zig` | JSONL persistent memory |
-| Swarm | `src/orchestrator/swarm.zig` | Multi-agent coordination |
-
-## Testing Protocol
-
-All new features MUST include:
-1. Unit tests in the same file.
-2. Integration tests in `test/integration/`.
-3. Zero memory leaks (verified via `zig build test`).
 
 ---
 

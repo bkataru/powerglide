@@ -267,3 +267,4 @@ test "UnifiedResponse token counts" {
     try std.testing.expect(response.output_tokens == 2000);
     try std.testing.expect(response.input_tokens + response.output_tokens == 3000);
 
+}

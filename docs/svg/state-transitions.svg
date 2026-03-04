@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 960 180" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="st-amber" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F7A41D"/><stop offset="100%" style="stop-color:#d97706"/>
+    </linearGradient>
+    <linearGradient id="st-cyan" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#06b6d4"/><stop offset="100%" style="stop-color:#0891b2"/>
+    </linearGradient>
+    <linearGradient id="st-purple" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#7c3aed"/><stop offset="100%" style="stop-color:#6d28d9"/>
+    </linearGradient>
+    <filter id="st-glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <marker id="st-arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0,8 3,0 6" fill="#F7A41D"/>
+    </marker>
+    <marker id="st-arr-p" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0,8 3,0 6" fill="#7c3aed"/>
+    </marker>
+  </defs>
+  <rect width="960" height="180" fill="#050505" rx="8"/>
+  <g stroke="#1a1a25" stroke-width="1" opacity="0.3">
+    <line x1="0" y1="90" x2="960" y2="90"/>
+    <line x1="106" y1="0" x2="106" y2="180"/>
+    <line x1="212" y1="0" x2="212" y2="180"/>
+    <line x1="318" y1="0" x2="318" y2="180"/>
+    <line x1="424" y1="0" x2="424" y2="180"/>
+    <line x1="530" y1="0" x2="530" y2="180"/>
+    <line x1="636" y1="0" x2="636" y2="180"/>
+    <line x1="742" y1="0" x2="742" y2="180"/>
+    <line x1="848" y1="0" x2="848" y2="180"/>
+  </g>
+  <!-- IDLE -->
+  <rect x="10" y="65" width="80" height="34" fill="none" stroke="url(#st-amber)" stroke-width="2" rx="3" filter="url(#st-glow)"/>
+  <text x="50" y="87" text-anchor="middle" fill="#e4e4e7" font-size="11" font-weight="bold" font-family="monospace">IDLE</text>
+  <!-- LOAD_TASKS -->
+  <rect x="105" y="65" width="102" height="34" fill="none" stroke="url(#st-cyan)" stroke-width="2" rx="3" filter="url(#st-glow)"/>
+  <text x="156" y="87" text-anchor="middle" fill="#e4e4e7" font-size="11" font-weight="bold" font-family="monospace">LOAD_TASKS</text>
+  <!-- PICK_TASK -->
+  <rect x="218" y="65" width="94" height="34" fill="none" stroke="url(#st-cyan)" stroke-width="2" rx="3" filter="url(#st-glow)"/>
+  <text x="265" y="87" text-anchor="middle" fill="#e4e4e7" font-size="11" font-weight="bold" font-family="monospace">PICK_TASK</text>
+  <!-- THINKING -->
+  <rect x="323" y="65" width="94" height="34" fill="none" stroke="url(#st-cyan)" stroke-width="2" rx="3" filter="url(#st-glow)"/>
+  <text x="370" y="87" text-anchor="middle" fill="#e4e4e7" font-size="11" font-weight="bold" font-family="monospace">THINKING</text>
+  <!-- TOOL_CALL -->
+  <rect x="428" y="65" width="94" height="34" fill="none" stroke="url(#st-cyan)" stroke-width="2" rx="3" filter="url(#st-glow)"/>
+  <text x="475" y="87" text-anchor="middle" fill="#e4e4e7" font-size="11" font-weight="bold" font-family="monospace">TOOL_CALL</text>
+  <!-- EXECUTING -->
+  <rect x="533" y="65" width="94" height="34" fill="none" stroke="url(#st-cyan)" stroke-width="2" rx="3" filter="url(#st-glow)"/>
+  <text x="580" y="87" text-anchor="middle" fill="#e4e4e7" font-size="11" font-weight="bold" font-family="monospace">EXECUTING</text>
+  <!-- OBSERVING -->
+  <rect x="638" y="65" width="96" height="34" fill="none" stroke="url(#st-cyan)" stroke-width="2" rx="3" filter="url(#st-glow)"/>
+  <text x="686" y="87" text-anchor="middle" fill="#e4e4e7" font-size="11" font-weight="bold" font-family="monospace">OBSERVING</text>
+  <!-- VERIFY -->
+  <rect x="745" y="65" width="80" height="34" fill="none" stroke="url(#st-purple)" stroke-width="2" rx="3" filter="url(#st-glow)"/>
+  <text x="785" y="87" text-anchor="middle" fill="#e4e4e7" font-size="11" font-weight="bold" font-family="monospace">VERIFY</text>
+  <!-- COMMIT -->
+  <rect x="836" y="65" width="80" height="34" fill="none" stroke="url(#st-purple)" stroke-width="2" rx="3" filter="url(#st-glow)"/>
+  <text x="876" y="87" text-anchor="middle" fill="#e4e4e7" font-size="11" font-weight="bold" font-family="monospace">COMMIT</text>
+  <!-- Arrows between states -->
+  <line x1="90" y1="82" x2="103" y2="82" stroke="#F7A41D" stroke-width="1.5" marker-end="url(#st-arr)"/>
+  <line x1="207" y1="82" x2="216" y2="82" stroke="#F7A41D" stroke-width="1.5" marker-end="url(#st-arr)"/>
+  <line x1="312" y1="82" x2="321" y2="82" stroke="#F7A41D" stroke-width="1.5" marker-end="url(#st-arr)"/>
+  <line x1="417" y1="82" x2="426" y2="82" stroke="#F7A41D" stroke-width="1.5" marker-end="url(#st-arr)"/>
+  <line x1="522" y1="82" x2="531" y2="82" stroke="#F7A41D" stroke-width="1.5" marker-end="url(#st-arr)"/>
+  <line x1="627" y1="82" x2="636" y2="82" stroke="#F7A41D" stroke-width="1.5" marker-end="url(#st-arr)"/>
+  <line x1="734" y1="82" x2="743" y2="82" stroke="#F7A41D" stroke-width="1.5" marker-end="url(#st-arr)"/>
+  <line x1="825" y1="82" x2="834" y2="82" stroke="#F7A41D" stroke-width="1.5" marker-end="url(#st-arr)"/>
+  <!-- Loop back COMMIT -> LOAD_TASKS -->
+  <path d="M 876 99 Q 876 155 156 155 Q 156 102 156 101" fill="none" stroke="#7c3aed" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#st-arr-p)"/>
+  <text x="516" y="170" text-anchor="middle" fill="#7c3aed" font-size="9" font-family="monospace">next task</text>
+  <!-- DONE exit from LOAD_TASKS -->
+  <line x1="156" y1="65" x2="156" y2="46" stroke="#06b6d4" stroke-width="1.5" marker-end="url(#st-arr)"/>
+  <text x="156" y="40" text-anchor="middle" fill="#06b6d4" font-size="9" font-family="monospace">DONE (all tasks complete)</text>
+  <!-- Corner accents -->
+  <g stroke="#7c3aed" stroke-width="1.5" fill="none" opacity="0.4">
+    <path d="M16 16 L24 16 L24 24"/>
+    <path d="M944 16 L936 16 L936 24"/>
+    <path d="M16 164 L24 164 L24 156"/>
+    <path d="M944 164 L936 164 L936 156"/>
+  </g>
+</svg>

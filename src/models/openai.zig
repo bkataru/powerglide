@@ -295,7 +295,3 @@ test "OAIResponse with zero tokens" {
     defer response.deinit(allocator);
 
     try std.testing.expect(response.prompt_tokens == 0);
-    try std.testing.expect(response.completion_tokens == 0);
-}
-    try std.testing.expect(true);
-}

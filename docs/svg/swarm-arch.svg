@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 680 400" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="sw-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <marker id="sw-arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0,8 3,0 6" fill="#F7A41D"/>
+    </marker>
+    <marker id="sw-arr-up" markerWidth="8" markerHeight="6" refX="1" refY="3" orient="auto">
+      <polygon points="8 0,8 6,0 3" fill="#06b6d4"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="680" height="400" fill="#050505" rx="8"/>
+
+  <!-- Subtle grid -->
+  <g stroke="#1a1a25" stroke-width="1" opacity="0.3">
+    <line x1="113" y1="0" x2="113" y2="400"/>
+    <line x1="226" y1="0" x2="226" y2="400"/>
+    <line x1="340" y1="0" x2="340" y2="400"/>
+    <line x1="453" y1="0" x2="453" y2="400"/>
+    <line x1="566" y1="0" x2="566" y2="400"/>
+    <line x1="0" y1="100" x2="680" y2="100"/>
+    <line x1="0" y1="200" x2="680" y2="200"/>
+    <line x1="0" y1="300" x2="680" y2="300"/>
+  </g>
+
+  <!-- ── ORCHESTRATOR PANEL (y=20–140) ── -->
+  <rect x="20" y="20" width="640" height="120" fill="#0c0c14" stroke="#7c3aed" stroke-width="2" rx="6" filter="url(#sw-glow)"/>
+  <text x="340" y="47" text-anchor="middle" fill="#a78bfa" font-size="15" font-weight="bold" font-family="monospace" filter="url(#sw-glow)">ORCHESTRATOR</text>
+  <text x="340" y="64" text-anchor="middle" fill="#6d6d8a" font-size="10" font-family="monospace">slow, powerful model · routes tasks and aggregates results</text>
+  <line x1="35" y1="70" x2="645" y2="70" stroke="#7c3aed" stroke-width="0.5" opacity="0.4"/>
+  <text x="40" y="88" fill="#e4e4e7" font-size="11" font-family="monospace">▸  assigns tasks via task-queue.json</text>
+  <text x="40" y="106" fill="#e4e4e7" font-size="11" font-family="monospace">▸  monitors worker heartbeats · kills rogue agents on timeout</text>
+  <text x="40" y="124" fill="#e4e4e7" font-size="11" font-family="monospace">▸  aggregates results and writes final output</text>
+
+  <!-- ── COMMUNICATION ARROWS (y=140–185) ── -->
+  <!-- Assign tasks: down arrow at x=210 -->
+  <line x1="210" y1="140" x2="210" y2="183" stroke="#F7A41D" stroke-width="1.5" marker-end="url(#sw-arr)"/>
+  <text x="225" y="167" fill="#F7A41D" font-size="10" font-family="monospace">assign tasks</text>
+  <!-- Return results: up arrow at x=470 -->
+  <line x1="470" y1="183" x2="470" y2="140" stroke="#06b6d4" stroke-width="1.5" marker-end="url(#sw-arr-up)"/>
+  <text x="340" y="167" text-anchor="middle" fill="#06b6d4" font-size="10" font-family="monospace">return results</text>
+
+  <!-- ── WORKERS PANEL (y=185–380) ── -->
+  <rect x="20" y="185" width="640" height="195" fill="#0c0c14" stroke="#06b6d4" stroke-width="2" rx="6" filter="url(#sw-glow)"/>
+  <text x="340" y="210" text-anchor="middle" fill="#06b6d4" font-size="15" font-weight="bold" font-family="monospace" filter="url(#sw-glow)">WORKERS × N</text>
+  <text x="340" y="227" text-anchor="middle" fill="#374f5a" font-size="10" font-family="monospace">fast, parallel models · each runs an independent Ralph Loop</text>
+
+  <!-- Worker sub-boxes (y=237–365, h=128) -->
+  <!-- Worker 1 -->
+  <rect x="35" y="237" width="185" height="128" fill="#080810" stroke="#06b6d4" stroke-width="1" rx="4"/>
+  <text x="127" y="257" text-anchor="middle" fill="#06b6d4" font-size="11" font-weight="bold" font-family="monospace">Worker 1</text>
+  <line x1="35" y1="263" x2="220" y2="263" stroke="#06b6d4" stroke-width="0.5" opacity="0.35"/>
+  <text x="127" y="280" text-anchor="middle" fill="#71717a" font-size="10" font-family="monospace">Ralph Loop running</text>
+  <text x="127" y="296" text-anchor="middle" fill="#71717a" font-size="10" font-family="monospace">isolated workspace</text>
+  <text x="127" y="312" text-anchor="middle" fill="#71717a" font-size="10" font-family="monospace">pulls from task-queue.json</text>
+  <text x="127" y="328" text-anchor="middle" fill="#71717a" font-size="10" font-family="monospace">writes worker-1.json</text>
+  <text x="127" y="344" text-anchor="middle" fill="#71717a" font-size="10" font-family="monospace">heartbeat every 30s</text>
+
+  <!-- Worker 2 -->
+  <rect x="248" y="237" width="185" height="128" fill="#080810" stroke="#06b6d4" stroke-width="1" rx="4"/>
+  <text x="340" y="257" text-anchor="middle" fill="#06b6d4" font-size="11" font-weight="bold" font-family="monospace">Worker 2</text>
+  <line x1="248" y1="263" x2="433" y2="263" stroke="#06b6d4" stroke-width="0.5" opacity="0.35"/>
+  <text x="340" y="280" text-anchor="middle" fill="#71717a" font-size="10" font-family="monospace">Ralph Loop running</text>
+  <text x="340" y="296" text-anchor="middle" fill="#71717a" font-size="10" font-family="monospace">isolated workspace</text>
+  <text x="340" y="312" text-anchor="middle" fill="#71717a" font-size="10" font-family="monospace">pulls from task-queue.json</text>
+  <text x="340" y="328" text-anchor="middle" fill="#71717a" font-size="10" font-family="monospace">writes worker-2.json</text>
+  <text x="340" y="344" text-anchor="middle" fill="#71717a" font-size="10" font-family="monospace">heartbeat every 30s</text>
+
+  <!-- Worker N (dashed border = "more workers") -->
+  <rect x="461" y="237" width="185" height="128" fill="#080810" stroke="#06b6d4" stroke-width="1" rx="4" stroke-dasharray="5,3"/>
+  <text x="553" y="257" text-anchor="middle" fill="#06b6d4" font-size="11" font-weight="bold" font-family="monospace">Worker N</text>
+  <line x1="461" y1="263" x2="646" y2="263" stroke="#06b6d4" stroke-width="0.5" opacity="0.35"/>
+  <text x="553" y="280" text-anchor="middle" fill="#71717a" font-size="10" font-family="monospace">Ralph Loop running</text>
+  <text x="553" y="296" text-anchor="middle" fill="#71717a" font-size="10" font-family="monospace">isolated workspace</text>
+  <text x="553" y="312" text-anchor="middle" fill="#71717a" font-size="10" font-family="monospace">pulls from task-queue.json</text>
+  <text x="553" y="328" text-anchor="middle" fill="#71717a" font-size="10" font-family="monospace">writes worker-N.json</text>
+  <text x="553" y="344" text-anchor="middle" fill="#71717a" font-size="10" font-family="monospace">heartbeat every 30s</text>
+
+  <!-- Corner accents -->
+  <g stroke="#7c3aed" stroke-width="1.5" fill="none" opacity="0.35">
+    <path d="M15 15 L25 15 L25 25"/>
+    <path d="M665 15 L655 15 L655 25"/>
+    <path d="M15 385 L25 385 L25 375"/>
+    <path d="M665 385 L655 385 L655 375"/>
+  </g>
+</svg>

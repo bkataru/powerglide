@@ -344,3 +344,5 @@ test "ContextWindow large message handling" {
     // Should still have the message but token count is high
     try std.testing.expect(window.messages.items.len == 1);
 
+    try std.testing.expect(window.messages.items.len == 1);
+}

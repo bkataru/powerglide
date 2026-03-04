@@ -24,9 +24,6 @@ Thumbs.db
 .env
 *.local.json
 .claude/
-.env
-*.local.json
-!.claude/settings.local.json
 
 # Test artifacts
 *.log

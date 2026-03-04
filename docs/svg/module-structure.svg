@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 780 415" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="ms-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="780" height="415" fill="#050505" rx="8"/>
+
+  <!-- Subtle grid -->
+  <g stroke="#1a1a25" stroke-width="1" opacity="0.35">
+    <line x1="130" y1="0" x2="130" y2="415"/>
+    <line x1="260" y1="0" x2="260" y2="415"/>
+    <line x1="390" y1="0" x2="390" y2="415"/>
+    <line x1="520" y1="0" x2="520" y2="415"/>
+    <line x1="650" y1="0" x2="650" y2="415"/>
+    <line x1="0" y1="100" x2="780" y2="100"/>
+    <line x1="0" y1="200" x2="780" y2="200"/>
+    <line x1="0" y1="300" x2="780" y2="300"/>
+    <line x1="0" y1="400" x2="780" y2="400"/>
+  </g>
+
+  <!-- src/ label -->
+  <text x="390" y="18" text-anchor="middle" fill="#F7A41D" font-size="13" font-weight="bold" font-family="monospace" filter="url(#ms-glow)">src/</text>
+
+  <!-- main.zig root node -->
+  <rect x="305" y="22" width="170" height="32" fill="#0c0c14" stroke="#F7A41D" stroke-width="2" rx="4" filter="url(#ms-glow)"/>
+  <text x="390" y="43" text-anchor="middle" fill="#F7A41D" font-size="13" font-weight="bold" font-family="monospace">main.zig</text>
+
+  <!-- Root trunk → bus 1 -->
+  <line x1="390" y1="54" x2="390" y2="65" stroke="#F7A41D" stroke-width="1.5"/>
+  <!-- Bus 1 -->
+  <line x1="112" y1="65" x2="667" y2="65" stroke="#F7A41D" stroke-width="1.5"/>
+  <!-- Bus 1 → row 1 drops -->
+  <line x1="112" y1="65" x2="112" y2="76" stroke="#06b6d4" stroke-width="1.5"/>
+  <line x1="297" y1="65" x2="297" y2="76" stroke="#06b6d4" stroke-width="1.5"/>
+  <line x1="482" y1="65" x2="482" y2="76" stroke="#06b6d4" stroke-width="1.5"/>
+  <line x1="667" y1="65" x2="667" y2="76" stroke="#06b6d4" stroke-width="1.5"/>
+
+  <!-- ── ROW 1 MODULE CARDS (y=76, h=143) ── -->
+
+  <!-- agent/ -->
+  <rect x="25" y="76" width="175" height="143" fill="#0c0c14" stroke="#06b6d4" stroke-width="1.5" rx="4" filter="url(#ms-glow)"/>
+  <text x="112" y="95" text-anchor="middle" fill="#06b6d4" font-size="12" font-weight="bold" font-family="monospace">agent/</text>
+  <line x1="25" y1="103" x2="200" y2="103" stroke="#06b6d4" stroke-width="0.5" opacity="0.4"/>
+  <text x="112" y="120" text-anchor="middle" fill="#71717a" font-size="10" font-family="monospace">loop.zig</text>
+  <text x="112" y="137" text-anchor="middle" fill="#71717a" font-size="10" font-family="monospace">session.zig</text>
+  <text x="112" y="154" text-anchor="middle" fill="#71717a" font-size="10" font-family="monospace">manager.zig</text>
+
+  <!-- terminal/ -->
+  <rect x="210" y="76" width="175" height="143" fill="#0c0c14" stroke="#06b6d4" stroke-width="1.5" rx="4" filter="url(#ms-glow)"/>
+  <text x="297" y="95" text-anchor="middle" fill="#06b6d4" font-size="12" font-weight="bold" font-family="monospace">terminal/</text>
+  <line x1="210" y1="103" x2="385" y2="103" stroke="#06b6d4" stroke-width="0.5" opacity="0.4"/>
+  <text x="297" y="120" text-anchor="middle" fill="#71717a" font-size="10" font-family="monospace">pty.zig</text>
+  <text x="297" y="137" text-anchor="middle" fill="#71717a" font-size="10" font-family="monospace">exit_code.zig</text>
+  <text x="297" y="154" text-anchor="middle" fill="#71717a" font-size="10" font-family="monospace">session.zig</text>
+  <text x="297" y="171" text-anchor="middle" fill="#71717a" font-size="10" font-family="monospace">pool.zig</text>
+
+  <!-- models/ -->
+  <rect x="395" y="76" width="175" height="143" fill="#0c0c14" stroke="#06b6d4" stroke-width="1.5" rx="4" filter="url(#ms-glow)"/>
+  <text x="482" y="95" text-anchor="middle" fill="#06b6d4" font-size="12" font-weight="bold" font-family="monospace">models/</text>
+  <line x1="395" y1="103" x2="570" y2="103" stroke="#06b6d4" stroke-width="0.5" opacity="0.4"/>
+  <text x="482" y="117" text-anchor="middle" fill="#71717a" font-size="10" font-family="monospace">http.zig</text>
+  <text x="482" y="131" text-anchor="middle" fill="#71717a" font-size="10" font-family="monospace">anthropic.zig</text>
+  <text x="482" y="145" text-anchor="middle" fill="#71717a" font-size="10" font-family="monospace">openai.zig</text>
+  <text x="482" y="159" text-anchor="middle" fill="#71717a" font-size="10" font-family="monospace">router.zig</text>
+  <text x="482" y="173" text-anchor="middle" fill="#71717a" font-size="10" font-family="monospace">stream.zig</text>
+
+  <!-- memory/ -->
+  <rect x="580" y="76" width="175" height="143" fill="#0c0c14" stroke="#06b6d4" stroke-width="1.5" rx="4" filter="url(#ms-glow)"/>
+  <text x="667" y="95" text-anchor="middle" fill="#06b6d4" font-size="12" font-weight="bold" font-family="monospace">memory/</text>
+  <line x1="580" y1="103" x2="755" y2="103" stroke="#06b6d4" stroke-width="0.5" opacity="0.4"/>
+  <text x="667" y="120" text-anchor="middle" fill="#71717a" font-size="10" font-family="monospace">store.zig</text>
+  <text x="667" y="137" text-anchor="middle" fill="#71717a" font-size="10" font-family="monospace">context.zig</text>
+
+  <!-- Continuation trunk → bus 2 (passes through gap between card2 x=385 and card3 x=395) -->
+  <line x1="390" y1="219" x2="390" y2="233" stroke="#F7A41D" stroke-width="1.5" opacity="0.6"/>
+  <!-- Bus 2 -->
+  <line x1="112" y1="233" x2="667" y2="233" stroke="#F7A41D" stroke-width="1.5" opacity="0.75"/>
+  <!-- Bus 2 → row 2 drops -->
+  <line x1="112" y1="233" x2="112" y2="243" stroke="#06b6d4" stroke-width="1.5"/>
+  <line x1="297" y1="233" x2="297" y2="243" stroke="#06b6d4" stroke-width="1.5"/>
+  <line x1="482" y1="233" x2="482" y2="243" stroke="#06b6d4" stroke-width="1.5"/>
+  <line x1="667" y1="233" x2="667" y2="243" stroke="#7c3aed" stroke-width="1.5"/>
+
+  <!-- ── ROW 2 MODULE CARDS (y=243, h=138) ── -->
+
+  <!-- config/ -->
+  <rect x="25" y="243" width="175" height="138" fill="#0c0c14" stroke="#06b6d4" stroke-width="1.5" rx="4" filter="url(#ms-glow)"/>
+  <text x="112" y="262" text-anchor="middle" fill="#06b6d4" font-size="12" font-weight="bold" font-family="monospace">config/</text>
+  <line x1="25" y1="270" x2="200" y2="270" stroke="#06b6d4" stroke-width="0.5" opacity="0.4"/>
+  <text x="112" y="287" text-anchor="middle" fill="#71717a" font-size="10" font-family="monospace">config.zig</text>
+
+  <!-- tools/ -->
+  <rect x="210" y="243" width="175" height="138" fill="#0c0c14" stroke="#06b6d4" stroke-width="1.5" rx="4" filter="url(#ms-glow)"/>
+  <text x="297" y="262" text-anchor="middle" fill="#06b6d4" font-size="12" font-weight="bold" font-family="monospace">tools/</text>
+  <line x1="210" y1="270" x2="385" y2="270" stroke="#06b6d4" stroke-width="0.5" opacity="0.4"/>
+  <text x="297" y="287" text-anchor="middle" fill="#71717a" font-size="10" font-family="monospace">tool.zig</text>
+  <text x="297" y="304" text-anchor="middle" fill="#71717a" font-size="10" font-family="monospace">registry.zig</text>
+
+  <!-- tui/ -->
+  <rect x="395" y="243" width="175" height="138" fill="#0c0c14" stroke="#06b6d4" stroke-width="1.5" rx="4" filter="url(#ms-glow)"/>
+  <text x="482" y="262" text-anchor="middle" fill="#06b6d4" font-size="12" font-weight="bold" font-family="monospace">tui/</text>
+  <line x1="395" y1="270" x2="570" y2="270" stroke="#06b6d4" stroke-width="0.5" opacity="0.4"/>
+  <text x="482" y="287" text-anchor="middle" fill="#71717a" font-size="10" font-family="monospace">app.zig</text>
+
+  <!-- orchestrator/ -->
+  <rect x="580" y="243" width="175" height="138" fill="#0c0c14" stroke="#7c3aed" stroke-width="1.5" rx="4" filter="url(#ms-glow)"/>
+  <text x="667" y="262" text-anchor="middle" fill="#7c3aed" font-size="11" font-weight="bold" font-family="monospace">orchestrator/</text>
+  <line x1="580" y1="270" x2="755" y2="270" stroke="#7c3aed" stroke-width="0.5" opacity="0.4"/>
+  <text x="667" y="287" text-anchor="middle" fill="#71717a" font-size="10" font-family="monospace">worker.zig</text>
+  <text x="667" y="304" text-anchor="middle" fill="#71717a" font-size="10" font-family="monospace">monitor.zig</text>
+  <text x="667" y="321" text-anchor="middle" fill="#71717a" font-size="10" font-family="monospace">swarm.zig</text>
+
+  <!-- Corner accents -->
+  <g stroke="#7c3aed" stroke-width="1.5" fill="none" opacity="0.35">
+    <path d="M15 15 L25 15 L25 25"/>
+    <path d="M765 15 L755 15 L755 25"/>
+    <path d="M15 400 L25 400 L25 390"/>
+    <path d="M765 400 L755 400 L755 390"/>
+  </g>
+</svg>

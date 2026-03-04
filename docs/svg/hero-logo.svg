@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <linearGradient id="pg-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#F7A41D;stop-opacity:1"/>
+            <stop offset="100%" style="stop-color:#d97706;stop-opacity:1"/>
+        </linearGradient>
+        <filter id="neon-glow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur1"/>
+            <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur2"/>
+            <feGaussianBlur in="SourceGraphic" stdDeviation="9" result="blur3"/>
+            <feMerge>
+                <feMergeNode in="blur3"/>
+                <feMergeNode in="blur2"/>
+                <feMergeNode in="blur1"/>
+                <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+        </filter>
+    </defs>
+    
+    <!-- Background circle -->
+    <circle cx="100" cy="100" r="95" fill="#0a0a0f" stroke="#F7A41D" stroke-width="2"/>
+    
+    <!-- Speed lines -->
+    <g stroke="#F7A41D" stroke-width="2" fill="none" filter="url(#neon-glow)">
+        <path d="M60 80 L80 100 L60 120"/>
+        <path d="M140 80 L120 100 L140 120"/>
+        <path d="M80 60 L100 80 L120 60"/>
+    </g>
+    
+    <!-- Central power symbol -->
+    <g filter="url(#neon-glow)">
+        <circle cx="100" cy="100" r="40" fill="none" stroke="url(#pg-gradient)" stroke-width="4"/>
+        <path d="M100 70 L100 100 L130 110" stroke="url(#pg-gradient)" stroke-width="4" fill="none" stroke-linecap="round"/>
+        <circle cx="100" cy="100" r="4" fill="#F7A41D"/>
+        <circle cx="100" cy="70" r="3" fill="#F7A41D"/>
+        <circle cx="130" cy="110" r="3" fill="#F7A41D"/>
+    </g>
+    
+    <!-- Corner accents -->
+    <g stroke="#7c3aed" stroke-width="2" fill="none">
+        <path d="M30 30 L40 30 L40 40"/>
+        <path d="M170 30 L160 30 L160 40"/>
+        <path d="M30 170 L40 170 L40 160"/>
+        <path d="M170 170 L160 170 L160 160"/>
+    </g>
+    
+    <!-- Text -->
+    <text x="100" y="180" text-anchor="middle" fill="#F7A41D" font-size="14" font-weight="bold" font-family="monospace" filter="url(#neon-glow)">POWERGLIDE</text>
+</svg>

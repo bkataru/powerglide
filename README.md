@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="website/static/svg/logo.svg" alt="powerglide logo" width="200" height="200" />
+<img src="docs/svg/hero-logo.svg" alt="powerglide logo" width="200" height="200" />
 
 # powerglide
 
@@ -11,7 +11,7 @@
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![GitHub Stars](https://img.shields.io/github/stars/bkataru/powerglide?style=social)](https://github.com/bkataru/powerglide)
 
-*Zig-powered multi-agent harness for extreme coding workflows. Built for speed, reliability, and precision. Named after the legendary Lamborghini transmission. 🦀⚡*
+*Zig-powered multi-agent harness for extreme coding workflows. Named after the [Rae Sremmurd](https://www.youtube.com/watch?v=gX2lNOZRSuk) track and its namesake Lamborghini transmission. Built for [Barvis](https://www.moltbook.com/u/barvis_da_jarvis) 🦀⚡*
 
 </div>
 
@@ -36,6 +36,18 @@ $ powerglide run --agent hephaestus --velocity 2.0 "refactor the auth module to 
 - **Reliable PTYs** 💻 — Every tool execution happens in a real pseudoterminal. Exit codes are captured via `waitpid` with a `/proc` fallback, ensuring that `zig build` or `pytest` results are 100% reliable.
 - **Rogue Agent Prevention** 🛡️ — Defense in depth with step limits, heartbeat monitoring, circuit breakers for repeat tool calls, and budget tracking. Rogue agents are killed before they can damage your codebase.
 - **Multi-Model Routing** 🤖 — Native support for Anthropic (Claude), OpenAI, and any OpenAI-compatible endpoint. Automatic fallback chains ensure that rate limits don't stop your workflow.
+
+---
+
+## Architecture
+
+### Module Structure
+
+![Module Structure](docs/svg/module-structure.svg)
+
+### Swarm Architecture
+
+![Swarm Architecture](docs/svg/swarm-arch.svg)
 
 ---
 
@@ -87,18 +99,36 @@ The static binary is located at `./zig-out/bin/powerglide`.
 | `tui` | Launch the multi-panel dashboard |
 | `doctor` | Run system health checks |
 
-Run `powerglide [command] --help` for detailed options.
+---
+
+## The Ralph Loop
+
+Every powerglide agent session is driven by the **Ralph Loop** — an explicit state machine that enforces a strict sequence from task intake through tool execution to completion.
+
+![Ralph Loop](docs/svg/ralph-loop.svg)
 
 ---
 
-## Why powerglide?
+## Inspiration
 
-Coding agents are like high-performance cars. Most current harnesses feel like driving a prototype without a dashboard. **powerglide** gives you the wheel, the telemetry, and the transmission built for drag racing.
+powerglide is inspired by the best ideas from the AI coding agent ecosystem:
 
-- **Fast**: Written in Zig, compiles to a single static binary. Zero runtime dependencies.
-- **Observable**: Real-time TUI shows exactly what the agent is thinking and doing.
-- **Safe**: Built-in guards prevent runaway token usage and recursive tool loops.
-- **Extensible**: Add new tools or agents via simple JSON configuration.
+| Project | Inspiration |
+|---------|------------|
+| [oh-my-pi](https://github.com/can1357/oh-my-pi) | Multi-agent harness patterns, agent orchestration |
+| [oh-my-opencode](https://github.com/code-yeongyu/oh-my-opencode) | Ralph Wiggum loop, autonomous agent control |
+| [ralph](https://github.com/snarktank/ralph) | Ralph loop state machine, explicit done signals |
+| [The Ralph Playbook](https://github.com/ghuntley/how-to-ralph-wiggum) | Ralph Wiggum methodology, autonomous loops |
+| [gastown](https://github.com/steveyegge/gastown) | Multi-agent workspace isolation, task queues |
+| [loki](https://github.com/Dark-Alex-17/loki) | Tool registry, provider abstraction, session persistence |
+| [plandex](https://github.com/plandex-ai/plandex) | Plan+execute pattern, diff-based application |
+| [opencode](https://github.com/anomalyco/opencode) | CLI UX, multi-model routing |
+| [aichat](https://github.com/sigoden/aichat) | SSE streaming, config schema |
+| [goose](https://github.com/block/goose) | Agent extensibility, MCP integration |
+| [crush](https://github.com/charmbracelet/crush) | Terminal UX, TUI design |
+| [mem0](https://github.com/mem0ai/mem0) | Persistent memory layer for AI agents |
+| [pi-mono](https://github.com/badlogic/pi-mono) | Multi-agent coordination patterns |
+| [forge code](https://forgecode.dev) | Agentic coding workflow design |
 
 ---
 

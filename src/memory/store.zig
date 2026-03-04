@@ -524,7 +524,7 @@ test "MemoryStore delete removes entry" {
     defer store.deinit();
     
     const id1 = try store.append("first", &[_][]const u8{"tag1"});
-    const id2 = try store.append("second", &[_][]const u8{"tag2"});
+    try store.append("second", &[_][]const u8{"tag2"});
     
     try store.delete(id1);
     
@@ -636,3 +636,5 @@ test "MemoryStore deinit frees all entries" {
     }
     
 
+    store.deinit(); // Should not leak
+}

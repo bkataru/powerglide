@@ -428,7 +428,3 @@ test "ContentBlock union memory layout" {
     };
     try std.testing.expect(block2 == .tool_use);
     
-    _ = allocator;
-}
-    try std.testing.expect(true);
-}

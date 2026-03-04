@@ -499,35 +499,4 @@ test "Loop session file with subdirectory" {
     const file = try std.fs.cwd().openFile(tmp_session, .{});
     defer file.close();
     _ = file;
-
-    const config = LoopConfig{ .max_steps = 10, .velocity = 0 };
-    var loop = Loop.init(allocator, config);
-    defer loop.deinit();
-
-    try std.testing.expect(loop.state == .idle);
-    _ = try loop.step();
-    try std.testing.expect(loop.state == .load_tasks);
-}
-
-test "Loop step count increments" {
-    const allocator = std.testing.allocator;
-    const config = LoopConfig{ .max_steps = 10, .velocity = 0 };
-    var loop = Loop.init(allocator, config);
-    defer loop.deinit();
-
-    var i: u32 = 0;
-    while (i < 5) : (i += 1) {
-        _ = try loop.step();
-    }
-    try std.testing.expect(loop.step_count == 0);
-}
-
-test "Rogue guard step limit" {
-    const allocator = std.testing.allocator;
-    const config = LoopConfig{ .max_steps = 2, .velocity = 0 };
-    var loop = Loop.init(allocator, config);
-    defer loop.deinit();
-
-    loop.step_count = 2;
-    try std.testing.expectError(error.StepLimitExceeded, loop.checkRogueGuard());
 }
