@@ -560,7 +560,17 @@ fn runTask(
         try w.print("      <- {s}\n", .{result[0..@min(140, result.len)]});
 
         try msgs.append("assistant", raw);
-        const cont = try std.fmt.allocPrint(allocator, "Result:\n{s}\n\nContinue.", .{result});
+        // If tool was unrecognised, give a targeted correction instead of
+        // feeding back "unknown tool" (which causes the 2B to escape-loop).
+        const cont = if (std.mem.eql(u8, result, "unknown tool"))
+            try allocator.dupe(u8,
+                \\You must output a JSON tool call. Use one of:
+                \\{"tool":"bash","args":{"command":"<cmd>"}}
+                \\{"tool":"done","args":{"answer":"<answer>"}}
+                \\Output ONLY the JSON object, nothing else.
+            )
+        else
+            try std.fmt.allocPrint(allocator, "Result:\n{s}\n\nContinue.", .{result});
         defer allocator.free(cont);
         try msgs.append("user", cont);
 
