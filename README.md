@@ -175,7 +175,7 @@ powerglide doctor
 # Run T01-T17 agentic trial harness across all four models
 zig build trial
 
-# Run quantization sensitivity trial (Q4/Q5/Q6/Q8 on 2B and 9B)
+# Run quantization sensitivity trial (Q4/Q5/Q6/Q8/BF16 on 2B and 9B)
 zig build trial-quant
 ```
 
