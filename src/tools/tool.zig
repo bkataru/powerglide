@@ -248,9 +248,8 @@ fn grep_handler(allocator: std.mem.Allocator, ctx: ?*anyopaque, input: ToolInput
         return ToolOutput.failure("Missing required field: pattern");
     };
     const path = extractStringField(&input.arguments, "path") orelse ".";
-    const command = try std.fmt.allocPrint(allocator, "grep -rn -- {s} {s} 2>/dev/null | head -100", .{ pattern, path });
-    defer allocator.free(command);
-    const argv = &[_][]const u8{ "/bin/sh", "-c", command };
+    // Use direct argv — no shell interpolation of user-controlled pattern/path.
+    const argv = &[_][]const u8{ "grep", "-rn", "--", pattern, path };
     const output = runCommand(allocator, argv) catch |e| {
         return ToolOutput.failure(try std.fmt.allocPrint(allocator, "grep failed: {}", .{e}));
     };
@@ -258,7 +257,10 @@ fn grep_handler(allocator: std.mem.Allocator, ctx: ?*anyopaque, input: ToolInput
         allocator.free(output);
         return ToolOutput.success(try allocator.dupe(u8, "No matches found"));
     }
-    return ToolOutput.success(output);
+    // Truncate to first 100 lines to bound output size.
+    const truncated = firstNLines(allocator, output, 100) catch output;
+    if (truncated.ptr != output.ptr) allocator.free(output);
+    return ToolOutput.success(truncated);
 }
 
 fn glob_handler(allocator: std.mem.Allocator, ctx: ?*anyopaque, input: ToolInput) !ToolOutput {
@@ -267,9 +269,8 @@ fn glob_handler(allocator: std.mem.Allocator, ctx: ?*anyopaque, input: ToolInput
         return ToolOutput.failure("Missing required field: pattern");
     };
     const path = extractStringField(&input.arguments, "path") orelse ".";
-    const command = try std.fmt.allocPrint(allocator, "find {s} -name '{s}' -type f 2>/dev/null | head -100", .{ path, pattern });
-    defer allocator.free(command);
-    const argv = &[_][]const u8{ "/bin/sh", "-c", command };
+    // Use direct argv — no shell interpolation of user-controlled pattern/path.
+    const argv = &[_][]const u8{ "find", path, "-name", pattern, "-type", "f" };
     const output = runCommand(allocator, argv) catch |e| {
         return ToolOutput.failure(try std.fmt.allocPrint(allocator, "find failed: {}", .{e}));
     };
@@ -277,7 +278,23 @@ fn glob_handler(allocator: std.mem.Allocator, ctx: ?*anyopaque, input: ToolInput
         allocator.free(output);
         return ToolOutput.success(try allocator.dupe(u8, "No matches found"));
     }
-    return ToolOutput.success(output);
+    // Truncate to first 100 lines to bound output size.
+    const truncated = firstNLines(allocator, output, 100) catch output;
+    if (truncated.ptr != output.ptr) allocator.free(output);
+    return ToolOutput.success(truncated);
+}
+
+/// Return a copy of `s` containing only the first `n` newline-delimited lines.
+/// Returns the original slice (no alloc) if fewer than `n` lines exist.
+fn firstNLines(allocator: std.mem.Allocator, s: []const u8, n: usize) ![]u8 {
+    var count: usize = 0;
+    for (s, 0..) |c, i| {
+        if (c == '\n') {
+            count += 1;
+            if (count == n) return allocator.dupe(u8, s[0 .. i + 1]);
+        }
+    }
+    return allocator.dupe(u8, s);
 }
 
 fn extractStringField(args: *const json.Value, field: []const u8) ?[]const u8 {

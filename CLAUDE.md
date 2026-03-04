@@ -48,7 +48,7 @@ Full Qwen3.5 lineup (download with `igllama pull unsloth/Qwen3.5-<N>B-GGUF -f <f
 - `:8090` → `Qwen3.5-0.8B-Q8_0.gguf`    (`local` agent)
 - `:8091` → `Qwen3.5-2B-Q8_0.gguf`      (`local2b` agent)
 - `:8092` → `Qwen3.5-4B-Q8_0.gguf`      (`local4b` agent)
-- `:8093` → `Qwen3.5-9B-Q8_0.gguf`      (`local9b` agent)
+- `:8093` → `Qwen3.5-9B-UD-Q4_K_XL.gguf` (`local9b` agent)
 
 Start with: `igllama api <model> --port <N> --no-think --max-tokens 512 --threads 4 --threads-batch 16 --ctx-size 2048 --mlock`
 
@@ -58,7 +58,7 @@ Start with: `igllama api <model> --port <N> --no-think --max-tokens 512 --thread
 
 ## Current Version
 
-`0.2.2` — 195/195 tests passing, 0 leaks.
+`0.2.5` — 195/195 tests passing, 0 leaks.
 
 ## Roadmap
 
@@ -72,4 +72,7 @@ Start with: `igllama api <model> --port <N> --no-think --max-tokens 512 --thread
 8. ✅ igllama integration — local Qwen3.5 agents, json_mode, port scanning
 9. ✅ Session summary output on `powerglide run` completion
 10. ✅ Showcase page — dogfooding case studies: full Qwen3.5 lineup (0.8B/2B/4B/9B)
-11. ✅ Zig trial harness (`examples/trial.zig`) — T01–T13 × 4 weight classes
+11. ✅ Zig trial harness (`examples/trial.zig`) — T01–T13 × 4 weight classes at Q4/Q8
+12. ✅ igllama json_mode patch — GBNF grammar constraint via `response_format` (v0.3.9)
+13. ✅ BF16 trial harness (`examples/trial_bf16.zig`) — T01–T13 × 4 models at full precision
+14. ✅ Security: grep/glob tools use direct argv (no shell interpolation of user input)

@@ -36,7 +36,7 @@ $ powerglide run --agent hephaestus --velocity 2.0 "refactor the auth module to 
 - **Rogue Agent Prevention** 🛡️ — Step limits, heartbeat monitoring (30s), circuit breakers for repeated tool calls, and budget tracking. Stuck agents are killed before they accumulate diverged work.
 - **Multi-Model Routing** 🤖 — Anthropic (Claude), OpenAI, and any OpenAI-compatible endpoint (Ollama, [igllama](https://github.com/bkataru/igllama), NVIDIA NIM, Together AI). Fallback chains keep sessions alive through provider outages.
 - **MCP Integration** 🔌 — Run as an MCP server (`powerglide mcp`) or connect to external MCP servers as a client. External tools get prefixed names and become first-class tools in the registry.
-- **Local LLM Support** 🏠 — Pre-configured `local` and `local4b` agents route to igllama on `:8090`/`:8091`. No API keys required for exploration and triage workflows.
+- **Local LLM Support** 🏠 — Pre-configured agents (`local`, `local2b`, `local4b`, `local9b`) route to the full Qwen3.5 lineup on `:8090–:8093` via igllama. No API keys required for offline inference.
 
 ---
 
@@ -82,7 +82,7 @@ zig build
 ./zig-out/bin/powerglide run "implement a binary search tree in Zig"
 
 # Run fully locally with Qwen3.5-4B via igllama
-igllama api Qwen3.5-4B-Q8_0.gguf --port 8091 --no-think &
+igllama api Qwen3.5-4B-Q8_0.gguf --port 8092 --no-think &
 ./zig-out/bin/powerglide run --agent local4b "describe the orchestrator module"
 
 # Run at double speed
@@ -99,7 +99,7 @@ Every completed session emits a structured summary:
   Session complete  [done]
   Steps:    9
   Elapsed:  3.4s
-  Agent:    local4b  (Qwen3.5-4B-Q8_0.gguf)
+  Agent:    local4b  (Qwen3.5-4B-Q8_0.gguf :8092)
   Signal:   <POWERGLIDE_DONE>
 ─────────────────────────────────────────
 ```
@@ -156,17 +156,24 @@ External tools register as `mcp_filesystem_read_file` etc. and are indistinguish
 
 ## Local LLM Dogfooding
 
-powerglide ships with igllama integration for fully local inference. See the **[Showcase](https://bkataru.github.io/powerglide/showcase/)** for case studies with Qwen3.5 0.8B and 4B models — including tool calling triage, session summary analysis, and the honest performance table.
+powerglide ships with igllama integration for fully local inference. See the **[Showcase](https://bkataru.github.io/powerglide/showcase/)** for case studies across the full Qwen3.5 lineup — T01–T13 agentic task trials at Q4, Q8, and BF16 precision; tool-call triage; and honest per-model pass-rate tables.
 
 ```bash
-# Start igllama (Zig-based Ollama alternative)
-igllama api Qwen3.5-0.8B-Q8_0.gguf --port 8090 --no-think &
-igllama api Qwen3.5-4B-Q8_0.gguf  --port 8091 --no-think &
+# Start the full Qwen3.5 lineup (Zig-based local inference via igllama)
+igllama api Qwen3.5-0.8B-Q8_0.gguf       --port 8090 --no-think &
+igllama api Qwen3.5-2B-Q8_0.gguf         --port 8091 --no-think &
+igllama api Qwen3.5-4B-Q8_0.gguf         --port 8092 --no-think &
+igllama api Qwen3.5-9B-UD-Q4_K_XL.gguf   --port 8093 --no-think &
 
-# Doctor detects both automatically
+# Doctor detects all running instances automatically
 powerglide doctor
-# OK   igllama: running on :8090 (local agent available)
-# OK   igllama: running on :8091 (local agent available)
+# OK   igllama: running on :8090 (local   — 0.8B-Q8)
+# OK   igllama: running on :8091 (local2b — 2B-Q8)
+# OK   igllama: running on :8092 (local4b — 4B-Q8)
+# OK   igllama: running on :8093 (local9b — 9B-Q4)
+
+# Run the T01-T13 agentic trial harness across all four models
+zig build trial
 ```
 
 ---

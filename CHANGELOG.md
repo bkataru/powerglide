@@ -2,6 +2,21 @@
 
 All notable changes to the **powerglide** project will be documented in this file.
 
+## [0.2.5] - 2026-03-04
+
+### Added
+- **BF16 trial harness** — `examples/trial_bf16.zig` runs T01–T13 × 4 Qwen3.5 models (0.8B/2B/4B/9B) at full BF16 precision; manages igllama lifecycle (spawn, health-poll, kill) per model
+- **`zig build trial-bf16`** — new build step mirroring `zig build trial`
+- **igllama json_mode** — patched igllama v0.3.9: `response_format: {"type":"json_object"}` now wires `JSON_GRAMMAR` GBNF constraint into the llama.cpp sampler chain via `llama_sampler_init_grammar()`
+
+### Fixed
+- **Shell injection in grep/glob tools** — `grep_handler` and `glob_handler` previously interpolated user-controlled `pattern`/`path` into shell command strings via `std.fmt.allocPrint` + `/bin/sh -c`. Replaced with direct `execve`-style argv arrays (`grep -rn -- pattern path`, `find path -name pattern -type f`). Output truncated to 100 lines post-hoc.
+- **MCP tool name validation** — `mcpToolToTool` now validates `server_name` and `mcp_tool.name` against `[a-zA-Z0-9_-]` before constructing the prefixed name; returns `error.InvalidToolName` for malformed inputs.
+- **README port/model mismatch** — corrected local LLM section: full 4-port lineup (`:8090–:8093`), added 2B/9B models, fixed 4B port (`:8092` not `:8091`).
+
+### Changed
+- **CLAUDE.md**: version bumped to 0.2.5; 9B model corrected to `Qwen3.5-9B-UD-Q4_K_XL.gguf`; roadmap items 12–14 added.
+
 ## [0.2.4] - 2026-03-04
 
 ### Added

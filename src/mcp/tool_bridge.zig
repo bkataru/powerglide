@@ -24,6 +24,16 @@ pub const McpToolContext = struct {
     }
 };
 
+/// Validate that a name contains only alphanumeric characters, underscores, and hyphens.
+/// Returns true if safe to use in a prefixed tool name.
+fn isValidToolName(name: []const u8) bool {
+    if (name.len == 0) return false;
+    for (name) |c| {
+        if (!std.ascii.isAlphanumeric(c) and c != '_' and c != '-') return false;
+    }
+    return true;
+}
+
 /// Convert MCP tool definition to powerglide Tool struct
 pub fn mcpToolToTool(allocator: std.mem.Allocator, client: *McpClient, mcp_tool: McpTool, server_name: []const u8) !Tool {
     // Convert input schema to JSON string
@@ -38,6 +48,8 @@ const schema_str = try buf.toOwnedSlice(allocator);
         .tool_name = try allocator.dupe(u8, mcp_tool.name),
     };
 
+    if (!isValidToolName(server_name) or !isValidToolName(mcp_tool.name))
+        return error.InvalidToolName;
     const prefixed_name = try std.fmt.allocPrint(allocator, "mcp_{s}_{s}", .{ server_name, mcp_tool.name });
 
     return Tool{
