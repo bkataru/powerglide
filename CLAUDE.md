@@ -45,10 +45,10 @@ cp -r zig-out/docs/. ../docs/
 
 Full Qwen3.5 lineup (download with `igllama pull unsloth/Qwen3.5-<N>B-GGUF -f <file>`):
 
-- `:8090` → `Qwen3.5-0.8B-Q8_0.gguf`        (`local` agent)
-- `:8091` → `Qwen3.5-2B-UD-Q4_K_XL.gguf`    (`local2b` agent)
-- `:8092` → `Qwen3.5-4B-Q8_0.gguf`          (`local4b` agent)
-- `:8093` → `Qwen3.5-9B-UD-Q4_K_XL.gguf`    (`local9b` agent)
+- `:8090` → `Qwen3.5-0.8B-Q8_0.gguf`    (`local` agent)
+- `:8091` → `Qwen3.5-2B-Q8_0.gguf`      (`local2b` agent)
+- `:8092` → `Qwen3.5-4B-Q8_0.gguf`      (`local4b` agent)
+- `:8093` → `Qwen3.5-9B-Q8_0.gguf`      (`local9b` agent)
 
 Start with: `igllama api <model> --port <N> --no-think --max-tokens 512 --threads 4 --threads-batch 16 --ctx-size 2048 --mlock`
 

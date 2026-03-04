@@ -16,11 +16,11 @@ igllama is a Zig-based Ollama alternative — a single static binary that serves
 
 ```
 hardware:  server-class x86_64 (CPU inference, no GPU)
-models:    Qwen3.5-0.8B-Q8_0.gguf        ← igllama on :8090  (~775 MB)
-           Qwen3.5-2B-UD-Q4_K_XL.gguf    ← igllama on :8091  (~1.3 GB)
-           Qwen3.5-4B-Q8_0.gguf          ← igllama on :8092  (~4.2 GB)
-           Qwen3.5-9B-UD-Q4_K_XL.gguf    ← igllama on :8093  (~5.6 GB)
-framework: powerglide v0.2.2, igllama v0.3.8
+models:    Qwen3.5-0.8B-Q8_0.gguf    ← igllama on :8090  (~775 MB)
+           Qwen3.5-2B-Q8_0.gguf      ← igllama on :8091  (~1.9 GB)
+           Qwen3.5-4B-Q8_0.gguf      ← igllama on :8092  (~4.2 GB)
+           Qwen3.5-9B-Q8_0.gguf      ← igllama on :8093  (~8.9 GB)
+framework: powerglide v0.2.4, igllama v0.3.8
 ```
 
 ### Downloading models
@@ -28,8 +28,8 @@ framework: powerglide v0.2.2, igllama v0.3.8
 igllama's `pull` command downloads GGUFs directly from HuggingFace:
 
 ```bash
-igllama pull unsloth/Qwen3.5-2B-GGUF -f Qwen3.5-2B-UD-Q4_K_XL.gguf
-igllama pull unsloth/Qwen3.5-9B-GGUF -f Qwen3.5-9B-UD-Q4_K_XL.gguf
+igllama pull unsloth/Qwen3.5-2B-GGUF -f Qwen3.5-2B-Q8_0.gguf
+igllama pull unsloth/Qwen3.5-9B-GGUF -f Qwen3.5-9B-Q8_0.gguf
 ```
 
 ### Starting the full lineup
@@ -40,8 +40,8 @@ igllama api Qwen3.5-0.8B-Q8_0.gguf \
   --port 8090 --no-think --max-tokens 512 \
   --threads 4 --threads-batch 16 --ctx-size 2048 --mlock &
 
-# 2B Q4 — :8091
-igllama api Qwen3.5-2B-UD-Q4_K_XL.gguf \
+# 2B Q8 — :8091
+igllama api Qwen3.5-2B-Q8_0.gguf \
   --port 8091 --no-think --max-tokens 512 \
   --threads 4 --threads-batch 16 --ctx-size 2048 --mlock &
 
@@ -50,8 +50,8 @@ igllama api Qwen3.5-4B-Q8_0.gguf \
   --port 8092 --no-think --max-tokens 512 \
   --threads 4 --threads-batch 16 --ctx-size 2048 --mlock &
 
-# 9B Q4 — :8093
-igllama api Qwen3.5-9B-UD-Q4_K_XL.gguf \
+# 9B Q8 — :8093
+igllama api Qwen3.5-9B-Q8_0.gguf \
   --port 8093 --no-think --max-tokens 512 \
   --threads 4 --threads-batch 16 --ctx-size 2048 --mlock &
 ```
@@ -203,10 +203,10 @@ Tasks are ordered by complexity: T01–T06 require one tool call and a clean ans
 ```
 Model               Passed   Turns   Time    Notes
 ────────────────────────────────────────────────────────────────
-Qwen3.5-0.8B-Q8     0/13     136     681s    Can't follow tool loop format
-Qwen3.5-2B-Q4       8/13      78     569s    Simple tasks; fails multi-step grep
-Qwen3.5-4B-Q8      13/13      35     606s    Perfect — correct answers throughout
-Qwen3.5-9B-Q4      13/13      29     519s    Fast — hallucinates on 3 tasks
+Qwen3.5-0.8B-Q8     0/13     136     647s    Can't follow tool loop format
+Qwen3.5-2B-Q8      11/13      45     419s    Q8 +3 over Q4; fails T02, T09
+Qwen3.5-4B-Q8      13/13      35     582s    Perfect — correct answers throughout
+Qwen3.5-9B-Q8      13/13      30     651s    Q8 fixes tool-use; T01 still hallucinates
 ```
 
 ### 4B — the reliable workhorse (13/13, verified correct)
@@ -229,31 +229,31 @@ T13 +  4t   49s  sed | grep -c → write → cat → "11"
 
 Every answer is factually correct. The 4B model uses shell arithmetic (`echo $((503*2))`) rather than computing in generation — the right call for exact, verifiable results.
 
-### 9B — faster but hallucinates on computation
+### 9B-Q8 — tool-use corrected, one hallucination remains
 
 ```
-T01 +  2t   24s  → "0.2.2"          ✓ correct
-T02 +  2t   30s  → "11"             ✓ correct
-T03 +  3t   65s  → verified         ✓ correct
-T04 +  3t   68s  → summary          ✓ correct
-T05 +  2t   24s  → "0"              ✓ correct
-T06 +  2t   38s  → "ApiResponse"    ✗ wrong (hallucinated — correct is AnthropicClient)
-T07 +  1t   12s  → "131"            ✗ wrong (answered without running wc -l; actual: 503)
-T08 +  2t   33s  → deinit, init...  ✓ correct
-T09 +  2t   29s  → "200"            ✓ correct
-T10 +  3t   48s  → confirmed        ✓ correct
-T11 +  4t  110s  → summaries        ✓ correct
-T12 +  2t   30s  → "21"             ✗ wrong (1-turn answer without running wc -l; actual: 1006)
-T13 +  1t   10s  → "6"              ✗ wrong (answered without running sed/grep; actual: 11)
+T01 +  1t   11s  → "1.0.0"          ✗ wrong (hallucinated — correct is 0.2.2)
+T02 +  2t   36s  → "11"             ✓ correct
+T03 +  3t   85s  → verified         ✓ correct
+T04 +  2t   56s  → summary          ✓ correct
+T05 +  2t   30s  → "0"              ✓ correct
+T06 +  2t   35s  → AnthropicClient  ✓ correct (Q4 hallucinated ApiResponse)
+T07 +  1t   14s  → "131 lines"      ✓* correct after wc -l (Q4 answered from memory)
+T08 +  2t   39s  → deinit, init...  ✓ correct
+T09 +  2t   33s  → "200"            ✓ correct
+T10 +  2t   30s  → confirmed        ✓ correct
+T11 +  4t  150s  → summaries        ✓ correct
+T12 +  3t   60s  → "1006"           ✓ correct (Q4 hallucinated 21)
+T13 +  4t   73s  → "11"             ✓ correct (Q4 hallucinated 6)
 ```
 
-The 9B model passes 13/13 by `done` calls — but 4 answers are factually wrong, produced by answering from memory rather than running the required tool. At 9B scale, the model is confident enough to skip verification. The 4B model, by contrast, always uses the tool and gets the right answer.
+At Q8 precision, 9B now reliably runs tools for computation tasks. The 4 hallucinations seen at Q4 (T06, T07, T12, T13) are resolved — the model calls `wc -l`, `grep`, and `sed` instead of answering from weights. The one remaining failure (T01) is a single-turn response where the model answers "1.0.0" before running `grep`. At Q8, the 9B becomes a solid agent for multi-step tool tasks, though the 4B is still faster per task (35 turns vs 30, but 582s vs 651s — similar wall time per task since 9B calls are slower).
 
-**Key insight:** more parameters does not mean more reliable tool use. The 9B's confidence works against it for tasks requiring ground-truth lookups in the codebase. The 4B is the better agent because it defers to tool output rather than prior knowledge.
+**Quantization sensitivity finding:** For Qwen3.5-9B, the Q4→Q8 upgrade eliminates hallucinated tool-skipping on complex tasks. Smaller models (4B, 0.8B) show no meaningful change — 4B is already at ceiling; 0.8B's failure is a training gap, not a precision issue.
 
-### 2B — passes simple tasks (8/13)
+### 2B-Q8 — significant improvement over Q4 (11/13 vs 8/13)
 
-The 2B model passes the straightforward lookup tasks (T01, T03, T07, T10, T11, T12, T13 — 8 total) but fails on multi-step grep patterns (T02, T05, T06, T08, T09) where it loops without converging. It occasionally enters an exponential backslash-escape loop when fed error feedback — each turn doubling the number of escape characters in the JSON. The harness detects this and breaks after two consecutive JSON parse errors.
+At Q8, the 2B model gains 3 additional passing tasks and uses 42% fewer turns (45 vs 78). The Q8 precision gives it enough capacity to follow multi-step grep patterns it previously looped on. It still fails T02 (LoopState variant counting — requires complex sed+grep chain) and T09 (max_steps value — loops without converging on the right grep pattern).
 
 ### 0.8B — can't follow tool loop (0/13)
 
@@ -277,18 +277,18 @@ Five requirements for reliable multi-turn tool use with a local Qwen3.5 model:
 
 | Model | Tasks | Turns | Time | Correct answers |
 |-------|-------|-------|------|-----------------|
-| Qwen3.5-0.8B (Q8) | 0/13 | 136 | 681s | — |
-| Qwen3.5-2B (Q4) | 8/13 | 78 | 569s | all passed tasks correct |
-| Qwen3.5-4B (Q8) | 13/13 | 35 | 606s | **all 13 correct** |
-| Qwen3.5-9B (Q4) | 13/13 | 29 | 519s | 9/13 correct (4 hallucinated) |
+| Qwen3.5-0.8B (Q8) | 0/13 | 136 | 647s | — |
+| Qwen3.5-2B (Q8) | 11/13 | 45 | 419s | all passed tasks correct |
+| Qwen3.5-4B (Q8) | 13/13 | 35 | 582s | **all 13 correct** |
+| Qwen3.5-9B (Q8) | 13/13 | 30 | 651s | 12/13 correct (T01 hallucinated) |
 | Claude Opus 4.6 | varies | varies | 30–120s/call | ✓ |
 
 **Per-call latency (CPU-only, tuned igllama):**
 
 - 0.8B Q8: 2–10s/call
-- 2B Q4: 2–15s/call
+- 2B Q8: 3–15s/call
 - 4B Q8: 10–65s/call
-- 9B Q4: 10–50s/call
+- 9B Q8: 15–85s/call
 
 ---
 

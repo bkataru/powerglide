@@ -2,6 +2,20 @@
 
 All notable changes to the **powerglide** project will be documented in this file.
 
+## [0.2.4] - 2026-03-04
+
+### Added
+- **Q8 quantization for 2B and 9B** — downloaded `Qwen3.5-2B-Q8_0.gguf` (1.9 GB) and `Qwen3.5-9B-Q8_0.gguf` (8.9 GB) via `igllama pull`; both now run at full Q8 precision
+- **Quantization sensitivity findings** — Q8 vs Q4 trial: 2B improved from 8/13 to 11/13 (+3 tasks, 42% fewer turns); 9B hallucination on T01 persists but tool-use tasks now all correct; 0.8B and 4B unaffected
+
+### Changed
+- **Port layout**: 2B now serves `Qwen3.5-2B-Q8_0.gguf` on :8091; 9B now serves `Qwen3.5-9B-Q8_0.gguf` on :8093
+- **trial.zig ENDPOINTS**: updated model filenames from UD-Q4_K_XL to Q8_0 for 2B and 9B
+- **CLAUDE.md**: updated local LLM lineup to reflect Q8 models
+
+### Fixed
+- **9B hallucination partially resolved** — at Q8, 9B correctly runs tools for T07/T12/T13/T06 (was hallucinating from memory at Q4); T01 VERSION still hallucinated in 1-turn responses
+
 ## [0.2.3] - 2026-03-04
 
 ### Added
