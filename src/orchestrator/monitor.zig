@@ -178,6 +178,6 @@ test "Monitor.getWorker returns null for nonexistent worker" {
     defer monitor.deinit();
 
     const worker = monitor.getWorker(999);
-    try std.testing.expect(worker == null);
+    try std.testing.expect(worker == null); // Final check
 }
 

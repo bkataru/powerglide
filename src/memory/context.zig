@@ -21,7 +21,7 @@ pub const ContextWindow = struct {
             .allocator = allocator,
             .max_tokens = max_tokens,
             .current_tokens = 0,
-            .messages = std.ArrayList(ContextMessage).init(allocator),
+            .messages = std.ArrayList(ContextMessage){},
         };
     }
 
@@ -31,7 +31,7 @@ pub const ContextWindow = struct {
             self.allocator.free(msg.role);
             self.allocator.free(msg.content);
         }
-        self.messages.deinit();
+        self.messages.deinit(self.allocator);
     }
 
     /// Add a message to context (may trigger compaction if over budget)
@@ -49,11 +49,11 @@ pub const ContextWindow = struct {
             .timestamp = timestamp,
         };
 
-        try self.messages.append(message);
+        try self.messages.append(self.allocator, message);
         self.current_tokens += token_estimate;
 
         // Auto-compact if over budget (at 90% threshold)
-        const threshold = @as(u32, @floatCast(@as(f32, @floatFromInt(self.max_tokens)) * 0.9));
+        const threshold = @as(u32, @intFromFloat(@as(f32, @floatFromInt(self.max_tokens)) * 0.9));
         if (self.current_tokens > threshold) {
             try self.compact(threshold);
         }
@@ -73,8 +73,8 @@ pub const ContextWindow = struct {
         }
 
         // If still over budget (shouldn't happen with >1 message), clear all but last
-        while (self.current_tokens > target_tokens and self.messages.items.len > 0) {
-            const removed = self.messages.pop();
+        while (self.current_tokens > target_tokens and self.messages.items.len > 1) {
+            const removed = self.messages.pop().?;
             self.current_tokens -= removed.token_estimate;
 
             self.allocator.free(removed.role);
@@ -122,7 +122,7 @@ pub const ContextWindow = struct {
 
 test "ContextWindow initialization" {
     const allocator = std.testing.allocator;
-    const window = ContextWindow.init(allocator, 1000);
+    var window = ContextWindow.init(allocator, 1000);
     defer window.deinit();
 
     try std.testing.expect(window.max_tokens == 1000);
@@ -178,8 +178,8 @@ test "ContextWindow compact removes oldest messages" {
     var window = ContextWindow.init(allocator, 100);
     defer window.deinit();
 
-    try window.addMessage("system", "System prompt");
-    try window.addMessage("user", "First");
+    try window.addMessage("system", "System prompt System prompt System prompt System prompt System prompt");
+    try window.addMessage("user", "First message content First message content First message content");
     try window.addMessage("assistant", "Response");
     try window.addMessage("user", "Second");
     try window.addMessage("assistant", "Response 2");
@@ -242,7 +242,7 @@ test "ContextWindow tokenCount" {
 
 test "ContextWindow maxTokenCount" {
     const allocator = std.testing.allocator;
-    const window = ContextWindow.init(allocator, 5000);
+    var window = ContextWindow.init(allocator, 5000);
     defer window.deinit();
 
     try std.testing.expect(window.maxTokenCount() == 5000);

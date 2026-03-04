@@ -24,7 +24,7 @@ pub const ToolOutput = struct {
 };
 
 /// Tool function signature
-pub const ToolFn = *const fn (allocator: std.mem.Allocator, input: ToolInput) anyerror!ToolOutput;
+pub const ToolFn = *const fn (allocator: std.mem.Allocator, ctx: ?*anyopaque, input: ToolInput) anyerror!ToolOutput;
 
 /// A registered tool with its metadata and handler
 pub const Tool = struct {
@@ -32,6 +32,7 @@ pub const Tool = struct {
     description: []const u8,
     input_schema: []const u8, // JSON Schema string
     handler: ToolFn,
+    ctx: ?*anyopaque = null,
 };
 
 /// Result of a tool execution
@@ -147,7 +148,8 @@ fn runCommand(allocator: std.mem.Allocator, argv: []const []const u8) ![]u8 {
     return try allocator.dupe(u8, result.stdout);
 }
 
-fn bash_handler(allocator: std.mem.Allocator, input: ToolInput) !ToolOutput {
+fn bash_handler(allocator: std.mem.Allocator, ctx: ?*anyopaque, input: ToolInput) !ToolOutput {
+    _ = ctx;
     const command = extractStringField(&input.arguments, "command") orelse {
         return ToolOutput.failure("Missing required field: command");
     };
@@ -158,7 +160,8 @@ fn bash_handler(allocator: std.mem.Allocator, input: ToolInput) !ToolOutput {
     return ToolOutput.success(output);
 }
 
-fn read_handler(allocator: std.mem.Allocator, input: ToolInput) !ToolOutput {
+fn read_handler(allocator: std.mem.Allocator, ctx: ?*anyopaque, input: ToolInput) !ToolOutput {
+    _ = ctx;
     const path = extractStringField(&input.arguments, "path") orelse {
         return ToolOutput.failure("Missing required field: path");
     };
@@ -172,7 +175,8 @@ fn read_handler(allocator: std.mem.Allocator, input: ToolInput) !ToolOutput {
     return ToolOutput.success(content); // caller owns content
 }
 
-fn write_handler(allocator: std.mem.Allocator, input: ToolInput) !ToolOutput {
+fn write_handler(allocator: std.mem.Allocator, ctx: ?*anyopaque, input: ToolInput) !ToolOutput {
+    _ = ctx;
     const path = extractStringField(&input.arguments, "path") orelse {
         return ToolOutput.failure("Missing required field: path");
     };
@@ -194,7 +198,8 @@ fn write_handler(allocator: std.mem.Allocator, input: ToolInput) !ToolOutput {
     return ToolOutput.success(try std.fmt.allocPrint(allocator, "Written {d} bytes to {s}", .{ content.len, path }));
 }
 
-fn edit_handler(allocator: std.mem.Allocator, input: ToolInput) !ToolOutput {
+fn edit_handler(allocator: std.mem.Allocator, ctx: ?*anyopaque, input: ToolInput) !ToolOutput {
+    _ = ctx;
     const path = extractStringField(&input.arguments, "path") orelse {
         return ToolOutput.failure("Missing required field: path");
     };
@@ -237,7 +242,8 @@ fn edit_handler(allocator: std.mem.Allocator, input: ToolInput) !ToolOutput {
     return ToolOutput.success(try std.fmt.allocPrint(allocator, "Replaced {d} occurrence(s) in {s}", .{ count, path }));
 }
 
-fn grep_handler(allocator: std.mem.Allocator, input: ToolInput) !ToolOutput {
+fn grep_handler(allocator: std.mem.Allocator, ctx: ?*anyopaque, input: ToolInput) !ToolOutput {
+    _ = ctx;
     const pattern = extractStringField(&input.arguments, "pattern") orelse {
         return ToolOutput.failure("Missing required field: pattern");
     };
@@ -255,7 +261,8 @@ fn grep_handler(allocator: std.mem.Allocator, input: ToolInput) !ToolOutput {
     return ToolOutput.success(output);
 }
 
-fn glob_handler(allocator: std.mem.Allocator, input: ToolInput) !ToolOutput {
+fn glob_handler(allocator: std.mem.Allocator, ctx: ?*anyopaque, input: ToolInput) !ToolOutput {
+    _ = ctx;
     const pattern = extractStringField(&input.arguments, "pattern") orelse {
         return ToolOutput.failure("Missing required field: pattern");
     };

@@ -86,6 +86,11 @@ pub fn main() !void {
         return;
     }
 
+    if (std.mem.eql(u8, top_level, "mcp")) {
+        try handleMcp(allocator);
+        return;
+    }
+
     if (std.mem.eql(u8, top_level, "tui")) {
         // Require a real TTY before launching vxfw (avoids Unexpected errno in non-TTY env)
         if (!std.posix.isatty(std.posix.STDIN_FILENO)) {
@@ -386,6 +391,25 @@ fn handleRun(allocator: std.mem.Allocator, args: [][:0]u8) !void {
     const config = try powerglide.config.load(allocator);
     defer config.deinit(allocator);
 
+    // Initialize tools registry
+    var registry = powerglide.registry.Registry.init(allocator);
+    defer registry.deinit();
+
+    // Load MCP servers from config
+    for (config.mcp_servers) |mcp_config| {
+        // Build command array [command, ...args]
+        var full_cmd = std.ArrayList([]const u8){};
+        defer full_cmd.deinit(allocator);
+        try full_cmd.append(allocator, mcp_config.command);
+        for (mcp_config.args) |arg| {
+            try full_cmd.append(allocator, arg);
+        }
+
+        registry.registerMcpServer(mcp_config.name, full_cmd.items) catch |err| {
+            std.debug.print("Warning: Failed to register MCP server '{s}': {}\n", .{mcp_config.name, err});
+        };
+    }
+
     // Create session
     const session_identifier = session_id orelse "default";
     var session = try powerglide.agent_session.Session.init(allocator, session_identifier);
@@ -475,7 +499,7 @@ fn handleAgent(allocator: std.mem.Allocator, args: [][:0]u8) !void {
         }
         const a = agent.?;
         try std.fs.File.stdout().deprecatedWriter().print(
-            "Agent: {s}\n  Model: {s}\n  Role: {s}\n  Velocity: {d}ms\n  Instructions: {s}\n",
+            "Agent: {s}\n  Model: {s}\n  Role: {s}\n  Velocity: {d:.1}x\n  Instructions: {s}\n",
             .{ a.name, a.model, a.role, a.velocity, a.instructions },
         );
     } else if (std.mem.eql(u8, subcommand, "add")) {
@@ -489,7 +513,7 @@ fn handleAgent(allocator: std.mem.Allocator, args: [][:0]u8) !void {
             .model = "claude-opus-4-6",
             .role = "coding",
             .instructions = "",
-            .velocity = 500,
+            .velocity = 1.0,
         });
         try manager.save();
         try std.fs.File.stdout().deprecatedWriter().print("Added agent '{s}'\n", .{args[1]});
@@ -578,7 +602,7 @@ fn handleSession(allocator: std.mem.Allocator, args: [][:0]u8) !void {
         try stdout.print("Session: {s}\n", .{session.id});
         try stdout.print("Status: {s}\n", .{status_str});
         try stdout.print("Steps: {d}\n", .{session.step_count});
-        try stdout.print("Velocity: {d}ms\n", .{session.velocity_ms});
+        try stdout.print("Velocity: {d:.1}x\n", .{session.velocity});
         try stdout.print("Tasks: {d}\n", .{session.tasks.items.len});
         try stdout.print("Messages: {d}\n", .{session.messages.items.len});
         try stdout.print("Created: {d}\n", .{session.created_at});
@@ -1028,7 +1052,7 @@ fn handleTools(allocator: std.mem.Allocator, args: [][:0]u8) !void {
         const inp = ToolInput{ .name = name, .arguments = json.Value{ .object = args_map } };
         
         try std.fs.File.stdout().deprecatedWriter().print("Testing '{s}'...\n", .{name});
-        const res = handler.?(allocator, inp) catch |e| {
+        const res = handler.?(allocator, null, inp) catch |e| {
             try std.fs.File.stderr().deprecatedWriter().print("Error: {}\n", .{e});
             std.process.exit(1);
         };
@@ -1049,6 +1073,16 @@ fn handleTools(allocator: std.mem.Allocator, args: [][:0]u8) !void {
         try printCommandHelp("tools", std.fs.File.stdout().deprecatedWriter());
         std.process.exit(1);
     }
+}
+
+/// Handle the 'mcp' command (start MCP server)
+fn handleMcp(allocator: std.mem.Allocator) !void {
+    const powerglide = @import("powerglide");
+    var registry = powerglide.registry.Registry.init(allocator);
+    defer registry.deinit();
+
+    var server = powerglide.mcp_server.McpServer.init(allocator, &registry);
+    try server.run();
 }
 
 /// Run doctor checks

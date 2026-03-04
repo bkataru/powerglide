@@ -5,17 +5,21 @@ const Tool = @import("tool.zig").Tool;
 const ToolInput = @import("tool.zig").ToolInput;
 const ToolOutput = @import("tool.zig").ToolOutput;
 const BuiltinTools = @import("tool.zig").BuiltinTools;
+const mcp = @import("../mcp/client.zig");
+const tool_bridge = @import("../mcp/tool_bridge.zig");
 
 /// Tool registry - manages available tools and their execution
 pub const Registry = struct {
     allocator: std.mem.Allocator,
     tools: std.StringHashMap(Tool),
+    mcp_clients: std.ArrayList(*mcp.McpClient),
 
     /// Initialize the registry with built-in tools
     pub fn init(allocator: std.mem.Allocator) Registry {
         var reg = Registry{
             .allocator = allocator,
             .tools = std.StringHashMap(Tool).init(allocator),
+            .mcp_clients = std.ArrayList(*mcp.McpClient){},
         };
 
         // Register all built-in tools
@@ -30,25 +34,73 @@ pub const Registry = struct {
     pub fn deinit(self: *Registry) void {
         var iter = self.tools.iterator();
         while (iter.next()) |entry| {
-            self.allocator.free(entry.value_ptr.name);
-            self.allocator.free(entry.value_ptr.description);
-            self.allocator.free(entry.value_ptr.input_schema);
+            const tool = entry.value_ptr.*;
+            self.allocator.free(tool.name);
+            self.allocator.free(tool.description);
+            self.allocator.free(tool.input_schema);
+            
+            // If it's an MCP tool, clean up its context
+            if (tool.ctx) |ctx| {
+                const mcp_ctx: *tool_bridge.McpToolContext = @ptrCast(@alignCast(ctx));
+                mcp_ctx.deinit(self.allocator);
+            }
         }
         self.tools.deinit();
+
+        for (self.mcp_clients.items) |client| {
+            client.deinit();
+            self.allocator.destroy(client);
+        }
+        self.mcp_clients.deinit(self.allocator);
     }
 
     /// Register a new tool
     pub fn register(self: *Registry, tool: Tool) !void {
         const name = try self.allocator.dupe(u8, tool.name);
+        errdefer self.allocator.free(name);
         const desc = try self.allocator.dupe(u8, tool.description);
+        errdefer self.allocator.free(desc);
         const schema = try self.allocator.dupe(u8, tool.input_schema);
+        errdefer self.allocator.free(schema);
 
         try self.tools.put(name, .{
             .name = name,
             .description = desc,
             .input_schema = schema,
             .handler = tool.handler,
+            .ctx = tool.ctx,
         });
+    }
+
+    /// Register all tools from an MCP server
+    pub fn registerMcpServer(self: *Registry, server_name: []const u8, command: []const []const u8) !void {
+        const client = try self.allocator.create(mcp.McpClient);
+        client.* = try mcp.McpClient.init(self.allocator, command);
+        errdefer {
+            client.deinit();
+            self.allocator.destroy(client);
+        }
+
+        try client.initialize();
+        const mcp_tools = try client.listTools();
+        defer {
+            for (mcp_tools) |*t| {
+                t.deinit(self.allocator);
+            }
+            self.allocator.free(mcp_tools);
+        }
+
+        for (mcp_tools) |m_tool| {
+            const tool = try tool_bridge.mcpToolToTool(self.allocator, client, m_tool, server_name);
+            try self.register(tool);
+            // register() dupes everything, so we must clean up 'tool'
+            self.allocator.free(tool.name);
+            self.allocator.free(tool.description);
+            self.allocator.free(tool.input_schema);
+            // Note: tool.ctx is managed by Registry.deinit
+        }
+
+        try self.mcp_clients.append(self.allocator, client);
     }
 
     /// Get a tool by name
@@ -73,7 +125,7 @@ pub const Registry = struct {
         }
 
         // Execute the tool
-        return tool.handler(allocator, input) catch |err| {
+        return tool.handler(allocator, tool.ctx, input) catch |err| {
             return ToolOutput.failure(std.fmt.allocPrint(allocator, "Tool execution failed: {}", .{err}) catch "Tool execution failed");
         };
     }
@@ -86,7 +138,7 @@ pub const Registry = struct {
             tool_count += 1;
         }
 
-        var tool_list = std.ArrayList(Tool).init(self.allocator);
+        var tool_list = std.ArrayList(Tool){};
         defer tool_list.deinit();
 
         it = self.tools.iterator();

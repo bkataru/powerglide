@@ -111,8 +111,12 @@ pub const ExitCodeCapture = struct {
 
     /// Check if process is still alive
     pub fn isAlive(self: *const ExitCodeCapture) bool {
-        const result = posix.waitpid(self.pid, WNOHANG);
-        return result.pid == 0;
+        // use kill with signal 0 to check for existence without reaping
+        posix.kill(self.pid, 0) catch |err| {
+            if (err == error.ProcessNotFound) return false;
+            return true; // other errors might mean it exists but we can't kill it
+        };
+        return true;
     }
 };
 

@@ -90,12 +90,12 @@ fn sendToProvider(
                 var client = try anthropic.AnthropicClient.init(allocator, api_key, config.model);
                 defer client.deinit();
 
-                const response = try client.send(allocator, system, anthropic_messages, max_tokens);
+                var response = try client.send(allocator, system, anthropic_messages, max_tokens);
                 defer response.deinit(allocator);
 
                 return UnifiedResponse{
-                    .text = response.getText(),
-                    .stop_reason = response.stop_reason,
+                    .text = if (response.getText()) |t| try allocator.dupe(u8, t) else null,
+                    .stop_reason = try allocator.dupe(u8, response.stop_reason),
                     .input_tokens = response.input_tokens,
                     .output_tokens = response.output_tokens,
                 };
@@ -113,12 +113,12 @@ fn sendToProvider(
                 var client = try openai.OpenAIClient.init(allocator, base_url, config.api_key, config.model);
                 defer client.deinit();
 
-                const response = try client.send(allocator, oai_messages, max_tokens);
+                var response = try client.send(allocator, oai_messages, max_tokens);
                 defer response.deinit(allocator);
 
                 return UnifiedResponse{
-                    .text = response.text,
-                    .stop_reason = response.finish_reason,
+                    .text = if (response.text) |t| try allocator.dupe(u8, t) else null,
+                    .stop_reason = try allocator.dupe(u8, response.finish_reason),
                     .input_tokens = response.prompt_tokens,
                     .output_tokens = response.completion_tokens,
                 };
@@ -180,7 +180,7 @@ test "UnifiedResponse deinit frees text" {
     const allocator = std.testing.allocator;
     var response = UnifiedResponse{
         .text = try allocator.dupe(u8, "test response"),
-        .stop_reason = "end_turn",
+        .stop_reason = try allocator.dupe(u8, "end_turn"),
         .input_tokens = 10,
         .output_tokens = 20,
     };
@@ -196,7 +196,7 @@ test "UnifiedResponse with null text" {
     const allocator = std.testing.allocator;
     var response = UnifiedResponse{
         .text = null,
-        .stop_reason = "tool_use",
+        .stop_reason = try allocator.dupe(u8, "tool_use"),
         .input_tokens = 5,
         .output_tokens = 0,
     };
@@ -257,7 +257,7 @@ test "UnifiedResponse token counts" {
     const allocator = std.testing.allocator;
     var response = UnifiedResponse{
         .text = try allocator.dupe(u8, "response"),
-        .stop_reason = "end_turn",
+        .stop_reason = try allocator.dupe(u8, "end_turn"),
         .input_tokens = 1000,
         .output_tokens = 2000,
     };

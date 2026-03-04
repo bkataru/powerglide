@@ -23,6 +23,15 @@ pub const Config = struct {
     max_agents: u32 = 8,
     agent_heartbeat_ms: u64 = 30_000,
 
+    // MCP settings
+    mcp_servers: []const McpServerConfig = &.{},
+
+    pub const McpServerConfig = struct {
+        name: []const u8,
+        command: []const u8,
+        args: []const []const u8 = &.{},
+    };
+
     /// Get default configuration
     pub fn default() Config {
         return .{};
@@ -255,6 +264,37 @@ fn parseConfig(allocator: std.mem.Allocator, content: []const u8) !Config {
     if (obj.get("agent_heartbeat_ms")) |val| {
         if (val == .integer) {
             config.agent_heartbeat_ms = @intCast(val.integer);
+        }
+    }
+
+    // Parse mcp_servers
+    if (obj.get("mcp_servers")) |mcp_val| {
+        if (mcp_val == .array) {
+            const mcp_array = mcp_val.array;
+            var servers = try allocator.alloc(Config.McpServerConfig, mcp_array.items.len);
+            for (mcp_array.items, 0..) |server_val, i| {
+                if (server_val == .object) {
+                    const server_obj = server_val.object;
+                    const name = if (server_obj.get("name")) |n| try allocator.dupe(u8, n.string) else "unnamed";
+                    const command = if (server_obj.get("command")) |c| try allocator.dupe(u8, c.string) else "";
+                    
+                    var args = std.ArrayList([]const u8){};
+                    if (server_obj.get("args")) |args_val| {
+                        if (args_val == .array) {
+                            for (args_val.array.items) |arg| {
+                                try args.append(allocator, try allocator.dupe(u8, arg.string));
+                            }
+                        }
+                    }
+                    
+                    servers[i] = .{
+                        .name = name,
+                        .command = command,
+                        .args = try args.toOwnedSlice(allocator),
+                    };
+                }
+            }
+            config.mcp_servers = servers;
         }
     }
 

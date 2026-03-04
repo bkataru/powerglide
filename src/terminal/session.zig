@@ -92,7 +92,7 @@ pub const TerminalSession = struct {
             const stderr = proc.readStderr(allocator) catch &[_]u8{};
             if (stderr.len > 0) {
                 // Append stderr to output
-                var combined = std.ArrayList(u8).init(allocator);
+                var combined = std.ArrayList(u8){};
                 combined.appendSlice(output) catch {};
                 combined.appendSlice(stderr) catch {};
                 output = combined.toOwnedSlice();

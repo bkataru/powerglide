@@ -10,12 +10,16 @@ pub const Agent = struct {
     role: []const u8 = "coding",
     instructions: []const u8 = "",
     velocity: f64 = 1.0,
+    provider: []const u8 = "anthropic",
+    base_url: []const u8 = "",
 
     pub fn deinit(self: *Agent, allocator: std.mem.Allocator) void {
         allocator.free(self.name);
         allocator.free(self.model);
         allocator.free(self.role);
         if (self.instructions.len > 0) allocator.free(self.instructions);
+        allocator.free(self.provider);
+        if (self.base_url.len > 0) allocator.free(self.base_url);
     }
 };
 
@@ -87,7 +91,11 @@ pub const AgentManager = struct {
             var buf: [64]u8 = undefined;
             const s = try std.fmt.bufPrint(&buf, "{d}", .{agent.velocity});
             try file.writeAll(s);
-            try file.writeAll("}");
+            try file.writeAll(",\"provider\":\"");
+            try escapeJsonStringDirect(agent.provider, file);
+            try file.writeAll("\",\"base_url\":\"");
+            try escapeJsonStringDirect(agent.base_url, file);
+            try file.writeAll("\"}");
         }
         try file.writeAll("\n  ],\n  \"default_agent\":");
         if (self.default_agent) |agent| {
@@ -105,6 +113,7 @@ pub const AgentManager = struct {
         try self.addAgent(.{ .name = "artistry", .model = "claude-3-5-sonnet-20241022", .role = "creative", .instructions = "You are a creative problem solver.", .velocity = 1.2 });
         try self.addAgent(.{ .name = "ultrabrain", .model = "claude-3-5-sonnet-20241022", .role = "analyst", .instructions = "You are a logic-heavy reasoning agent.", .velocity = 1.0 });
         try self.addAgent(.{ .name = "deep", .model = "claude-3-5-sonnet-20241022", .role = "researcher", .instructions = "You are a deep research agent.", .velocity = 0.6 });
+        try self.addAgent(.{ .name = "local", .model = "Qwen3.5-4B-Q8_0.gguf", .role = "coding", .instructions = "You are a fast local assistant.", .velocity = 1.0, .provider = "openai_compat", .base_url = "http://127.0.0.1:8080/v1" });
     }
 
     pub fn addAgent(self: *AgentManager, agent: Agent) !void {
@@ -124,6 +133,11 @@ pub const AgentManager = struct {
             else
                 "",
             .velocity = agent.velocity,
+            .provider = try self.allocator.dupe(u8, agent.provider),
+            .base_url = if (agent.base_url.len > 0)
+                try self.allocator.dupe(u8, agent.base_url)
+            else
+                "",
         };
     }
 
@@ -171,7 +185,9 @@ pub const AgentManager = struct {
                         const role = parseStringField(agent_obj, "role") orelse "coding";
                         const instructions = parseStringField(agent_obj, "instructions") orelse "";
                         const velocity = parseFloatField(agent_obj, "velocity", 1.0);
-                        try self.addAgent(.{ .name = name, .model = model, .role = role, .instructions = instructions, .velocity = velocity });
+                        const provider = parseStringField(agent_obj, "provider") orelse "anthropic";
+                        const base_url = parseStringField(agent_obj, "base_url") orelse "";
+                        try self.addAgent(.{ .name = name, .model = model, .role = role, .instructions = instructions, .velocity = velocity, .provider = provider, .base_url = base_url });
                     }
                 }
             }
@@ -200,15 +216,15 @@ fn getConfigPath(allocator: std.mem.Allocator) ![]const u8 {
     return try std.fmt.allocPrint(allocator, "{s}/.config/powerglide/agents.json", .{home});
 }
 
-fn escapeJsonString(src: []const u8, buf: *std.ArrayList(u8)) !void {
+fn escapeJsonString(allocator: std.mem.Allocator, src: []const u8, buf: *std.ArrayList(u8)) !void {
     for (src) |c| {
         switch (c) {
-            '"' => try buf.appendSlice("\\\""),
-            '\\' => try buf.appendSlice("\\\\"),
-            '\n' => try buf.appendSlice("\\n"),
-            '\r' => try buf.appendSlice("\\r"),
-            '\t' => try buf.appendSlice("\\t"),
-            else => try buf.append(c),
+            '"' => try buf.appendSlice(allocator, "\\\""),
+            '\\' => try buf.appendSlice(allocator, "\\\\"),
+            '\n' => try buf.appendSlice(allocator, "\\n"),
+            '\r' => try buf.appendSlice(allocator, "\\r"),
+            '\t' => try buf.appendSlice(allocator, "\\t"),
+            else => try buf.append(allocator, c),
         }
     }
 }

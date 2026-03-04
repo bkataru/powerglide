@@ -43,7 +43,7 @@ pub const OpenAIClient = struct {
 
     pub fn send(self: *OpenAIClient, allocator: std.mem.Allocator, messages: []const OAIMessage, max_tokens: u32) !OAIResponse {
         // Build request JSON
-        var request_obj = std.StringArrayHashMap(std.json.Value).init(allocator);
+        var request_obj = std.json.ObjectMap.init(allocator);
         defer request_obj.deinit();
 
         // Add model
@@ -55,7 +55,7 @@ pub const OpenAIClient = struct {
         defer messages_array.deinit();
 
         for (messages) |msg| {
-            var msg_obj = std.StringArrayHashMap(std.json.Value).init(allocator);
+            var msg_obj = std.json.ObjectMap.init(allocator);
             try msg_obj.put("role", .{ .string = msg.role });
             try msg_obj.put("content", .{ .string = msg.content });
             try messages_array.append(.{ .object = msg_obj });
@@ -64,20 +64,20 @@ pub const OpenAIClient = struct {
         try request_obj.put("messages", .{ .array = messages_array });
 
         // Stringify the request
-        var request_json = std.ArrayList(u8).init(allocator);
-        defer request_json.deinit();
+        var request_json = std.ArrayList(u8){};
+        defer request_json.deinit(allocator);
 
-        const stringify_options = std.json.StringifyOptions{ .whitespace = .indent_2 };
-try std.json.stringify(request_obj, stringify_options, request_json.writer());
+        const stringify_options: std.json.Stringify.Options = .{ .whitespace = .indent_2 };
+        try request_json.writer(allocator).print("{f}", .{std.json.fmt(std.json.Value{ .object = request_obj }, stringify_options)});
 
         // Build headers
-        var headers = std.ArrayList(std.http.Header).init(allocator);
-        defer headers.deinit();
+        var headers = std.ArrayList(std.http.Header){};
+        defer headers.deinit(allocator);
 
-        try headers.append(.{ .name = "content-type", .value = "application/json" });
+        try headers.append(allocator, .{ .name = "content-type", .value = "application/json" });
 
         if (self.api_key) |key| {
-            try headers.append(.{ .name = "authorization", .value = try std.fmt.allocPrint(allocator, "Bearer {s}", .{key}) });
+            try headers.append(allocator, .{ .name = "authorization", .value = try std.fmt.allocPrint(allocator, "Bearer {s}", .{key}) });
         }
 
         // Build URL
@@ -85,7 +85,7 @@ try std.json.stringify(request_obj, stringify_options, request_json.writer());
         defer allocator.free(url);
 
         // Make the request
-        const response = try self.http_client.post(url, headers.items, request_json.items);
+        var response = try self.http_client.post(url, headers.items, request_json.items);
 
         if (!response.isSuccess()) {
             return error.HttpError;
@@ -101,10 +101,10 @@ try std.json.stringify(request_obj, stringify_options, request_json.writer());
 
         // Extract fields
         const id = root.object.get("id").?.string;
-        const finish_reason = root.object.get("choices").?.array[0].object.get("finish_reason").?.string;
+        const finish_reason = root.object.get("choices").?.array.items[0].object.get("finish_reason").?.string;
 
         // Extract content from first choice
-        const content_val = root.object.get("choices").?.array[0].object.get("message").?.object.get("content");
+        const content_val = root.object.get("choices").?.array.items[0].object.get("message").?.object.get("content");
         const text: ?[]const u8 = if (content_val) |c| c.string else null;
 
         // Extract usage
@@ -124,7 +124,7 @@ try std.json.stringify(request_obj, stringify_options, request_json.writer());
 
 test "OpenAIClient initialization with api_key" {
     const allocator = std.testing.allocator;
-    const client = try OpenAIClient.init(allocator, "https://api.openai.com/v1", "test-key", "gpt-4");
+    var client = try OpenAIClient.init(allocator, "https://api.openai.com/v1", "test-key", "gpt-4");
     defer client.deinit();
 
     try std.testing.expect(client.api_key != null);
@@ -135,7 +135,7 @@ test "OpenAIClient initialization with api_key" {
 
 test "OpenAIClient initialization without api_key" {
     const allocator = std.testing.allocator;
-    const client = try OpenAIClient.init(allocator, "https://api.openai.com/v1", null, "gpt-4");
+    var client = try OpenAIClient.init(allocator, "https://api.openai.com/v1", null, "gpt-4");
     defer client.deinit();
 
     try std.testing.expect(client.api_key == null);
@@ -144,7 +144,7 @@ test "OpenAIClient initialization without api_key" {
 
 test "OpenAIClient with custom base_url" {
     const allocator = std.testing.allocator;
-    const client = try OpenAIClient.init(allocator, "https://custom.api.com/v1", "key", "custom-model");
+    var client = try OpenAIClient.init(allocator, "https://custom.api.com/v1", "key", "custom-model");
     defer client.deinit();
 
     try std.testing.expect(std.mem.eql(u8, client.base_url, "https://custom.api.com/v1"));
@@ -177,7 +177,7 @@ test "OAIResponse with text" {
     var response = OAIResponse{
         .id = try allocator.dupe(u8, "chatcmpl-123"),
         .text = try allocator.dupe(u8, "Response text"),
-        .finish_reason = "stop",
+        .finish_reason = try allocator.dupe(u8, "stop"),
         .prompt_tokens = 10,
         .completion_tokens = 20,
     };
@@ -196,7 +196,7 @@ test "OAIResponse with null text" {
     var response = OAIResponse{
         .id = try allocator.dupe(u8, "chatcmpl-456"),
         .text = null,
-        .finish_reason = "length",
+        .finish_reason = try allocator.dupe(u8, "length"),
         .prompt_tokens = 5,
         .completion_tokens = 100,
     };
@@ -211,7 +211,7 @@ test "OAIResponse deinit frees resources" {
     var response = OAIResponse{
         .id = try allocator.dupe(u8, "id"),
         .text = try allocator.dupe(u8, "text"),
-        .finish_reason = "stop",
+        .finish_reason = try allocator.dupe(u8, "stop"),
         .prompt_tokens = 1,
         .completion_tokens = 1,
     };
@@ -224,7 +224,7 @@ test "OAIResponse finish_reason values" {
     var response1 = OAIResponse{
         .id = try allocator.dupe(u8, "id"),
         .text = try allocator.dupe(u8, "t"),
-        .finish_reason = "stop",
+        .finish_reason = try allocator.dupe(u8, "stop"),
         .prompt_tokens = 1,
         .completion_tokens = 1,
     };
@@ -234,7 +234,7 @@ test "OAIResponse finish_reason values" {
     var response2 = OAIResponse{
         .id = try allocator.dupe(u8, "id"),
         .text = try allocator.dupe(u8, "t"),
-        .finish_reason = "length",
+        .finish_reason = try allocator.dupe(u8, "length"),
         .prompt_tokens = 1,
         .completion_tokens = 1,
     };
@@ -244,7 +244,7 @@ test "OAIResponse finish_reason values" {
     var response3 = OAIResponse{
         .id = try allocator.dupe(u8, "id"),
         .text = try allocator.dupe(u8, "t"),
-        .finish_reason = "content_filter",
+        .finish_reason = try allocator.dupe(u8, "content_filter"),
         .prompt_tokens = 1,
         .completion_tokens = 1,
     };
@@ -257,7 +257,7 @@ test "OAIResponse token counts" {
     var response = OAIResponse{
         .id = try allocator.dupe(u8, "id"),
         .text = try allocator.dupe(u8, "text"),
-        .finish_reason = "stop",
+        .finish_reason = try allocator.dupe(u8, "stop"),
         .prompt_tokens = 1000,
         .completion_tokens = 2000,
     };
@@ -288,10 +288,11 @@ test "OAIResponse with zero tokens" {
     var response = OAIResponse{
         .id = try allocator.dupe(u8, "id"),
         .text = try allocator.dupe(u8, ""),
-        .finish_reason = "stop",
+        .finish_reason = try allocator.dupe(u8, "stop"),
         .prompt_tokens = 0,
         .completion_tokens = 0,
     };
     defer response.deinit(allocator);
 
     try std.testing.expect(response.prompt_tokens == 0);
+}

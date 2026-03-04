@@ -29,7 +29,7 @@ pub const Task = struct {
 
     pub fn jsonStringify(self: *const Task, allocator: std.mem.Allocator) ![]const u8 {
         var buf = std.ArrayList(u8){};
-        try json.stringify(self.*, .{}, buf.writer(allocator));
+        try buf.writer(allocator).print("{f}", .{json.fmt(self.*, .{})});
         return buf.toOwnedSlice(allocator);
     }
 };
@@ -59,9 +59,9 @@ pub const Message = struct {
     }
 
     pub fn jsonStringify(self: *const Message, allocator: std.mem.Allocator) ![]const u8 {
-        var buf = std.ArrayList(u8).init(allocator);
-        try json.stringify(self.*, .{}, buf.writer());
-        return buf.toOwnedSlice();
+        var buf = std.ArrayList(u8){};
+        try buf.writer(allocator).print("{f}", .{json.fmt(self.*, .{})});
+        return buf.toOwnedSlice(allocator);
     }
 };
 

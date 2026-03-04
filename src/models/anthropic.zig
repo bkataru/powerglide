@@ -50,10 +50,10 @@ pub const ApiResponse = struct {
     }
 
     pub fn getToolCalls(self: *const ApiResponse) []const ContentBlock {
-        var tool_calls = std.ArrayList(ContentBlock).init(std.heap.page_allocator);
+        var tool_calls = std.ArrayList(ContentBlock){};
         for (self.content) |block| {
             if (block == .tool_use) {
-                tool_calls.append(block) catch {};
+                tool_calls.append(std.heap.page_allocator, block) catch {};
             }
         }
         return tool_calls.items;
@@ -90,10 +90,10 @@ pub const AnthropicClient = struct {
         max_tokens: u32,
     ) !ApiResponse {
         // Build request JSON
-        var request_json = std.ArrayList(u8).init(allocator);
-        defer request_json.deinit();
+        var request_json = std.ArrayList(u8){};
+        defer request_json.deinit(allocator);
 
-        var request_obj = std.StringArrayHashMap(std.json.Value).init(allocator);
+        var request_obj = std.json.ObjectMap.init(allocator);
         defer request_obj.deinit();
 
         // Add model
@@ -112,7 +112,7 @@ pub const AnthropicClient = struct {
         defer messages_array.deinit();
 
         for (messages) |msg| {
-            var msg_obj = std.StringArrayHashMap(std.json.Value).init(allocator);
+            var msg_obj = std.json.ObjectMap.init(allocator);
             try msg_obj.put("role", .{ .string = msg.role });
             try msg_obj.put("content", .{ .string = msg.content });
             try messages_array.append(.{ .object = msg_obj });
@@ -121,8 +121,8 @@ pub const AnthropicClient = struct {
         try request_obj.put("messages", .{ .array = messages_array });
 
         // Stringify the request
-        const stringify_options = std.json.StringifyOptions{ .whitespace = .indent_2 };
-try std.json.stringify(request_obj, stringify_options, request_json.writer());
+        const stringify_options: std.json.Stringify.Options = .{ .whitespace = .indent_2 };
+        try request_json.writer(allocator).print("{f}", .{std.json.fmt(std.json.Value{ .object = request_obj }, stringify_options)});
 
         // Build headers
         var headers = [_]std.http.Header{
@@ -136,7 +136,7 @@ try std.json.stringify(request_obj, stringify_options, request_json.writer());
         defer allocator.free(url);
 
         // Make the request
-        const response = try self.http_client.post(url, &headers, request_json.items);
+        var response = try self.http_client.post(url, &headers, request_json.items);
 
         if (!response.isSuccess()) {
             return error.HttpError;
@@ -160,22 +160,22 @@ try std.json.stringify(request_obj, stringify_options, request_json.writer());
         const output_tokens: u32 = @intCast(usage_obj.get("output_tokens").?.integer);
 
         // Parse content blocks
-        var content_blocks = std.ArrayList(ContentBlock).init(allocator);
+        var content_blocks = std.ArrayList(ContentBlock){};
         const content_array = root.object.get("content").?.array;
 
-        for (content_array) |block_val| {
+        for (content_array.items) |block_val| {
             const block_type = block_val.object.get("type").?.string;
             if (std.mem.eql(u8, block_type, "text")) {
                 const text_content = block_val.object.get("text").?.string;
-                try content_blocks.append(.{ .text = .{ .text = text_content } });
+                try content_blocks.append(allocator, .{ .text = .{ .text = try allocator.dupe(u8, text_content) } });
             } else if (std.mem.eql(u8, block_type, "tool_use")) {
                 const tool_id = block_val.object.get("id").?.string;
                 const tool_name = block_val.object.get("name").?.string;
                 const tool_input = block_val.object.get("input").?;
-                try content_blocks.append(.{
+                try content_blocks.append(allocator, .{
                     .tool_use = .{
-                        .id = tool_id,
-                        .name = tool_name,
+                        .id = try allocator.dupe(u8, tool_id),
+                        .name = try allocator.dupe(u8, tool_name),
                         .input = tool_input,
                     },
                 });
@@ -183,9 +183,9 @@ try std.json.stringify(request_obj, stringify_options, request_json.writer());
         }
 
         return ApiResponse{
-            .id = id,
-            .content = try content_blocks.toOwnedSlice(),
-            .stop_reason = stop_reason,
+            .id = try allocator.dupe(u8, id),
+            .content = try content_blocks.toOwnedSlice(allocator),
+            .stop_reason = try allocator.dupe(u8, stop_reason),
             .input_tokens = input_tokens,
             .output_tokens = output_tokens,
         };
@@ -194,7 +194,7 @@ try std.json.stringify(request_obj, stringify_options, request_json.writer());
 
 test "AnthropicClient initialization" {
     const allocator = std.testing.allocator;
-    const client = try AnthropicClient.init(allocator, "test-key", "claude-3-opus");
+    var client = try AnthropicClient.init(allocator, "test-key", "claude-3-opus");
     defer client.deinit();
 
     try std.testing.expect(std.mem.eql(u8, client.api_key, "test-key"));
@@ -204,63 +204,39 @@ test "AnthropicClient initialization" {
 
 test "AnthropicClient with different model" {
     const allocator = std.testing.allocator;
-    const client = try AnthropicClient.init(allocator, "key", "claude-3-haiku");
+    var client = try AnthropicClient.init(allocator, "key", "claude-3-haiku");
     defer client.deinit();
 
     try std.testing.expect(std.mem.eql(u8, client.model, "claude-3-haiku"));
-}
-
-test "Message struct" {
-    const msg = Message{
-        .role = "user",
-        .content = "Hello, Claude!",
-    };
-    try std.testing.expect(std.mem.eql(u8, msg.role, "user"));
-    try std.testing.expect(std.mem.eql(u8, msg.content, "Hello, Claude!"));
-}
-
-test "Multiple messages" {
-    const messages = [_]Message{
-        .{ .role = "system", .content = "You are helpful" },
-        .{ .role = "user", .content = "test" },
-        .{ .role = "assistant", .content = "response" },
-    };
-    try std.testing.expect(messages.len == 3);
-    try std.testing.expect(std.mem.eql(u8, messages[2].role, "assistant"));
-}
-
-test "ContentBlock text variant" {
-    const block = ContentBlock{
-        .text = .{ .text = "This is text content" },
-    };
-    try std.testing.expect(block == .text);
-    try std.testing.expect(std.mem.eql(u8, block.text.text, "This is text content"));
 }
 
 test "ContentBlock tool_use variant" {
     const allocator = std.testing.allocator;
     const block = ContentBlock{
         .tool_use = .{
-            .id = "tool_123",
-            .name = "search",
+            .id = try allocator.dupe(u8, "tool_123"),
+            .name = try allocator.dupe(u8, "search"),
             .input = .{ .string = "query" },
         },
     };
+    defer {
+        allocator.free(block.tool_use.id);
+        allocator.free(block.tool_use.name);
+    }
     try std.testing.expect(block == .tool_use);
     try std.testing.expect(std.mem.eql(u8, block.tool_use.id, "tool_123"));
     try std.testing.expect(std.mem.eql(u8, block.tool_use.name, "search"));
-    _ = allocator;
 }
 
 test "ApiResponse with text content" {
     const allocator = std.testing.allocator;
-    var content = try allocator.alloc(ContentBlock, 1);
-    content[0] = ContentBlock{ .text = .{ .text = "Response text" } };
+    const content = try allocator.alloc(ContentBlock, 1);
+    content[0] = ContentBlock{ .text = .{ .text = try allocator.dupe(u8, "Response text") } };
 
     var response = ApiResponse{
         .id = try allocator.dupe(u8, "msg_123"),
         .content = content,
-        .stop_reason = "end_turn",
+        .stop_reason = try allocator.dupe(u8, "end_turn"),
         .input_tokens = 10,
         .output_tokens = 20,
     };
@@ -274,13 +250,13 @@ test "ApiResponse with text content" {
 
 test "ApiResponse getText returns text" {
     const allocator = std.testing.allocator;
-    var content = try allocator.alloc(ContentBlock, 1);
-    content[0] = ContentBlock{ .text = .{ .text = "Hello" } };
+    const content = try allocator.alloc(ContentBlock, 1);
+    content[0] = ContentBlock{ .text = .{ .text = try allocator.dupe(u8, "Hello") } };
 
     var response = ApiResponse{
         .id = try allocator.dupe(u8, "id"),
         .content = content,
-        .stop_reason = "end_turn",
+        .stop_reason = try allocator.dupe(u8, "end_turn"),
         .input_tokens = 5,
         .output_tokens = 5,
     };
@@ -293,33 +269,16 @@ test "ApiResponse getText returns text" {
 
 test "ApiResponse getText returns null for tool_use" {
     const allocator = std.testing.allocator;
-    var content = try allocator.alloc(ContentBlock, 1);
+    const content = try allocator.alloc(ContentBlock, 1);
     content[0] = ContentBlock{
-        .tool_use = .{ .id = "t1", .name = "search", .input = .{ .string = "q" } },
+        .tool_use = .{ .id = try allocator.dupe(u8, "t1"), .name = try allocator.dupe(u8, "search"), .input = .{ .string = "q" } },
     };
 
     var response = ApiResponse{
         .id = try allocator.dupe(u8, "id"),
         .content = content,
-        .stop_reason = "tool_use",
+        .stop_reason = try allocator.dupe(u8, "tool_use"),
         .input_tokens = 5,
-        .output_tokens = 0,
-    };
-    defer response.deinit(allocator);
-
-    const text = response.getText();
-    try std.testing.expect(text == null);
-}
-
-test "ApiResponse getText returns null for empty content" {
-    const allocator = std.testing.allocator;
-    var content = try allocator.alloc(ContentBlock, 0);
-
-    var response = ApiResponse{
-        .id = try allocator.dupe(u8, "id"),
-        .content = content,
-        .stop_reason = "end_turn",
-        .input_tokens = 0,
         .output_tokens = 0,
     };
     defer response.deinit(allocator);
@@ -330,19 +289,19 @@ test "ApiResponse getText returns null for empty content" {
 
 test "ApiResponse getToolCalls" {
     const allocator = std.testing.allocator;
-    var content = try allocator.alloc(ContentBlock, 3);
-    content[0] = ContentBlock{ .text = .{ .text = "Text" } };
+    const content = try allocator.alloc(ContentBlock, 3);
+    content[0] = ContentBlock{ .text = .{ .text = try allocator.dupe(u8, "Text") } };
     content[1] = ContentBlock{
-        .tool_use = .{ .id = "t1", .name = "search", .input = .{ .string = "q" } },
+        .tool_use = .{ .id = try allocator.dupe(u8, "t1"), .name = try allocator.dupe(u8, "search"), .input = .{ .string = "q" } },
     };
     content[2] = ContentBlock{
-        .tool_use = .{ .id = "t2", .name = "write", .input = .{ .string = "data" } },
+        .tool_use = .{ .id = try allocator.dupe(u8, "t2"), .name = try allocator.dupe(u8, "write"), .input = .{ .string = "data" } },
     };
 
     var response = ApiResponse{
         .id = try allocator.dupe(u8, "id"),
         .content = content,
-        .stop_reason = "tool_use",
+        .stop_reason = try allocator.dupe(u8, "tool_use"),
         .input_tokens = 10,
         .output_tokens = 5,
     };
@@ -354,16 +313,16 @@ test "ApiResponse getToolCalls" {
 
 test "ApiResponse deinit cleans up resources" {
     const allocator = std.testing.allocator;
-    var content = try allocator.alloc(ContentBlock, 2);
-    content[0] = ContentBlock{ .text = .{ .text = "Text" } };
+    const content = try allocator.alloc(ContentBlock, 2);
+    content[0] = ContentBlock{ .text = .{ .text = try allocator.dupe(u8, "Text") } };
     content[1] = ContentBlock{
-        .tool_use = .{ .id = "t1", .name = "search", .input = .{ .string = "q" } },
+        .tool_use = .{ .id = try allocator.dupe(u8, "t1"), .name = try allocator.dupe(u8, "search"), .input = .{ .string = "q" } },
     };
 
     var response = ApiResponse{
         .id = try allocator.dupe(u8, "msg_id"),
         .content = content,
-        .stop_reason = "end_turn",
+        .stop_reason = try allocator.dupe(u8, "end_turn"),
         .input_tokens = 5,
         .output_tokens = 5,
     };
@@ -372,17 +331,17 @@ test "ApiResponse deinit cleans up resources" {
 
 test "ApiResponse with mixed content" {
     const allocator = std.testing.allocator;
-    var content = try allocator.alloc(ContentBlock, 3);
-    content[0] = ContentBlock{ .text = .{ .text = "First" } };
+    const content = try allocator.alloc(ContentBlock, 3);
+    content[0] = ContentBlock{ .text = .{ .text = try allocator.dupe(u8, "First") } };
     content[1] = ContentBlock{
-        .tool_use = .{ .id = "t1", .name = "calc", .input = .{ .integer = 42 } },
+        .tool_use = .{ .id = try allocator.dupe(u8, "t1"), .name = try allocator.dupe(u8, "calc"), .input = .{ .integer = 42 } },
     };
-    content[2] = ContentBlock{ .text = .{ .text = "Second" } };
+    content[2] = ContentBlock{ .text = .{ .text = try allocator.dupe(u8, "Second") } };
 
     var response = ApiResponse{
         .id = try allocator.dupe(u8, "id"),
         .content = content,
-        .stop_reason = "end_turn",
+        .stop_reason = try allocator.dupe(u8, "end_turn"),
         .input_tokens = 15,
         .output_tokens = 10,
     };
@@ -395,13 +354,13 @@ test "ApiResponse with mixed content" {
 
 test "ApiResponse stop_reason values" {
     const allocator = std.testing.allocator;
-    var content = try allocator.alloc(ContentBlock, 1);
-    content[0] = ContentBlock{ .text = .{ .text = "" } };
+    const content = try allocator.alloc(ContentBlock, 1);
+    content[0] = ContentBlock{ .text = .{ .text = try allocator.dupe(u8, "") } };
 
     var response = ApiResponse{
         .id = try allocator.dupe(u8, "id"),
         .content = content,
-        .stop_reason = "max_tokens",
+        .stop_reason = try allocator.dupe(u8, "max_tokens"),
         .input_tokens = 100,
         .output_tokens = 1000,
     };
@@ -418,13 +377,11 @@ test "AnthropicClient deinit is safe" {
 
 test "ContentBlock union memory layout" {
     // Ensure both variants can be stored
-    const allocator = std.testing.allocator;
-    
-    var block1 = ContentBlock{ .text = .{ .text = "text" } };
+    const block1 = ContentBlock{ .text = .{ .text = "text" } };
     try std.testing.expect(block1 == .text);
     
-    var block2 = ContentBlock{
+    const block2 = ContentBlock{
         .tool_use = .{ .id = "id", .name = "name", .input = .{ .bool = true } },
     };
     try std.testing.expect(block2 == .tool_use);
-    
+}

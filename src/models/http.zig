@@ -37,17 +37,15 @@ pub const HttpClient = struct {
     }
 
     fn request(self: *HttpClient, method: std.http.Method, url: []const u8, headers: []const std.http.Header, body: ?[]const u8) !Response {
-        var response_body = std.ArrayList(u8).init(self.allocator);
-        errdefer response_body.deinit();
-
-        const response_writer = response_body.writer();
+        var allocating_writer = std.Io.Writer.Allocating.init(self.allocator);
+        defer allocating_writer.deinit();
 
         const fetch_result = try self.client.fetch(.{
             .location = .{ .url = url },
             .method = method,
             .payload = body,
             .extra_headers = headers,
-            .response_writer = response_writer,
+            .response_writer = &allocating_writer.writer,
             .keep_alive = true,
         });
 
@@ -55,11 +53,13 @@ pub const HttpClient = struct {
 
         return Response{
             .status = status_code,
-            .body = try response_body.toOwnedSlice(),
+            .body = try allocating_writer.toOwnedSlice(),
         };
     }
 };
 
-test "placeholder" {
-    try std.testing.expect(true);
+test "HttpClient initialization" {
+    const allocator = std.testing.allocator;
+    var client = HttpClient.init(allocator);
+    defer client.deinit();
 }

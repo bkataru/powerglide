@@ -108,7 +108,7 @@ pub const Swarm = struct {
         try worker.spawn();
 
         // Add to workers list
-        try self.workers.append(worker);
+        try self.workers.append(self.allocator, worker);
 
         // Add to monitor
         const worker_ptr = &self.workers.items[self.workers.items.len - 1];

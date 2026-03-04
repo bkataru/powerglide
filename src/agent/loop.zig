@@ -462,7 +462,7 @@ test "Loop heartbeat updates on check" {
     defer loop.deinit();
 
     const old_heartbeat = loop.last_heartbeat_ms;
-    std.time.sleep(100 * std.time.ns_per_ms);
+    std.Thread.sleep(100 * std.time.ns_per_ms);
     try loop.checkRogueGuard();
 
     try std.testing.expect(loop.last_heartbeat_ms > old_heartbeat);
@@ -498,5 +498,4 @@ test "Loop session file with subdirectory" {
 
     const file = try std.fs.cwd().openFile(tmp_session, .{});
     defer file.close();
-    _ = file;
 }

@@ -11,7 +11,7 @@ pub const SseParser = struct {
 
     pub fn init(allocator: std.mem.Allocator) SseParser {
         return .{
-            .buf = std.ArrayList(u8).init(allocator),
+            .buf = std.ArrayList(u8){},
         };
     }
 
@@ -23,7 +23,7 @@ pub const SseParser = struct {
         // Append the chunk to the buffer
         try self.buf.appendSlice(chunk);
 
-        var events = std.ArrayList(StreamEvent).init(allocator);
+        var events = std.ArrayList(StreamEvent){};
         errdefer events.deinit();
 
         // Process lines in the buffer
@@ -47,9 +47,9 @@ pub const SseParser = struct {
                     if (std.mem.startsWith(u8, line, "data: ")) {
                         const data = line[6..];
                         if (std.mem.eql(u8, data, "[DONE]")) {
-                            try events.append(.done);
+                            try events.append(allocator, .done);
                         } else {
-                            try events.append(.{ .text_delta = data });
+                            try events.append(allocator, .{ .text_delta = data });
                         }
                     }
                 }

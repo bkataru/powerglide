@@ -8,6 +8,7 @@ pub fn build(b: *std.Build) void {
     const mod = b.addModule("powerglide", .{
         .root_source_file = b.path("src/root.zig"),
         .target = target,
+        .link_libc = true,
     });
 
     // Add clap dependency - available from build.zig.zon
@@ -25,6 +26,7 @@ pub fn build(b: *std.Build) void {
             .root_source_file = b.path("src/main.zig"),
             .target = target,
             .optimize = optimize,
+            .link_libc = true,
             .imports = &.{
                 .{ .name = "powerglide", .module = mod },
             },
