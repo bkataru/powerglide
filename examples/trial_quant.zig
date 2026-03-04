@@ -189,8 +189,8 @@ fn killIgllama(allocator: std.mem.Allocator) void {
 }
 
 fn spawnIgllama(allocator: std.mem.Allocator, model_file: []const u8) !std.process.Child {
-    const port_str = try std.fmt.allocPrint(allocator, "{d}", .{QUANT_PORT});
-    defer allocator.free(port_str);
+    // Port is a comptime constant — no allocation needed.
+    const port_str = std.fmt.comptimePrint("{d}", .{QUANT_PORT});
 
     const argv = [_][]const u8{
         IGLLAMA_BIN, "api", model_file,
@@ -212,14 +212,16 @@ fn spawnIgllama(allocator: std.mem.Allocator, model_file: []const u8) !std.proce
 }
 
 fn waitForHealth(allocator: std.mem.Allocator, w: anytype) bool {
+    // Create client and URL once — reused across all poll iterations.
+    var client = http_mod.HttpClient.init(allocator);
+    defer client.deinit();
+    const url = std.fmt.allocPrint(allocator, "http://127.0.0.1:{d}/health", .{QUANT_PORT}) catch return false;
+    defer allocator.free(url);
+
     const deadline = std.time.timestamp() + @as(i64, @intCast(HEALTH_TIMEOUT_S));
     while (std.time.timestamp() < deadline) {
         std.Thread.sleep(HEALTH_POLL_MS * std.time.ns_per_ms);
-        var client = http_mod.HttpClient.init(allocator);
-        defer client.deinit();
-        const url = std.fmt.allocPrint(allocator, "http://127.0.0.1:{d}/health", .{QUANT_PORT}) catch continue;
-        defer allocator.free(url);
-        var resp = client.get(url, &.{}) catch continue;
+        var resp = client.get(url, &.{}) catch { w.print(".", .{}) catch {}; continue; };
         defer resp.deinit(allocator);
         if (resp.isSuccess() and std.mem.indexOf(u8, resp.body, "ok") != null) return true;
         w.print(".", .{}) catch {};
@@ -405,11 +407,20 @@ fn runBash(allocator: std.mem.Allocator, command: []const u8) ![]u8 {
     return trunc;
 }
 
-fn runRead(allocator: std.mem.Allocator, path: []const u8) ![]u8 {
+fn resolveSafePath(allocator: std.mem.Allocator, path: []const u8) !?[]u8 {
     const abs = if (std.mem.startsWith(u8, path, "/"))
         try allocator.dupe(u8, path)
     else
         try std.fs.path.join(allocator, &.{ WORKDIR, path });
+    if (std.mem.startsWith(u8, abs, WORKDIR) or std.mem.startsWith(u8, abs, "/tmp/"))
+        return abs;
+    defer allocator.free(abs);
+    return null;
+}
+
+fn runRead(allocator: std.mem.Allocator, path: []const u8) ![]u8 {
+    const abs = try resolveSafePath(allocator, path) orelse
+        return allocator.dupe(u8, "ERROR: path outside WORKDIR and /tmp/ is not allowed");
     defer allocator.free(abs);
     const file = std.fs.openFileAbsolute(abs, .{}) catch |e|
         return std.fmt.allocPrint(allocator, "ERROR opening {s}: {}", .{ abs, e });
@@ -422,10 +433,8 @@ fn runRead(allocator: std.mem.Allocator, path: []const u8) ![]u8 {
 }
 
 fn runWrite(allocator: std.mem.Allocator, path: []const u8, content: []const u8) ![]u8 {
-    const abs = if (std.mem.startsWith(u8, path, "/"))
-        try allocator.dupe(u8, path)
-    else
-        try std.fs.path.join(allocator, &.{ WORKDIR, path });
+    const abs = try resolveSafePath(allocator, path) orelse
+        return allocator.dupe(u8, "ERROR: path outside WORKDIR and /tmp/ is not allowed");
     defer allocator.free(abs);
     if (std.fs.path.dirname(abs)) |dir| std.fs.makeDirAbsolute(dir) catch {};
     const file = try std.fs.createFileAbsolute(abs, .{});
@@ -617,13 +626,14 @@ pub fn main() !void {
             try w.print("  SPAWN_ERR: {} -- skipping\n", .{e});
             continue;
         };
+        // Ensure igllama is killed when this iteration exits, even on panic.
+        defer _ = child.kill() catch {};
 
         try w.writeAll("  Waiting for health");
         const healthy = waitForHealth(allocator, w);
         try w.writeAll("\n");
         if (!healthy) {
             try w.writeAll("  Health: TIMEOUT -- skipping\n");
-            _ = child.kill() catch {};
             continue;
         }
         try w.writeAll("  Health: OK\n");
@@ -637,8 +647,6 @@ pub fn main() !void {
             };
             results[mi][ti] = r;
         }
-
-        _ = child.kill() catch {};
     }
 
     // ── Summary table ─────────────────────────────────────────────────────────

@@ -432,11 +432,22 @@ fn runBash(allocator: std.mem.Allocator, command: []const u8) ![]u8 {
     return trunc;
 }
 
-fn runRead(allocator: std.mem.Allocator, path: []const u8) ![]u8 {
+/// Resolve path to absolute and verify it is within WORKDIR or /tmp/.
+/// Returns an error string (owned) if the path escapes the allowed roots.
+fn resolveSafePath(allocator: std.mem.Allocator, path: []const u8) !?[]u8 {
     const abs = if (std.mem.startsWith(u8, path, "/"))
         try allocator.dupe(u8, path)
     else
         try std.fs.path.join(allocator, &.{ WORKDIR, path });
+    if (std.mem.startsWith(u8, abs, WORKDIR) or std.mem.startsWith(u8, abs, "/tmp/"))
+        return abs;
+    defer allocator.free(abs);
+    return null; // caller should return an error message
+}
+
+fn runRead(allocator: std.mem.Allocator, path: []const u8) ![]u8 {
+    const abs = try resolveSafePath(allocator, path) orelse
+        return allocator.dupe(u8, "ERROR: path outside WORKDIR and /tmp/ is not allowed");
     defer allocator.free(abs);
 
     const file = std.fs.openFileAbsolute(abs, .{}) catch |e|
@@ -452,10 +463,8 @@ fn runRead(allocator: std.mem.Allocator, path: []const u8) ![]u8 {
 }
 
 fn runWrite(allocator: std.mem.Allocator, path: []const u8, content: []const u8) ![]u8 {
-    const abs = if (std.mem.startsWith(u8, path, "/"))
-        try allocator.dupe(u8, path)
-    else
-        try std.fs.path.join(allocator, &.{ WORKDIR, path });
+    const abs = try resolveSafePath(allocator, path) orelse
+        return allocator.dupe(u8, "ERROR: path outside WORKDIR and /tmp/ is not allowed");
     defer allocator.free(abs);
 
     if (std.fs.path.dirname(abs)) |dir|
