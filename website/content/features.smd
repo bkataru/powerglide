@@ -37,13 +37,6 @@ powerglide run --velocity 0.5 "careful review"
 
 # Agents self-adjust via session config
 echo "VELOCITY=1.5" >> ~/.config/powerglide/session-abc123.json
-powerglide run --velocity 2.0 "quick refactor"
-
-# Conservative pace (0.5x speed, 2000ms between steps)
-powerglide run --velocity 0.5 "careful review"
-
-# Agents can self-adjust via session config
-echo "VELOCITY=1.5" >> ~/.config/powerglide/session-abc123.json
 ```
 
 ## Ralph Loop State Machine 🔄
@@ -76,14 +69,6 @@ Route to any LLM provider with automatic fallbacks:
 
 ```bash
 # Anthropic Claude
-export ANTHROPIC_API_KEY="sk-ant-..."
-powerglide run --model "claude-opus-4-6" "..."
-
-# OpenAI-compatible (Ollama, NVIDIA NIM, Together AI)
-export OPENAI_API_KEY="sk-..."
-powerglide run --model "gpt-4" "..."
-
-# Automatic fallback chain configured in config.json
 export ANTHROPIC_API_KEY="sk-ant-..."
 powerglide run --model "claude-opus-4-6" "..."
 

@@ -11,16 +11,16 @@ powerglide supports multiple configuration methods with a clear precedence order
 
 ## Configuration Precedence
 
-Configuration is loaded in the following order (highest to lowest priority):
+Configuration loads in the following order (highest to lowest priority):
 
-1. **Command-line arguments** - Override everything
-2. **Environment variables** - System-wide settings
-3. **Config file** - `~/.config/powerglide/config.json`
-4. **Built-in defaults** - Fallback values
+1. **Command-line arguments** — Override everything
+2. **Environment variables** — System-wide settings
+3. **Config file** — `~/.config/powerglide/config.json`
+4. **Built-in defaults** — Fallback values
 
 ## Environment Variables
 
-Set these in your shell profile (`~/.bashrc`, `~/.zshrc`, etc.):
+Add these to your shell profile (`~/.bashrc`, `~/.zshrc`, etc.):
 
 ```bash
 # API Keys
@@ -100,9 +100,6 @@ Location: `~/.config/powerglide/config.json`
 ```
 
 ## Session Configuration
-
-Sessions store their configuration at `~/.config/powerglide/session-<id>.json`:
-
 ```json
 {
   "id": "abc123",
