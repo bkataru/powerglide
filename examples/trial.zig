@@ -219,6 +219,36 @@ const MsgList = struct {
 
 };
 
+// ── JSON utilities ────────────────────────────────────────────────────────────
+
+/// Convert literal 2-char escape sequences (\n, \t, \r) to actual control chars.
+/// igllama json_mode sometimes returns "\n" (backslash+n) instead of real newlines
+/// between JSON tokens, which breaks parseFromSlice. Caller owns result.
+fn unescapeControlChars(allocator: std.mem.Allocator, s: []const u8) ![]u8 {
+    var out = std.ArrayList(u8){};
+    var i: usize = 0;
+    while (i < s.len) : (i += 1) {
+        if (s[i] == '\\' and i + 1 < s.len) {
+            switch (s[i + 1]) {
+                'n'  => { try out.append(allocator, '\n'); i += 1; continue; },
+                't'  => { try out.append(allocator, '\t'); i += 1; continue; },
+                'r'  => { try out.append(allocator, '\r'); i += 1; continue; },
+                else => {},
+            }
+        }
+        try out.append(allocator, s[i]);
+    }
+    return out.toOwnedSlice(allocator);
+}
+
+/// Try parsing s as JSON; on failure, unescape literal \n/\t/\r sequences and retry.
+fn parseJsonValue(allocator: std.mem.Allocator, s: []const u8) !std.json.Parsed(std.json.Value) {
+    if (std.json.parseFromSlice(std.json.Value, allocator, s, .{})) |p| return p else |_| {}
+    const unesc = try unescapeControlChars(allocator, s);
+    defer allocator.free(unesc);
+    return std.json.parseFromSlice(std.json.Value, allocator, unesc, .{});
+}
+
 // ── JSON extraction ───────────────────────────────────────────────────────────
 
 /// Find and return the first brace-balanced JSON object in `text`.
@@ -477,7 +507,9 @@ fn runTask(
         defer allocator.free(json_slice);
         json_errs = 0;
 
-        var parsed = std.json.parseFromSlice(std.json.Value, allocator, json_slice, .{}) catch {
+        // Parse JSON; fallback: unescape literal "\n" sequences first
+        // (igllama json_mode sometimes emits literal "\n" between tokens).
+        var parsed = parseJsonValue(allocator, json_slice) catch {
             json_errs += 1;
             try w.print("PARSE_ERR: {s}\n", .{json_slice[0..@min(60, json_slice.len)]});
             if (json_errs >= 2) break;
