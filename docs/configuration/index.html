@@ -78,7 +78,7 @@
         <article class="py-12">
             <div class="max-w-4xl mx-auto">
                 <h1 class="text-4xl md:text-5xl font-bold mb-8 text-pg-primary glow-primary">Configuration</h1>
-                <div class="prose prose-invert prose-lg max-w-none"><h1>Configuration</h1><p>powerglide supports multiple configuration methods with a clear precedence order.</p><h2>Configuration Precedence</h2><p>Configuration is loaded in the following order (highest to lowest priority):</p><ol><li><strong>Command-line arguments</strong> - Override everything</li><li><strong>Environment variables</strong> - System-wide settings</li><li><strong>Config file</strong> - <code>~/.config/powerglide/config.json</code></li><li><strong>Built-in defaults</strong> - Fallback values</li></ol><h2>Environment Variables</h2><p>Set these in your shell profile (<code>~/.bashrc</code>, <code>~/.zshrc</code>, etc.):</p><pre><code class="bash"><span class="comment"># API Keys</span>
+                <div class="prose prose-invert prose-lg max-w-none"><p>powerglide supports multiple configuration methods with a clear precedence order.</p><h2>Configuration Precedence</h2><p>Configuration loads in the following order (highest to lowest priority):</p><ol><li><strong>Command-line arguments</strong> — Override everything</li><li><strong>Environment variables</strong> — System-wide settings</li><li><strong>Config file</strong> — <code>~/.config/powerglide/config.json</code></li><li><strong>Built-in defaults</strong> — Fallback values</li></ol><h2>Environment Variables</h2><p>Add these to your shell profile (<code>~/.bashrc</code>, <code>~/.zshrc</code>, etc.):</p><pre><code class="bash"><span class="comment"># API Keys</span>
 <span class="keyword">export</span> <span class="property">ANTHROPIC_API_KEY</span>=<span class="string">&quot;sk-ant-...&quot;</span>
 <span class="keyword">export</span> <span class="property">OPENAI_API_KEY</span>=<span class="string">&quot;sk-...&quot;</span>
 
@@ -132,7 +132,7 @@
   }
 }
 </code></pre>
-<h2>Session Configuration</h2><p>Sessions store their configuration at <code>~/.config/powerglide/session-&lt;id&gt;.json</code>:</p><pre><code class="json">{
+<h2>Session Configuration</h2><pre><code class="json">{
   <span class="string_special_key string">&quot;id&quot;</span>: <span class="string">&quot;abc123&quot;</span>,
   <span class="string_special_key string">&quot;agent&quot;</span>: <span class="string">&quot;hephaestus&quot;</span>,
   <span class="string_special_key string">&quot;velocity&quot;</span>: <span class="number">1.5</span>,
