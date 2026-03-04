@@ -61,4 +61,23 @@ pub fn build(b: *std.Build) void {
     const test_step = b.step("test", "Run tests");
     test_step.dependOn(&run_mod_tests.step);
     test_step.dependOn(&run_exe_tests.step);
+
+    // Trial harness executable (examples/trial.zig)
+    const trial_exe = b.addExecutable(.{
+        .name = "trial",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("examples/trial.zig"),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+            .imports = &.{
+                .{ .name = "powerglide", .module = mod },
+            },
+        }),
+    });
+    b.installArtifact(trial_exe);
+    const trial_step = b.step("trial", "Run the igllama agentic trial harness");
+    const trial_cmd = b.addRunArtifact(trial_exe);
+    trial_cmd.step.dependOn(b.getInstallStep());
+    trial_step.dependOn(&trial_cmd.step);
 }
