@@ -186,6 +186,7 @@ test "Registry execute" {
     };
 
     const result = try registry.execute(allocator, input);
+    defer allocator.free(result.content);
     try std.testing.expect(!result.is_error);
     try std.testing.expect(mem.eql(u8, result.content, "hello\n"));
 }

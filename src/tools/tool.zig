@@ -142,10 +142,9 @@ fn runCommand(allocator: std.mem.Allocator, argv: []const []const u8) ![]u8 {
         const combined = try std.fmt.allocPrint(allocator, "{s}\n--- stderr ---\n{s}", .{ result.stdout, result.stderr });
         return combined;
     } else if (result.stderr.len > 0) {
-        const out = try allocator.dupe(u8, result.stderr);
-        return out;
+        return try allocator.dupe(u8, result.stderr);
     }
-    return result.stdout;
+    return try allocator.dupe(u8, result.stdout);
 }
 
 fn bash_handler(allocator: std.mem.Allocator, input: ToolInput) !ToolOutput {
