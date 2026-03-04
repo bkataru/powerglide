@@ -56,6 +56,39 @@ When building tools for powerglide, assume a standard POSIX environment.
 
 ![Module Structure](docs/svg/module-structure.svg)
 
+## MCP Integration
+
+powerglide implements the [Model Context Protocol](https://modelcontextprotocol.io/) (JSON-RPC 2.0) over stdin/stdout in both directions.
+
+### Using powerglide as an MCP Server
+
+```bash
+powerglide mcp
+```
+
+The server exposes all registered tools. Protocol handshake:
+1. Send `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"my-client","version":"1.0"}}}`
+2. Server responds with `protocolVersion`, `capabilities.tools`, and `serverInfo`
+3. Send `{"jsonrpc":"2.0","id":2,"method":"tools/list"}` to enumerate tools
+4. Send `{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"bash","arguments":{"command":"ls"}}}` to execute
+
+### Connecting powerglide to External MCP Servers
+
+Add `mcp_servers` to `~/.config/powerglide/config.json`:
+
+```json
+{
+  "mcp_servers": [
+    {
+      "name": "filesystem",
+      "command": ["npx", "-y", "@modelcontextprotocol/server-filesystem", "/workspace"]
+    }
+  ]
+}
+```
+
+External tools register as `mcp_filesystem_<tool_name>` and are callable through the standard tool dispatch path — indistinguishable from built-in tools to the Ralph Loop.
+
 ## Integration Examples
 
 ### Spawning from another Agent

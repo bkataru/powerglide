@@ -2,8 +2,6 @@
 
 <img src="docs/svg/hero-logo.svg" alt="powerglide logo" width="200" height="200" />
 
-# powerglide
-
 **The CLI coding agent that slides**
 
 [![Zig](https://img.shields.io/badge/Zig-0.15.2-F7A41D?logo=zig&logoColor=white)](https://ziglang.org/)
@@ -98,6 +96,46 @@ The static binary is located at `./zig-out/bin/powerglide`.
 | `tools` | List and test available MCP-style tools |
 | `tui` | Launch the multi-panel dashboard |
 | `doctor` | Run system health checks |
+
+---
+
+## MCP Integration
+
+powerglide speaks [Model Context Protocol](https://modelcontextprotocol.io/) natively — both as a server and as a client.
+
+### As an MCP Server
+
+Run powerglide as an MCP server to expose its tools to any MCP-compatible client (Claude Desktop, another powerglide instance, or any JSON-RPC 2.0 client over stdin/stdout):
+
+```bash
+powerglide mcp
+```
+
+The server advertises all registered tools via `tools/list` and handles `tools/call` requests. Protocol sequence:
+1. Client sends `initialize` — server responds with `protocolVersion: "2024-11-05"` and `capabilities.tools`
+2. Client sends `tools/list` — server returns the full tool registry as MCP tool descriptors
+3. Client sends `tools/call` — server executes the tool and returns `content: [{type: "text", text: "..."}]`
+
+### As an MCP Client
+
+Connect powerglide to external MCP servers to bring their tools into its registry as first-class powerglide tools. Add `mcp_servers` to your config:
+
+```json
+{
+  "mcp_servers": [
+    {
+      "name": "filesystem",
+      "command": ["npx", "-y", "@modelcontextprotocol/server-filesystem", "/workspace"]
+    },
+    {
+      "name": "github",
+      "command": ["npx", "-y", "@modelcontextprotocol/server-github"]
+    }
+  ]
+}
+```
+
+External tools are registered with prefixed names (`mcp_filesystem_read_file`, `mcp_github_search_repositories`) and become indistinguishable from built-in tools to the agent loop.
 
 ---
 

@@ -2,6 +2,21 @@
 
 All notable changes to the **powerglide** project will be documented in this file.
 
+## [0.2.0] - 2026-03-04
+
+### Added
+- **MCP Server** (`src/mcp/server.zig`) — JSON-RPC 2.0 over stdin/stdout; exposes all registered powerglide tools to any MCP-compatible client via `powerglide mcp`.
+- **MCP Client** (`src/mcp/client.zig`) — connects to external MCP servers as subprocesses, transparently registering their tools into the powerglide registry.
+- **Tool Bridge** (`src/mcp/tool_bridge.zig`) — converts `McpTool` descriptors to powerglide `Tool` structs with prefixed names (`mcp_{server}_{tool}`).
+- **`mcp_servers` config array** — configure external MCP server connections in `~/.config/powerglide/config.json`.
+- **`powerglide mcp` CLI command** — starts powerglide in MCP server mode.
+
+### Fixed
+- **stdin API for Zig 0.15.2** — replaced `std.fs.File.stdin().reader()` (requires buffer arg) with `posix.read()` byte-by-byte pattern.
+- **Removed docs/archive from git** — conversation logs untracked to reduce repo noise.
+- **Favicon 404** — `docs/favicon.svg` was missing from deployed GitHub Pages site.
+- **Homepage title redundancy** — removed duplicate "powerglide" text before hero SVG on index page.
+
 ## [0.1.3] - 2026-03-04
 
 ### Added

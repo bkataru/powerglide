@@ -34,6 +34,13 @@ cd website && zig build
 cp -r zig-out/docs/. ../docs/
 ```
 
+## MCP Module
+
+- `src/mcp/server.zig` — JSON-RPC 2.0 over stdin/stdout; start with `powerglide mcp`
+- `src/mcp/client.zig` — subprocess MCP client; connects to external MCP servers
+- `src/mcp/tool_bridge.zig` — converts `McpTool` → `Tool`, prefixed `mcp_{server}_{tool}`
+- Config key: `mcp_servers` array in `~/.config/powerglide/config.json`
+
 ## Roadmap
 
 1. ✅ Zig 0.15.2 compatibility
@@ -41,5 +48,5 @@ cp -r zig-out/docs/. ../docs/
 3. ✅ Ralph Loop integration
 4. ✅ Technical overhaul of website & prose
 5. ✅ Refactored velocity to multiplier model
-6. ⏳ Finished TUI implementation
-7. ⏳ MCP server integration
+6. ✅ TUI implementation (vxfw multi-agent dashboard)
+7. ✅ MCP integration (`src/mcp/` — server, client, tool_bridge)
