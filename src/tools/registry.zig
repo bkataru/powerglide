@@ -163,13 +163,11 @@ pub const Registry = struct {
             first = false;
 
             const tool = entry.value_ptr.*;
-            try buf.appendSlice(allocator, "{\"name\":\"");
-            try buf.appendSlice(allocator, tool.name);
-            try buf.appendSlice(allocator, "\",\"description\":\"");
-            try buf.appendSlice(allocator, tool.description);
-            try buf.appendSlice(allocator, "\",\"input_schema\":");
-            try buf.appendSlice(allocator, tool.input_schema);
-            try buf.appendSlice(allocator, "}");
+            try buf.writer(allocator).print("{{\"name\":{f},\"description\":{f},\"input_schema\":{s}}}", .{
+                std.json.fmt(tool.name, .{}),
+                std.json.fmt(tool.description, .{}),
+                tool.input_schema, // already valid JSON schema string
+            });
         }
 
         try buf.appendSlice(allocator, "]");

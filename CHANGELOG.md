@@ -2,6 +2,19 @@
 
 All notable changes to the **powerglide** project will be documented in this file.
 
+## [0.2.8] - 2026-03-05
+
+### Fixed
+- **MCP client debug print removed** — `readLine()` was emitting `std.debug.print("MCP RAW: {s}\n")` on every RPC call; removed
+- **MCP sendRequest JSON round-trip** — `sendRequest()` was stringifying the result value then callers re-parsed it (4× allocations); now returns a deep-cloned `json.Value` directly via existing `deepCloneValue()`
+- **MCP input validation** — replaced force-unwrap `.?` panics in `listTools()` and `callTool()` with explicit `orelse return error.MissingField` / type-tag checks; a malformed MCP server response now returns an error instead of crashing
+- **MCP readLine OOM guard** — `readLine()` now enforces an 8 MiB per-message limit; a malicious MCP server that streams without newlines can no longer exhaust memory
+- **registry.zig JSON injection** — `listAsJson()` previously interpolated raw `tool.name` / `tool.description` strings into JSON without escaping; replaced with `std.json.fmt()` for both fields
+- **tool_bridge.zig indentation** — corrected two mis-indented lines at the top of `mcpToolToTool()`
+
+### Changed
+- **CLAUDE.md** — version `0.2.7` → `0.2.8`; roadmap items 16–17 added
+
 ## [0.2.7] - 2026-03-04
 
 ### Added

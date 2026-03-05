@@ -38,8 +38,8 @@ fn isValidToolName(name: []const u8) bool {
 pub fn mcpToolToTool(allocator: std.mem.Allocator, client: *McpClient, mcp_tool: McpTool, server_name: []const u8) !Tool {
     // Convert input schema to JSON string
     var buf = std.ArrayList(u8){};
-try buf.writer(allocator).print("{f}", .{json.fmt(mcp_tool.inputSchema, .{})});
-const schema_str = try buf.toOwnedSlice(allocator);
+    try buf.writer(allocator).print("{f}", .{json.fmt(mcp_tool.inputSchema, .{})});
+    const schema_str = try buf.toOwnedSlice(allocator);
 
     // Create a context for this tool
     const context = try allocator.create(McpToolContext);

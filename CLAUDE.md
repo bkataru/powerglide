@@ -59,7 +59,7 @@ Start with: `igllama api <model> --port <N> --no-think --max-tokens 512 --thread
 
 ## Current Version
 
-`0.2.7` — 195/195 tests passing, 0 leaks.
+`0.2.8` — 195/195 tests passing, 0 leaks.
 
 ## Roadmap
 
@@ -78,3 +78,5 @@ Start with: `igllama api <model> --port <N> --no-think --max-tokens 512 --thread
 13. ✅ Security: grep/glob tools use direct argv (no shell interpolation of user input)
 14. ✅ Quantization sensitivity harness (`examples/trial_quant.zig`) — Q4/Q5/Q6/Q8/BF16 on 2B+9B
 15. ✅ BF16 precision trials added to quant harness — full precision curve documented in showcase
+16. ✅ /simplify pass — removed debug print, fixed JSON round-trip in MCP client, escaped JSON output in registry
+17. ✅ /security-review pass — MCP input validation hardened, OOM guard on readLine, JSON injection in listAsJson fixed

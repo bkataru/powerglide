@@ -113,13 +113,7 @@ pub const McpClient = struct {
         }
 
         const result = obj.get("result") orelse return error.MissingResult;
-        // We need to return a cloned value because 'parsed' will be deinitialized
-        // Actually, returning a json.Value that is managed by the caller's allocator is better.
-        // But for simplicity, we'll return a stringified version or a deeply cloned Value.
-        // Let's use a stringified version for now, as it's easier to handle in the bridge.
-        var result_buf = std.ArrayList(u8){};
-        try result_buf.writer(self.allocator).print("{f}", .{json.fmt(result, .{})});
-        return json.Value{ .string = try result_buf.toOwnedSlice(self.allocator) };
+        return deepCloneValue(self.allocator, result);
     }
 
     fn writeLine(self: *McpClient, line: []const u8) !void {
@@ -128,21 +122,22 @@ pub const McpClient = struct {
         _ = try std.posix.write(self.process.stdin_pipe[1], data);
     }
 
+    const MAX_LINE_BYTES = 8 * 1024 * 1024; // 8 MiB
+
     fn readLine(self: *McpClient) ![]u8 {
         var buffer = std.ArrayList(u8){};
         errdefer buffer.deinit(self.allocator);
 
         var byte_buf: [1]u8 = undefined;
         while (true) {
+            if (buffer.items.len >= MAX_LINE_BYTES) return error.ResponseTooLarge;
             const n = try std.posix.read(self.process.stdout_pipe[0], &byte_buf);
             if (n == 0) break;
             const byte = byte_buf[0];
             if (byte == '\n') break;
             try buffer.append(self.allocator, byte);
         }
-        const line = try buffer.toOwnedSlice(self.allocator);
-        std.debug.print("MCP RAW: {s}\n", .{line});
-        return line;
+        return buffer.toOwnedSlice(self.allocator);
     }
 
     pub fn initialize(self: *McpClient) !void {
@@ -160,8 +155,9 @@ pub const McpClient = struct {
         defer capabilities.deinit();
         try params_obj.put("capabilities", .{ .object = capabilities });
 
-        const result = try self.sendRequest("initialize", .{ .object = params_obj });
-        self.allocator.free(result.string);
+        var result = try self.sendRequest("initialize", .{ .object = params_obj });
+        deepFreeValue(self.allocator, result);
+        result = undefined;
 
         // Send initialized notification
         const notification = JsonRpcRequest{
@@ -177,21 +173,25 @@ pub const McpClient = struct {
 
     pub fn listTools(self: *McpClient) ![]McpTool {
         const result_val = try self.sendRequest("tools/list", null);
-        defer self.allocator.free(result_val.string);
+        defer deepFreeValue(self.allocator, result_val);
 
-        const parsed = try json.parseFromSlice(json.Value, self.allocator, result_val.string, .{});
-        defer parsed.deinit();
-
-        const obj = parsed.value.object;
-        const tools_array = obj.get("tools").?.array;
+        if (result_val != .object) return error.InvalidResponse;
+        const obj = result_val.object;
+        const tools_val = obj.get("tools") orelse return error.MissingField;
+        if (tools_val != .array) return error.InvalidResponse;
+        const tools_array = tools_val.array;
         var tools = try self.allocator.alloc(McpTool, tools_array.items.len);
 
         for (tools_array.items, 0..) |tool_val, i| {
+            if (tool_val != .object) return error.InvalidResponse;
             const tool_obj = tool_val.object;
+            const t_name = if (tool_obj.get("name")) |v| (if (v == .string) v.string else return error.InvalidResponse) else return error.MissingField;
+            const t_desc = if (tool_obj.get("description")) |v| (if (v == .string) v.string else return error.InvalidResponse) else return error.MissingField;
+            const t_schema = tool_obj.get("inputSchema") orelse return error.MissingField;
             tools[i] = .{
-                .name = try self.allocator.dupe(u8, tool_obj.get("name").?.string),
-                .description = try self.allocator.dupe(u8, tool_obj.get("description").?.string),
-                .inputSchema = try deepCloneValue(self.allocator, tool_obj.get("inputSchema").?),
+                .name = try self.allocator.dupe(u8, t_name),
+                .description = try self.allocator.dupe(u8, t_desc),
+                .inputSchema = try deepCloneValue(self.allocator, t_schema),
             };
         }
         return tools;
@@ -204,13 +204,13 @@ pub const McpClient = struct {
         try params_obj.put("arguments", arguments);
 
         const result_val = try self.sendRequest("tools/call", .{ .object = params_obj });
-        defer self.allocator.free(result_val.string);
+        defer deepFreeValue(self.allocator, result_val);
 
-        const parsed = try json.parseFromSlice(json.Value, self.allocator, result_val.string, .{});
-        defer parsed.deinit();
-
-        const obj = parsed.value.object;
-        const content_array = obj.get("content").?.array;
+        if (result_val != .object) return error.InvalidResponse;
+        const obj = result_val.object;
+        const content_val = obj.get("content") orelse return error.MissingField;
+        if (content_val != .array) return error.InvalidResponse;
+        const content_array = content_val.array;
         
         // Combine all text content
         var output = std.ArrayList(u8){};
@@ -219,8 +219,10 @@ pub const McpClient = struct {
         for (content_array.items) |item| {
             if (item == .object) {
                 if (item.object.get("type")) |t| {
-                    if (mem.eql(u8, t.string, "text")) {
-                        try output.appendSlice(self.allocator, item.object.get("text").?.string);
+                    if (t == .string and mem.eql(u8, t.string, "text")) {
+                        if (item.object.get("text")) |txt| {
+                            if (txt == .string) try output.appendSlice(self.allocator, txt.string);
+                        }
                     }
                 }
             }
