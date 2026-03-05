@@ -2,6 +2,26 @@
 
 All notable changes to the **powerglide** project will be documented in this file.
 
+## [0.3.0] - 2026-03-05
+
+### Added
+- **4B quant curve completed** — downloaded Qwen3.5-4B-Q4_K_M/Q5_K_M/Q6_K GGUFs; full Q4→BF16 precision curve measured: 4B saturates at Q4 (13/17), Q4 is optimal (2.6 GB vs 7.9 GB for BF16)
+- **T01–T17 in `trial_quant.zig`** — harness extended from T01–T13 to T01–T17, adding code generation, JSON round-trip, error recovery, and multi-source synthesis tasks across all quantization variants
+- **`examples/bench.zig`** — throughput benchmark: measures tokens/second via igllama `usage.completion_tokens` across Q4/Q8/BF16 for each weight class; reports tok/s, file size, and RAM (RSS); `zig build bench`
+- **`zig build bench` step** — bench harness added to build.zig
+- **igllama v0.3.10 patch** — `usage.completion_tokens` in non-streaming responses now returns real counts (was hardcoded 0); fix upstreamed as igllama PR #82, released as v0.3.10
+
+### Changed
+- **`trial_quant.zig` QUANT_MODELS** — 12 → 16 models: added 4B-Q4/Q5/Q6/Q8 to complete the 4B quant curve alongside 4B-BF16
+- **`build.zig` step description** — updated to reflect T01–T17 and all four weight classes
+- **Showcase** — quantization sensitivity table expanded to include full 4B curve; speed benchmark section added with measured tok/s and RAM data; key finding documented (RAM cliff at 4B-Q8 on ≤6 GB systems)
+- **CLAUDE.md** — version 0.2.9 → 0.3.0; roadmap items 20–23 added; bench harness documented
+- **`src/main.zig` VERSION** — `"0.2.9"` → `"0.3.0"`; test assertion updated
+- **`build.zig.zon`** — version `"0.2.9"` → `"0.3.0"`
+
+### Fixed
+- **bench.zig token counting** — initial implementation used content-length/4 estimate (igllama returned `completion_tokens:0`); updated to prefer API counts with fallback; igllama v0.3.10 upstream fix makes API counts accurate
+
 ## [0.2.9] - 2026-03-05
 
 ### Added

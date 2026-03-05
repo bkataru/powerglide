@@ -95,8 +95,27 @@ pub fn build(b: *std.Build) void {
         }),
     });
     b.installArtifact(trial_quant_exe);
-    const trial_quant_step = b.step("trial-quant", "Run the igllama quantization sensitivity harness (Q4/Q5/Q6/Q8 on 2B and 9B)");
+    const trial_quant_step = b.step("trial-quant", "Run the igllama quantization sensitivity harness (T01-T17 x Q4/Q5/Q6/Q8/BF16 across all 4 weight classes)");
     const trial_quant_cmd = b.addRunArtifact(trial_quant_exe);
     trial_quant_cmd.step.dependOn(b.getInstallStep());
     trial_quant_step.dependOn(&trial_quant_cmd.step);
+
+    // Throughput benchmark (examples/bench.zig)
+    const bench_exe = b.addExecutable(.{
+        .name = "bench",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("examples/bench.zig"),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+            .imports = &.{
+                .{ .name = "powerglide", .module = mod },
+            },
+        }),
+    });
+    b.installArtifact(bench_exe);
+    const bench_step = b.step("bench", "Run the igllama throughput benchmark (tokens/sec across Q4/Q8/BF16 x all weight classes)");
+    const bench_cmd = b.addRunArtifact(bench_exe);
+    bench_cmd.step.dependOn(b.getInstallStep());
+    bench_step.dependOn(&bench_cmd.step);
 }

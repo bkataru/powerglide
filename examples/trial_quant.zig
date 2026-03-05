@@ -1,17 +1,26 @@
 /// powerglide × igllama — quantization sensitivity trial harness
 ///
-/// Runs T01–T13 across Q4/Q5/Q6/Q8/BF16 quantization variants for the two
-/// quant-sensitive models (2B and 9B), mapping the accuracy-vs-size tradeoff.
+/// Runs T01–T17 across Q4/Q5/Q6/Q8/BF16 quantization variants for all four
+/// Qwen3.5 weight classes, mapping the full accuracy-vs-precision tradeoff.
 /// All variants run sequentially on :8090; the harness manages igllama lifecycle.
 ///
 ///   zig build trial-quant
 ///
-/// Download GGUFs first:
+/// Download GGUFs first (0.8B):
+///   igllama pull unsloth/Qwen3.5-0.8B-GGUF -f Qwen3.5-0.8B-BF16.gguf
+/// Download GGUFs (2B):
 ///   igllama pull unsloth/Qwen3.5-2B-GGUF -f Qwen3.5-2B-UD-Q4_K_XL.gguf
 ///   igllama pull unsloth/Qwen3.5-2B-GGUF -f Qwen3.5-2B-Q5_K_M.gguf
 ///   igllama pull unsloth/Qwen3.5-2B-GGUF -f Qwen3.5-2B-Q6_K.gguf
 ///   igllama pull unsloth/Qwen3.5-2B-GGUF -f Qwen3.5-2B-Q8_0.gguf
 ///   igllama pull unsloth/Qwen3.5-2B-GGUF -f Qwen3.5-2B-BF16.gguf
+/// Download GGUFs (4B):
+///   igllama pull unsloth/Qwen3.5-4B-GGUF -f Qwen3.5-4B-Q4_K_M.gguf
+///   igllama pull unsloth/Qwen3.5-4B-GGUF -f Qwen3.5-4B-Q5_K_M.gguf
+///   igllama pull unsloth/Qwen3.5-4B-GGUF -f Qwen3.5-4B-Q6_K.gguf
+///   igllama pull unsloth/Qwen3.5-4B-GGUF -f Qwen3.5-4B-Q8_0.gguf
+///   igllama pull unsloth/Qwen3.5-4B-GGUF -f Qwen3.5-4B-BF16.gguf
+/// Download GGUFs (9B):
 ///   igllama pull unsloth/Qwen3.5-9B-GGUF -f Qwen3.5-9B-UD-Q4_K_XL.gguf
 ///   igllama pull unsloth/Qwen3.5-9B-GGUF -f Qwen3.5-9B-Q5_K_M.gguf
 ///   igllama pull unsloth/Qwen3.5-9B-GGUF -f Qwen3.5-9B-Q6_K.gguf
@@ -51,9 +60,10 @@ const QuantModel = struct {
     group: []const u8, // "0.8B", "2B", "4B", or "9B"
 };
 
-// Q4/Q5/Q6/Q8/BF16 sensitivity curve for 2B and 9B; plus BF16-only for 0.8B and 4B
-// to cover the full precision curve for all four Qwen3.5 weight classes.
-// Q4 uses the UD-Q4_K_XL variant (already present from main trial lineup).
+// Full Q4/Q5/Q6/Q8/BF16 sensitivity curve for all four Qwen3.5 weight classes.
+// 0.8B: BF16-only (training gap makes quant irrelevant; 0.8B-Q8 already in main trial).
+// 2B, 4B, 9B: complete Q4→BF16 curve.
+// 4B uses Q4_K_M (the standard non-UD variant; UD-Q4_K_XL only exists for 2B/9B).
 // file field is an absolute path — models live in MODELS_DIR (/root/powerglide).
 const QUANT_MODELS = [_]QuantModel{
     .{ .name = "0.8B-BF16",.file = MODELS_DIR ++ "/Qwen3.5-0.8B-BF16.gguf",      .group = "0.8B" },
@@ -62,6 +72,10 @@ const QUANT_MODELS = [_]QuantModel{
     .{ .name = "2B-Q6",    .file = MODELS_DIR ++ "/Qwen3.5-2B-Q6_K.gguf",        .group = "2B" },
     .{ .name = "2B-Q8",    .file = MODELS_DIR ++ "/Qwen3.5-2B-Q8_0.gguf",        .group = "2B" },
     .{ .name = "2B-BF16",  .file = MODELS_DIR ++ "/Qwen3.5-2B-BF16.gguf",        .group = "2B" },
+    .{ .name = "4B-Q4",    .file = MODELS_DIR ++ "/Qwen3.5-4B-Q4_K_M.gguf",      .group = "4B" },
+    .{ .name = "4B-Q5",    .file = MODELS_DIR ++ "/Qwen3.5-4B-Q5_K_M.gguf",      .group = "4B" },
+    .{ .name = "4B-Q6",    .file = MODELS_DIR ++ "/Qwen3.5-4B-Q6_K.gguf",        .group = "4B" },
+    .{ .name = "4B-Q8",    .file = MODELS_DIR ++ "/Qwen3.5-4B-Q8_0.gguf",        .group = "4B" },
     .{ .name = "4B-BF16",  .file = MODELS_DIR ++ "/Qwen3.5-4B-BF16.gguf",        .group = "4B" },
     .{ .name = "9B-Q4",    .file = MODELS_DIR ++ "/Qwen3.5-9B-UD-Q4_K_XL.gguf",  .group = "9B" },
     .{ .name = "9B-Q5",    .file = MODELS_DIR ++ "/Qwen3.5-9B-Q5_K_M.gguf",      .group = "9B" },
@@ -89,7 +103,7 @@ const SYSTEM_PROMPT =
     \\- Working directory: /root/powerglide.
 ;
 
-// ── Tasks (T01–T13 — same as trial.zig) ──────────────────────────────────────
+// ── Tasks (T01–T17 — same as trial.zig) ──────────────────────────────────────
 
 const Task = struct {
     name: []const u8,
@@ -177,6 +191,40 @@ const TASKS = [_]Task{
         \\bash: sed -n '/LoopState = enum/,/^};/p' src/agent/loop.zig | grep -cE '^\s+[a-z_]+,$'
         \\write: /tmp/loop_state_count.txt  content: <the integer you got>
         \\bash: cat /tmp/loop_state_count.txt
+        ,
+    },
+    .{
+        .name = "T14 Code gen: write + fmt Zig fibonacci",
+        .prompt =
+        \\write: /tmp/pg_fib.zig  content:
+        \\const std = @import("std");
+        \\pub fn fib(n: u64) u64 { if (n <= 1) return n; return fib(n-1) + fib(n-2); }
+        \\pub fn main() void { std.debug.print("{d}\n", .{fib(10)}); }
+        \\bash: /root/.local/share/mise/installs/zig/0.15.2/bin/zig fmt /tmp/pg_fib.zig && echo "fmt ok"
+        \\Report the fmt result.
+        ,
+    },
+    .{
+        .name = "T15 JSON round-trip: write + read + verify",
+        .prompt =
+        \\write: /tmp/pg_data.json  content: {"project":"powerglide","version":"0.2.6","tasks":17}
+        \\bash: python3 -c "import json; d=json.load(open('/tmp/pg_data.json')); print(d['project'], d['version'], d['tasks'])"
+        \\Report all three values.
+        ,
+    },
+    .{
+        .name = "T16 Error recovery: observe exit 1 + fix",
+        .prompt =
+        \\bash: /root/.local/share/mise/installs/zig/0.15.2/bin/zig build-exe /tmp/nonexistent_pg.zig 2>&1 | head -3
+        \\The command will fail. Report the error and explain in one sentence why it failed.
+        ,
+    },
+    .{
+        .name = "T17 Multi-source synthesis",
+        .prompt =
+        \\bash: head -n 2 src/agent/loop.zig
+        \\bash: head -n 2 src/orchestrator/swarm.zig
+        \\Synthesize: in one sentence, describe how loop.zig and swarm.zig relate to each other in the powerglide architecture.
         ,
     },
 };
@@ -612,7 +660,7 @@ pub fn main() !void {
     const w = std.fs.File.stdout().deprecatedWriter();
 
     try w.writeAll("\npowerglide x igllama — quantization sensitivity trial\n");
-    try w.print("Tasks: T01-T{d}   Models: 0.8B-BF16 | 2B × Q4/Q5/Q6/Q8/BF16 | 4B-BF16 | 9B × Q4/Q5/Q6/Q8/BF16\n\n", .{TASKS.len});
+    try w.print("Tasks: T01-T{d}   Models: 0.8B-BF16 | 2B × Q4/Q5/Q6/Q8/BF16 | 4B × Q4/Q5/Q6/Q8/BF16 | 9B × Q4/Q5/Q6/Q8/BF16\n\n", .{TASKS.len});
 
     var results: [QUANT_MODELS.len][TASKS.len]?TaskResult = .{.{null} ** TASKS.len} ** QUANT_MODELS.len;
     defer {
@@ -659,7 +707,7 @@ pub fn main() !void {
 
     // ── Summary table ─────────────────────────────────────────────────────────
     try w.print("\n\n{s}\n", .{SEP_THICK});
-    try w.writeAll("  RESULTS — quantization sensitivity (0.8B-BF16 | 2B Q4–BF16 | 4B-BF16 | 9B Q4–BF16)\n");
+    try w.writeAll("  RESULTS — quantization sensitivity (0.8B-BF16 | 2B Q4–BF16 | 4B Q4–BF16 | 9B Q4–BF16)\n");
     try w.print("{s}\n", .{SEP_THICK});
 
     // Header

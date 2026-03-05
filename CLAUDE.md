@@ -55,11 +55,12 @@ Start with: `igllama api <model> --port <N> --no-think --max-tokens 512 --thread
 - `OpenAIClient.json_mode = true` → forces `response_format: {"type":"json_object"}` for constrained output
 - Doctor scans `:8090–8099` automatically
 - Trial harness: `zig build trial` — runs T01–T17 × all 4 endpoints
-- Quant harness: `zig build trial-quant` — runs T01–T13 × 12 models: 0.8B-BF16 | 2B (Q4/Q5/Q6/Q8/BF16) | 4B-BF16 | 9B (Q4/Q5/Q6/Q8/BF16), sequential on :8090
+- Quant harness: `zig build trial-quant` — runs T01–T17 × 16 models: 0.8B-BF16 | 2B (Q4/Q5/Q6/Q8/BF16) | 4B (Q4/Q5/Q6/Q8/BF16) | 9B (Q4/Q5/Q6/Q8/BF16), sequential on :8090
+- Bench harness: `zig build bench` — tokens/sec throughput benchmark, accurate via igllama v0.3.10 `usage.completion_tokens`
 
 ## Current Version
 
-`0.2.9` — 195/195 tests passing, 0 leaks.
+`0.3.0` — 195/195 tests passing, 0 leaks.
 
 ## Roadmap
 
@@ -82,3 +83,7 @@ Start with: `igllama api <model> --port <N> --no-think --max-tokens 512 --thread
 17. ✅ /security-review pass — MCP input validation hardened, OOM guard on readLine, JSON injection in listAsJson fixed
 18. ✅ 0.8B-BF16 added to quant harness — all four weight classes now have BF16 coverage; 4B-BF16 confirmed 13/13
 19. ✅ MCP server hardened — type assertion panic fixed, OOM guard on stdin buffer, error logging filtered
+20. ✅ 4B quant curve completed — Q4/Q5/Q6 GGUFs downloaded, full Q4→BF16 curve measured; 4B saturated at Q4
+21. ✅ T01–T17 extended to trial_quant.zig — all 17 agentic tasks now in quantization sensitivity harness
+22. ✅ Throughput benchmark (`examples/bench.zig`) — tokens/sec × RAM measurement across Q4/Q8/BF16 per weight class; igllama v0.3.10 usage.completion_tokens fix integrated
+23. ✅ igllama v0.3.10 — populate usage.completion_tokens in non-streaming responses (patched upstream, PR #82)
