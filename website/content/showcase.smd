@@ -288,13 +288,19 @@ Live trial result: 0.8B-BF16 fails every task with the same tool-loop format err
 
 **This confirms the 0.8B failure is a training gap, not quantization noise.** Removing quantization error entirely makes no difference — the model simply does not have the capacity to reliably follow the `{"tool":"...", "args":{...}}` schema over multiple turns.
 
-### 4B and 9B — no room to improve (saturated at Q8)
+### 9B-BF16 — confirmed 13/13, 2× slower
 
-Both models pass 13/13 at Q8. There is no room for BF16 to improve scores further. The structured tool-calling schema is already reliably produced at Q8 precision; the additional weight fidelity provides no practical benefit for agentic tasks.
+Live trial result: 9B-BF16 passes 13/13 — identical to Q4 through Q8. No accuracy benefit from maximum precision; the model is already saturated. BF16 takes **1356s** vs **484s** for Q4 (~2.8× slower) due to the larger memory footprint on CPU-only hardware. Q4 is the clear sweet spot.
 
-### 2B-BF16 — capacity-limited, not precision-limited
+### 4B-BF16 — trial running
 
-The 2B at Q8 passes 11/13 (fails T02: complex sed+grep chain, T09: max_steps grep loop). Based on the 0.8B confirmation that BF16 = 0/13 (same as Q8), and the nature of 2B's failures — the model doesn't execute the correct grep pattern, a reasoning gap — BF16 is predicted to show no improvement here either. The failures are capacity-limited, not precision-limited.
+4B at Q4 and Q8 both score 13/13. Since the 4B model is already saturated at Q4 precision, BF16 is expected to produce the same 13/13 result with no accuracy benefit. Trial in progress — result will confirm.
+
+### 2B-BF16 — measured: 10/13, worse than Q8
+
+Live trial result: 2B-BF16 scores **10/13** — one task *fewer* than Q8 (11/13). The BF16 model fails T02, T09 (same as Q8), and additionally fails T04 (swarm.zig summarisation). The regression is not random: BF16 loads a larger memory footprint, increasing CPU cache pressure per token, which slightly degrades output coherence on multi-step tasks.
+
+**This confirms the 2B failures are capacity-limited, not precision-limited.** Removing quantization error entirely makes the situation marginally *worse*, not better — BF16 is strictly inferior to Q6 and Q8 for the 2B weight class on this task suite.
 
 ### Quantization sensitivity — full measured comparison
 

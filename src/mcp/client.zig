@@ -108,7 +108,11 @@ pub const McpClient = struct {
         const obj = parsed.value.object;
 
         if (obj.get("error")) |err_val| {
-            std.debug.print("MCP Error: {any}\n", .{err_val});
+            if (err_val == .object) {
+                if (err_val.object.get("message")) |msg| {
+                    if (msg == .string) std.debug.print("MCP Error: {s}\n", .{msg.string});
+                }
+            }
             return error.McpError;
         }
 

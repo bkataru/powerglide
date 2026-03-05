@@ -48,25 +48,26 @@ const SEP_BLOCK = "████████████████████�
 const QuantModel = struct {
     name: []const u8,  // e.g. "2B-Q5"
     file: []const u8,  // e.g. "Qwen3.5-2B-Q5_K_M.gguf"
-    group: []const u8, // "2B" or "9B"
+    group: []const u8, // "0.8B", "2B", "4B", or "9B"
 };
 
-// Run Q4/Q5/Q6/Q8/BF16 across the quant-sensitive models (2B and 9B) plus 4B-BF16
-// to complete the full precision curve for all four Qwen3.5 weight classes.
+// Q4/Q5/Q6/Q8/BF16 sensitivity curve for 2B and 9B; plus BF16-only for 0.8B and 4B
+// to cover the full precision curve for all four Qwen3.5 weight classes.
 // Q4 uses the UD-Q4_K_XL variant (already present from main trial lineup).
 // file field is an absolute path — models live in MODELS_DIR (/root/powerglide).
 const QUANT_MODELS = [_]QuantModel{
-    .{ .name = "2B-Q4",   .file = MODELS_DIR ++ "/Qwen3.5-2B-UD-Q4_K_XL.gguf", .group = "2B" },
-    .{ .name = "2B-Q5",   .file = MODELS_DIR ++ "/Qwen3.5-2B-Q5_K_M.gguf",     .group = "2B" },
-    .{ .name = "2B-Q6",   .file = MODELS_DIR ++ "/Qwen3.5-2B-Q6_K.gguf",       .group = "2B" },
-    .{ .name = "2B-Q8",   .file = MODELS_DIR ++ "/Qwen3.5-2B-Q8_0.gguf",       .group = "2B" },
-    .{ .name = "2B-BF16", .file = MODELS_DIR ++ "/Qwen3.5-2B-BF16.gguf",       .group = "2B" },
-    .{ .name = "4B-BF16", .file = MODELS_DIR ++ "/Qwen3.5-4B-BF16.gguf",       .group = "4B" },
-    .{ .name = "9B-Q4",   .file = MODELS_DIR ++ "/Qwen3.5-9B-UD-Q4_K_XL.gguf", .group = "9B" },
-    .{ .name = "9B-Q5",   .file = MODELS_DIR ++ "/Qwen3.5-9B-Q5_K_M.gguf",     .group = "9B" },
-    .{ .name = "9B-Q6",   .file = MODELS_DIR ++ "/Qwen3.5-9B-Q6_K.gguf",       .group = "9B" },
-    .{ .name = "9B-Q8",   .file = MODELS_DIR ++ "/Qwen3.5-9B-Q8_0.gguf",       .group = "9B" },
-    .{ .name = "9B-BF16", .file = MODELS_DIR ++ "/Qwen3.5-9B-BF16.gguf",       .group = "9B" },
+    .{ .name = "0.8B-BF16",.file = MODELS_DIR ++ "/Qwen3.5-0.8B-BF16.gguf",      .group = "0.8B" },
+    .{ .name = "2B-Q4",    .file = MODELS_DIR ++ "/Qwen3.5-2B-UD-Q4_K_XL.gguf",  .group = "2B" },
+    .{ .name = "2B-Q5",    .file = MODELS_DIR ++ "/Qwen3.5-2B-Q5_K_M.gguf",      .group = "2B" },
+    .{ .name = "2B-Q6",    .file = MODELS_DIR ++ "/Qwen3.5-2B-Q6_K.gguf",        .group = "2B" },
+    .{ .name = "2B-Q8",    .file = MODELS_DIR ++ "/Qwen3.5-2B-Q8_0.gguf",        .group = "2B" },
+    .{ .name = "2B-BF16",  .file = MODELS_DIR ++ "/Qwen3.5-2B-BF16.gguf",        .group = "2B" },
+    .{ .name = "4B-BF16",  .file = MODELS_DIR ++ "/Qwen3.5-4B-BF16.gguf",        .group = "4B" },
+    .{ .name = "9B-Q4",    .file = MODELS_DIR ++ "/Qwen3.5-9B-UD-Q4_K_XL.gguf",  .group = "9B" },
+    .{ .name = "9B-Q5",    .file = MODELS_DIR ++ "/Qwen3.5-9B-Q5_K_M.gguf",      .group = "9B" },
+    .{ .name = "9B-Q6",    .file = MODELS_DIR ++ "/Qwen3.5-9B-Q6_K.gguf",        .group = "9B" },
+    .{ .name = "9B-Q8",    .file = MODELS_DIR ++ "/Qwen3.5-9B-Q8_0.gguf",        .group = "9B" },
+    .{ .name = "9B-BF16",  .file = MODELS_DIR ++ "/Qwen3.5-9B-BF16.gguf",        .group = "9B" },
 };
 
 // ── System prompt ─────────────────────────────────────────────────────────────
@@ -611,7 +612,7 @@ pub fn main() !void {
     const w = std.fs.File.stdout().deprecatedWriter();
 
     try w.writeAll("\npowerglide x igllama — quantization sensitivity trial\n");
-    try w.print("Tasks: T01-T{d}   Models: 2B × Q4/Q5/Q6/Q8/BF16 | 4B-BF16 | 9B × Q4/Q5/Q6/Q8/BF16\n\n", .{TASKS.len});
+    try w.print("Tasks: T01-T{d}   Models: 0.8B-BF16 | 2B × Q4/Q5/Q6/Q8/BF16 | 4B-BF16 | 9B × Q4/Q5/Q6/Q8/BF16\n\n", .{TASKS.len});
 
     var results: [QUANT_MODELS.len][TASKS.len]?TaskResult = .{.{null} ** TASKS.len} ** QUANT_MODELS.len;
     defer {
@@ -658,7 +659,7 @@ pub fn main() !void {
 
     // ── Summary table ─────────────────────────────────────────────────────────
     try w.print("\n\n{s}\n", .{SEP_THICK});
-    try w.writeAll("  RESULTS — quantization sensitivity Q4/Q5/Q6/Q8/BF16 (2B, 4B-BF16, 9B)\n");
+    try w.writeAll("  RESULTS — quantization sensitivity (0.8B-BF16 | 2B Q4–BF16 | 4B-BF16 | 9B Q4–BF16)\n");
     try w.print("{s}\n", .{SEP_THICK});
 
     // Header

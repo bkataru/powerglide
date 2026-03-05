@@ -18,6 +18,8 @@ pub const McpServer = struct {
         };
     }
 
+    const MAX_LINE_BYTES = 8 * 1024 * 1024; // 8 MiB — matches client-side guard
+
     pub fn run(self: *McpServer) !void {
         const stdin_fd = std.fs.File.stdin().handle;
         const stdout = std.fs.File.stdout().deprecatedWriter();
@@ -38,6 +40,7 @@ pub const McpServer = struct {
                     buf.clearRetainingCapacity();
                 }
             } else {
+                if (buf.items.len >= MAX_LINE_BYTES) return error.RequestTooLarge;
                 try buf.append(self.allocator, byte_buf[0]);
             }
         }
@@ -125,11 +128,12 @@ pub const McpServer = struct {
 
     fn handleToolsCall(self: *McpServer, id: ?json.Value, params: json.Value) ![]const u8 {
         if (params != .object) return try self.makeError(id, -32602, "Params must be an object");
-        const name = params.object.get("name") orelse return try self.makeError(id, -32602, "Missing tool name");
+        const name_val = params.object.get("name") orelse return try self.makeError(id, -32602, "Missing tool name");
+        if (name_val != .string) return try self.makeError(id, -32602, "Tool name must be a string");
         const arguments = params.object.get("arguments") orelse return try self.makeError(id, -32602, "Missing arguments");
 
         const input = ToolInput{
-            .name = name.string,
+            .name = name_val.string,
             .arguments = arguments,
         };
 
