@@ -55,11 +55,11 @@ Start with: `igllama api <model> --port <N> --no-think --max-tokens 512 --thread
 - `OpenAIClient.json_mode = true` → forces `response_format: {"type":"json_object"}` for constrained output
 - Doctor scans `:8090–8099` automatically
 - Trial harness: `zig build trial` — runs T01–T17 × all 4 endpoints
-- Quant harness: `zig build trial-quant` — runs T01–T13 × Q4/Q5/Q6/Q8/BF16 on 2B and 9B (sequential on :8090)
+- Quant harness: `zig build trial-quant` — runs T01–T13 × 12 models: 0.8B-BF16 | 2B (Q4/Q5/Q6/Q8/BF16) | 4B-BF16 | 9B (Q4/Q5/Q6/Q8/BF16), sequential on :8090
 
 ## Current Version
 
-`0.2.8` — 195/195 tests passing, 0 leaks.
+`0.2.9` — 195/195 tests passing, 0 leaks.
 
 ## Roadmap
 
@@ -80,3 +80,5 @@ Start with: `igllama api <model> --port <N> --no-think --max-tokens 512 --thread
 15. ✅ BF16 precision trials added to quant harness — full precision curve documented in showcase
 16. ✅ /simplify pass — removed debug print, fixed JSON round-trip in MCP client, escaped JSON output in registry
 17. ✅ /security-review pass — MCP input validation hardened, OOM guard on readLine, JSON injection in listAsJson fixed
+18. ✅ 0.8B-BF16 added to quant harness — all four weight classes now have BF16 coverage; 4B-BF16 confirmed 13/13
+19. ✅ MCP server hardened — type assertion panic fixed, OOM guard on stdin buffer, error logging filtered

@@ -292,9 +292,9 @@ Live trial result: 0.8B-BF16 fails every task with the same tool-loop format err
 
 Live trial result: 9B-BF16 passes 13/13 — identical to Q4 through Q8. No accuracy benefit from maximum precision; the model is already saturated. BF16 takes **1356s** vs **484s** for Q4 (~2.8× slower) due to the larger memory footprint on CPU-only hardware. Q4 is the clear sweet spot.
 
-### 4B-BF16 — trial running
+### 4B-BF16 — confirmed 13/13 (36 turns, 814s)
 
-4B at Q4 and Q8 both score 13/13. Since the 4B model is already saturated at Q4 precision, BF16 is expected to produce the same 13/13 result with no accuracy benefit. Trial in progress — result will confirm.
+Live trial result: 4B-BF16 passes 13/13 — identical to Q4 and Q8. The 4B model is fully saturated at Q4 precision; BF16 provides zero additional accuracy. On CPU-only hardware, BF16 runs in 814s vs ~400s for Q8 — roughly 2× slower due to the larger memory footprint (~7.9 GB vs ~4.5 GB). **Q8 is the practical sweet spot for 4B** — identical accuracy, 45% less RAM, nearly 2× faster.
 
 ### 2B-BF16 — measured: 10/13, worse than Q8
 
@@ -308,7 +308,7 @@ Live trial result: 2B-BF16 scores **10/13** — one task *fewer* than Q8 (11/13)
 |-------|----|----|----|----|------|------------|
 | 0.8B | 0/13 | — | — | 0/13 | 0/13 (confirmed) | Q8 (capacity-limited regardless) |
 | 2B | 7/13 | 7/13 | **11/13** | 11/13 | 10/13 | **Q6** — Q8 accuracy, 35% smaller |
-| 4B | 13/13 | — | — | 13/13 | 13/13 (predicted) | Q8 (already saturated) |
+| 4B | 13/13 | — | — | 13/13 | **13/13** | Q8 — same accuracy, 45% less RAM, 2× faster than BF16 |
 | 9B | **13/13** | 13/13 | 13/13 | 13/13 | 13/13 | **Q4** — full accuracy, fastest, least RAM |
 
 **Finding:** Quantization sensitivity peaks at the inflection points. For 2B, Q6 is the accuracy threshold — Q4/Q5 lose 4 tasks, Q6/Q8 plateau at 11/13. BF16 is actively *worse* for 2B (10/13) due to increased memory pressure. For 9B, Q4 is already sufficient — no accuracy gain from higher precision, and BF16 runs 2× slower. The practical takeaway: **2B→Q6, 9B→Q4** — not Q8 across the board.
@@ -335,7 +335,7 @@ Five requirements for reliable multi-turn tool use with a local Qwen3.5 model:
 |-------|----|----|----|----|------|---------|
 | Qwen3.5-0.8B | 0/13 | — | — | 0/13 | 0/13 | capacity-limited at all precisions |
 | Qwen3.5-2B | 7/13 | 7/13 | **11/13** | 11/13 | 10/13 | **Q6 sweet spot** (+4 over Q4/Q5) |
-| Qwen3.5-4B | 13/13 | — | — | **13/13** | 13/13 | saturated at Q4 |
+| Qwen3.5-4B | 13/13 | — | — | **13/13** | **13/13** | saturated at Q4; BF16=814s vs Q8~400s |
 | Qwen3.5-9B | **13/13** | 13/13 | 13/13 | 13/13 | 13/13 | **Q4 sweet spot** (fastest, least RAM) |
 | Claude Opus 4.6 | — | — | — | — | — | ✓ full capability |
 

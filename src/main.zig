@@ -5,7 +5,7 @@ const clap = @import("clap");
 const pg_lib = @import("powerglide");
 const tui_app = pg_lib.tui;
 
-const VERSION = "0.2.8";
+const VERSION = "0.2.9";
 const ConfigDir = ".config/powerglide";
 
 /// Main entry point
@@ -1244,7 +1244,7 @@ fn checkConfigDir(writer: anytype) !void {
 }
 
 test "VERSION constant is defined" {
-    try std.testing.expectEqualStrings("0.2.8", VERSION);
+    try std.testing.expectEqualStrings("0.2.9", VERSION);
 }
 
 test "VERSION matches expected format" {

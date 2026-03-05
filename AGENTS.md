@@ -40,8 +40,8 @@ Velocity is a floating-point multiplier (f64) on a 1000ms base delay.
 
 CLI flags: `--velocity` accepts floating-point values.
 
-Agents can self-throttle by writing to their session file:
-`echo '{"velocity": 0.5}' > ~/.config/powerglide/session-<id>.json`
+Agents can self-throttle via CLI flag or config:
+`powerglide run --velocity 0.5 "task"` or set `velocity` in `~/.config/powerglide/config.json`
 
 ## Reliable PTY Execution
 

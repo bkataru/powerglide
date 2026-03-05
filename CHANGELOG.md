@@ -2,6 +2,26 @@
 
 All notable changes to the **powerglide** project will be documented in this file.
 
+## [0.2.9] - 2026-03-05
+
+### Added
+- **0.8B-BF16 in `trial_quant.zig`** — full precision coverage for all four Qwen3.5 weight classes (0.8B/2B/4B/9B); harness now includes 12 models
+- **4B-BF16 measured** — live trial confirms 13/13 in 36 turns / 814s (identical to Q4 and Q8); 4B is saturated at Q4 precision, BF16 runs 2× slower with 45% more RAM — Q8 is the sweet spot
+- **0.8B-BF16 confirmed** — 0/13 (same as Q8); failure is a training gap, not quantization noise
+
+### Fixed
+- **MCP server type assertion panic** — `handleToolsCall()` accessed `name.string` without validating JSON type; non-string `name` now returns JSON-RPC -32602 instead of crashing
+- **MCP server OOM guard** — `run()` stdin accumulation loop now enforces 8 MiB `MAX_LINE_BYTES` limit (matching the client-side guard added in v0.2.8)
+- **MCP client error logging** — `sendRequest()` debug print on MCP errors now only logs the `message` field instead of the full `{any}` error object (prevents internal detail leakage)
+- **`build.zig.zon` version sync** — was `"0.2.2"` (stale since v0.1.0); now `"0.2.8"`
+- **`QuantModel.group` comment** — was `"2B" or "9B"`; updated to reflect all four valid group values
+- **`AGENTS.md` velocity example** — stale path `~/.config/powerglide/session-<id>.json`; updated to use actual CLI flag and config file
+
+### Changed
+- **`src/main.zig` VERSION** — `"0.2.2"` → `"0.2.8"`; test assertion updated
+- **`showcase.smd`** — 2B-BF16 description updated from "predicted" to measured (10/13, worse than Q8 due to memory pressure); 9B-BF16 timing added (1356s vs 484s for Q4); 4B-BF16 confirmed 13/13
+- **CLAUDE.md** — trial-quant harness description updated to list all 12 models; version `0.2.8`
+
 ## [0.2.8] - 2026-03-05
 
 ### Fixed
