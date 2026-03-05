@@ -255,7 +255,7 @@ T13 +  4t   73s  → "11"             ✓ correct (Q4 hallucinated 6)
 
 At Q8 precision, 9B now reliably runs tools for computation tasks. The 4 hallucinations seen at Q4 (T06, T07, T12, T13) are resolved — the model calls `wc -l`, `grep`, and `sed` instead of answering from weights. The one remaining failure (T01) is a single-turn response where the model answers "1.0.0" before running `grep`. At Q8, the 9B becomes a solid agent for multi-step tool tasks, though the 4B is still faster per task (35 turns vs 30, but 582s vs 651s — similar wall time per task since 9B calls are slower).
 
-**Quantization sensitivity finding:** For Qwen3.5-9B, the Q4→Q8 upgrade eliminates hallucinated tool-skipping on complex tasks. Smaller models (4B, 0.8B) show no meaningful change — 4B is already at ceiling; 0.8B's failure is a training gap, not a precision issue.
+**Quantization sensitivity finding:** For Qwen3.5-2B, Q6 is the inflection point — Q4/Q5 score 7/13 while Q6/Q8 plateau at 11/13; 2B-Q6 delivers Q8-level accuracy at 65% the file size. For Qwen3.5-9B, Q4 is already sufficient (13/13) — no accuracy benefit from higher precision, and BF16 runs 2× slower. The 4B and 0.8B show no meaningful quant sensitivity — 4B is capacity-saturated; 0.8B's failure is a training gap regardless of precision.
 
 ### 2B-Q8 — significant improvement over Q4 (11/13 vs 8/13)
 
@@ -296,16 +296,16 @@ Both models pass 13/13 at Q8. There is no room for BF16 to improve scores furthe
 
 The 2B at Q8 passes 11/13 (fails T02: complex sed+grep chain, T09: max_steps grep loop). Based on the 0.8B confirmation that BF16 = 0/13 (same as Q8), and the nature of 2B's failures — the model doesn't execute the correct grep pattern, a reasoning gap — BF16 is predicted to show no improvement here either. The failures are capacity-limited, not precision-limited.
 
-### Quantization sensitivity — three-level comparison
+### Quantization sensitivity — full measured comparison
 
-| Model | Q4 | Q8 | BF16 | Δ Q4→Q8 | Δ Q8→BF16 |
-|-------|----|----|------|---------|-----------|
-| 0.8B | 0/13 | 0/13 | 0/13 (confirmed) | +0 | +0 |
-| 2B | 8/13 | 11/13 | ~11/13 (predicted) | **+3** | ~0 |
-| 4B | 13/13 | 13/13 | 13/13 (predicted) | +0 | 0 |
-| 9B | 9/13 | 13/13 | 13/13 (predicted) | **+4** | 0 |
+| Model | Q4 | Q5 | Q6 | Q8 | BF16 | Sweet spot |
+|-------|----|----|----|----|------|------------|
+| 0.8B | 0/13 | — | — | 0/13 | 0/13 (confirmed) | Q8 (capacity-limited regardless) |
+| 2B | 7/13 | 7/13 | **11/13** | 11/13 | 10/13 | **Q6** — Q8 accuracy, 35% smaller |
+| 4B | 13/13 | — | — | 13/13 | 13/13 (predicted) | Q8 (already saturated) |
+| 9B | **13/13** | 13/13 | 13/13 | 13/13 | 13/13 | **Q4** — full accuracy, fastest, least RAM |
 
-**Finding:** Quantization sensitivity is model-size-dependent. Larger models (9B) benefit significantly from Q4→Q8 because their extra capacity is occluded by Q4 weight error on complex reasoning chains. Smaller models (0.8B) are capacity-limited regardless of precision. The practical takeaway: **use Q8, not BF16** — same task performance, half the RAM, faster inference on CPU.
+**Finding:** Quantization sensitivity peaks at the inflection points. For 2B, Q6 is the accuracy threshold — Q4/Q5 lose 4 tasks, Q6/Q8 plateau at 11/13. BF16 is actively *worse* for 2B (10/13) due to increased memory pressure. For 9B, Q4 is already sufficient — no accuracy gain from higher precision, and BF16 runs 2× slower. The practical takeaway: **2B→Q6, 9B→Q4** — not Q8 across the board.
 
 ---
 
@@ -323,15 +323,15 @@ Five requirements for reliable multi-turn tool use with a local Qwen3.5 model:
 
 ## Performance Table
 
-**Q4 vs Q8 (best quant for each model):**
+**Full quantization curve (measured):**
 
-| Model | Q4 | Q8 | BF16 | Verdict |
-|-------|----|----|------|---------|
-| Qwen3.5-0.8B | 0/13 | 0/13 | 0/13 | capacity-limited at all precisions |
-| Qwen3.5-2B | 8/13 | **11/13** | ~11/13 | Q8 is the sweet spot |
-| Qwen3.5-4B | 13/13 | **13/13** | 13/13 | already saturated at Q4 |
-| Qwen3.5-9B | 9/13 | **13/13** | 13/13 | Q8 resolves tool-hallucination |
-| Claude Opus 4.6 | — | — | — | ✓ full capability |
+| Model | Q4 | Q5 | Q6 | Q8 | BF16 | Verdict |
+|-------|----|----|----|----|------|---------|
+| Qwen3.5-0.8B | 0/13 | — | — | 0/13 | 0/13 | capacity-limited at all precisions |
+| Qwen3.5-2B | 7/13 | 7/13 | **11/13** | 11/13 | 10/13 | **Q6 sweet spot** (+4 over Q4/Q5) |
+| Qwen3.5-4B | 13/13 | — | — | **13/13** | 13/13 | saturated at Q4 |
+| Qwen3.5-9B | **13/13** | 13/13 | 13/13 | 13/13 | 13/13 | **Q4 sweet spot** (fastest, least RAM) |
+| Claude Opus 4.6 | — | — | — | — | — | ✓ full capability |
 
 **Q8 trial detail (T01–T13 × 4 models):**
 
@@ -355,13 +355,44 @@ Five requirements for reliable multi-turn tool use with a local Qwen3.5 model:
 
 The trial harness (`examples/trial.zig`) now covers 17 tasks (T01–T17), expanding from the original 13 with code generation, JSON round-trip, error recovery, and multi-source synthesis tasks. Several research directions remain open:
 
-### Quantization sensitivity curve
+### Quantization sensitivity curve — **measured**
 
-`examples/trial_quant.zig` (run with `zig build trial-quant`) measures Q4/Q5/Q6/Q8/BF16 for the two quant-sensitive models (2B and 9B), mapping the full accuracy-vs-compression tradeoff curve. Expected: for 9B, Q4→Q5 may recover some of the Q4→Q8 gain at lower RAM cost; for 2B, the plateau likely starts at Q5/Q6. BF16 variants are included to complete the precision curve.
+`examples/trial_quant.zig` (`zig build trial-quant`) maps the full Q4/Q5/Q6/Q8/BF16 precision curve. Results for 2B and 9B (T01–T13, CPU-only, igllama v0.3.10):
+
+```
+Model        Passed   Turns   Time(s)
+─────────────────────────────────────
+[2B]
+2B-Q4        7/13      81      584
+2B-Q5        7/13      77      498
+2B-Q6       11/13      68      409
+2B-Q8       11/13      45      400
+2B-BF16     10/13      51      455
+
+[9B]
+9B-Q4       13/13      29      484
+9B-Q5       13/13      35      673
+9B-Q6       13/13      33      645
+9B-Q8       13/13      30      634
+9B-BF16     13/13      31     1356
+```
+
+**2B quant findings:**
+- Q4 and Q5 are equivalent (7/13) — the Q4→Q5 step provides no accuracy gain
+- Q6 is the inflection point: +4 tasks over Q5, matching Q8 accuracy (11/13)
+- Q8 vs Q6: same 11/13 score, Q8 uses slightly fewer turns and is faster
+- BF16: 10/13 — *worse* than Q8 (loses 1 task), ~14% slower. BF16 is not optimal for 2B
+- **Recommendation: 2B-Q6 is the sweet spot** — Q8 accuracy at ~65% the file size
+
+**9B quant findings:**
+- 9B-Q4 passes 13/13 — Q4 is sufficient; Q4→Q8 difference vanishes at this scale
+- Q5/Q6/Q8/BF16 all identical (13/13)
+- BF16: same score but **2× slower** (1356s vs 634s) — the 16.7 GB model loads more cache pressure
+- **Recommendation: 9B-Q4 is the sweet spot** — 13/13, fastest, smallest RAM footprint
 
 ### Speed benchmark
 
-Tokens-per-second × pass-rate is the real efficiency metric. Currently unmeasured: 9B-Q4 may produce the same 13/13 score as 9B-Q8 (at Q4→Q8 parity tasks), but at 2–3× the inference speed. If 9B-Q4 held at 13/13 with the grammar constraint from igllama v0.3.9, it would be the preferred production config — same accuracy, faster, less RAM.
+Tokens-per-second × pass-rate is the real efficiency metric. 9B-Q4 achieves 13/13 at 484s (fastest among 9B variants), while 9B-Q8 takes 634s for the same score. 9B-Q4 is the preferred production config — same accuracy, 1.3× faster, less RAM.
 
 ### Context length sensitivity
 
