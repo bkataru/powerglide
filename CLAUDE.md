@@ -57,10 +57,12 @@ Start with: `igllama api <model> --port <N> --no-think --max-tokens 512 --thread
 - Trial harness: `zig build trial` — runs T01–T17 × all 4 endpoints
 - Quant harness: `zig build trial-quant` — runs T01–T17 × 16 models: 0.8B-BF16 | 2B (Q4/Q5/Q6/Q8/BF16) | 4B (Q4/Q5/Q6/Q8/BF16) | 9B (Q4/Q5/Q6/Q8/BF16), sequential on :8090
 - Bench harness: `zig build bench` — tokens/sec throughput benchmark, accurate via igllama v0.3.10 `usage.completion_tokens`
+- Ctx harness: `zig build ctx` — context length sensitivity (2B-Q6 × ctx-size 512/1024/2048/4096 × T01-T17)
+- Model filter: `./zig-out/bin/trial-quant 4B-Q4 9B-Q5` — run only specific models
 
 ## Current Version
 
-`0.3.0` — 195/195 tests passing, 0 leaks.
+`0.3.1` — 195/195 tests passing, 0 leaks.
 
 ## Roadmap
 
@@ -87,3 +89,7 @@ Start with: `igllama api <model> --port <N> --no-think --max-tokens 512 --thread
 21. ✅ T01–T17 extended to trial_quant.zig — all 17 agentic tasks now in quantization sensitivity harness
 22. ✅ Throughput benchmark (`examples/bench.zig`) — tokens/sec × RAM measurement across Q4/Q8/BF16 per weight class; igllama v0.3.10 usage.completion_tokens fix integrated
 23. ✅ igllama v0.3.10 — populate usage.completion_tokens in non-streaming responses (patched upstream, PR #82)
+24. ✅ Context length sensitivity harness (`examples/ctx_sensitivity.zig`) — 2B-Q6 × ctx-size 512/1024/2048/4096 × T01-T17
+25. ✅ trial-quant model filter — `./trial-quant 4B-Q4 9B-Q5` runs only named models
+26. ✅ 4B-Q4 full T01-T17 measured — 15/17, 63 turns, 9050s; T04/T16 are characteristic failure modes
+27. ✅ 9B T01-T17 re-run — all 5 quant variants measured against full 17-task suite

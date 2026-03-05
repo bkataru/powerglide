@@ -2,6 +2,26 @@
 
 All notable changes to the **powerglide** project will be documented in this file.
 
+## [0.3.1] - 2026-03-05
+
+### Added
+- **`examples/ctx_sensitivity.zig`** — context length sensitivity harness: runs 2B-Q6 × ctx-size 512/1024/2048/4096 × T01–T17, isolating whether task failures are context-limited or capacity-limited; `zig build ctx`
+- **`zig build ctx` step** — ctx-sensitivity harness added to build.zig
+- **`trial-quant` model filter** — optional CLI args to run only named models: `./trial-quant 4B-Q4 9B-Q5` skips all others
+- **4B-Q4 full T01–T17 measured** — 15/17 passes, 63 turns, 9050s; characteristic failure modes identified: T04 (multi-step write exhausts MAX_TURNS at 1.3 tok/s) and T16 (Zig compile error recovery)
+- **9B T01–T17 re-run** — all 5 quant variants (Q4/Q5/Q6/Q8/BF16) re-measured against the full 17-task suite
+
+### Changed
+- **Showcase** — 4B table updated with actual measured 4B-Q4 data (was `(measured)` placeholder); failure modes T04/T16 documented; 9B table pending re-run update
+- **CLAUDE.md** — version 0.3.0 → 0.3.1; roadmap items 24–27; ctx/filter harness documented
+- **`src/main.zig` VERSION** — `"0.3.0"` → `"0.3.1"`; test assertion updated
+- **`build.zig.zon`** — version `"0.3.0"` → `"0.3.1"`
+
+### Fixed
+- **`ctx_sensitivity.zig` security** — `writeFile()` now validates path via `resolveSafePath()` (was missing, unlike `readFile()`)
+- **`ctx_sensitivity.zig` correctness** — `spawnIgllama` ctx_str uses explicit free after `child.spawn()` rather than defer (defensive against lifetime fragility); duplicate per-ctx summary loop removed; sys_escaped cached once per run
+- **`ctx_sensitivity.zig` table formatting** — ASCII PASS/FAIL/-- instead of multi-byte UTF-8 symbols (fixes column alignment)
+
 ## [0.3.0] - 2026-03-05
 
 ### Added

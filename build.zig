@@ -118,4 +118,23 @@ pub fn build(b: *std.Build) void {
     const bench_cmd = b.addRunArtifact(bench_exe);
     bench_cmd.step.dependOn(b.getInstallStep());
     bench_step.dependOn(&bench_cmd.step);
+
+    // Context length sensitivity harness (examples/ctx_sensitivity.zig)
+    const ctx_exe = b.addExecutable(.{
+        .name = "ctx-sensitivity",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("examples/ctx_sensitivity.zig"),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+            .imports = &.{
+                .{ .name = "powerglide", .module = mod },
+            },
+        }),
+    });
+    b.installArtifact(ctx_exe);
+    const ctx_step = b.step("ctx", "Run the context length sensitivity harness (2B-Q6 × ctx-size 512/1024/2048/4096 × T01-T17)");
+    const ctx_cmd = b.addRunArtifact(ctx_exe);
+    ctx_cmd.step.dependOn(b.getInstallStep());
+    ctx_step.dependOn(&ctx_cmd.step);
 }

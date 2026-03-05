@@ -659,8 +659,22 @@ pub fn main() !void {
     const allocator = gpa.allocator();
     const w = std.fs.File.stdout().deprecatedWriter();
 
+    // Optional model filter: ./trial-quant 4B-Q4 9B-Q5 ...
+    // If no args, all models run.
+    const args = try std.process.argsAlloc(allocator);
+    defer std.process.argsFree(allocator, args);
+    const filter = args[1..]; // skip argv[0]
+
     try w.writeAll("\npowerglide x igllama — quantization sensitivity trial\n");
     try w.print("Tasks: T01-T{d}   Models: 0.8B-BF16 | 2B × Q4/Q5/Q6/Q8/BF16 | 4B × Q4/Q5/Q6/Q8/BF16 | 9B × Q4/Q5/Q6/Q8/BF16\n\n", .{TASKS.len});
+    if (filter.len > 0) {
+        try w.writeAll("  Filter active — running only: ");
+        for (filter, 0..) |f, i| {
+            if (i > 0) try w.writeAll(", ");
+            try w.writeAll(f);
+        }
+        try w.writeAll("\n\n");
+    }
 
     var results: [QUANT_MODELS.len][TASKS.len]?TaskResult = .{.{null} ** TASKS.len} ** QUANT_MODELS.len;
     defer {
@@ -668,6 +682,14 @@ pub fn main() !void {
     }
 
     for (QUANT_MODELS, 0..) |qm, mi| {
+        // Skip if filter is active and this model isn't listed
+        if (filter.len > 0) {
+            var matched = false;
+            for (filter) |f| {
+                if (std.mem.eql(u8, qm.name, f)) { matched = true; break; }
+            }
+            if (!matched) continue;
+        }
         try w.print("\n{s}\n", .{SEP_BLOCK});
         try w.print("  MODEL: {s}  file={s}\n", .{ qm.name, qm.file });
         try w.print("{s}\n", .{SEP_BLOCK});
