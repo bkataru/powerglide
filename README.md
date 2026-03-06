@@ -18,7 +18,7 @@
 
 ## What is powerglide?
 
-Like a finely tuned transmission at full throttle, **powerglide** swerves through your codebase with precision, force, and grace. It is the layer between you and a swarm of LLM-driven engineers working in parallel
+Like a finely tuned transmission at full throttle, **powerglide** swerves through your codebase with precision, force, and grace. It is the layer between you and a swarm of LLM-driven engineers working in parallel.
 
 Written in [Zig 0.15.2](https://ziglang.org/), compiled to a single static binary with zero runtime dependencies, and built around one non-negotiable constraint: the agent loop must be reliable enough to run unattended.
 
