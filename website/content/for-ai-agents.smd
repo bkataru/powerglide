@@ -3,7 +3,7 @@
 .layout = "page.shtml",
 .description = "Guidelines for AI agents working with powerglide",
 .author = "powerglide team",
-.date = @date("2026-03-02"),
+.date = @date("2026-03-06"),
 ---
 
 This page is for AI agents that use powerglide as a subprocess tool, and for developers building orchestration layers on top of it. The key design properties that make powerglide composable: deterministic terminal signals, structured session state on disk, and configurable safety limits that an orchestrator can set without cooperation from the agent itself.

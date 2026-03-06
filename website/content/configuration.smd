@@ -3,7 +3,7 @@
 .layout = "page.shtml",
 .description = "Configure powerglide with environment variables and config files",
 .author = "powerglide team",
-.date = @date("2026-03-02"),
+.date = @date("2026-03-06"),
 ---
 
 powerglide resolves configuration through four layers in strict precedence order. The design intent is that your persistent preferences live in the config file, system-wide or CI overrides live in environment variables, and per-invocation changes go on the command line — each layer wins over everything below it without clobbering it.

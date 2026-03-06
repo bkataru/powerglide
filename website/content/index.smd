@@ -3,7 +3,7 @@
 .layout = "home.shtml",
 .description = "The CLI coding agent that slides - Zig-powered multi-agent harness for extreme coding workflows",
 .author = "powerglide team",
-.date = @date("2026-03-02"),
+.date = @date("2026-03-06"),
 ---
 
 ```=html

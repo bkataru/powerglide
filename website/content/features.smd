@@ -3,7 +3,7 @@
 .layout = "page.shtml",
 .description = "Explore powerglide's powerful features for multi-agent coding workflows",
 .author = "powerglide team",
-.date = @date("2026-03-02"),
+.date = @date("2026-03-06"),
 ---
 
 Coding agents hit the same walls repeatedly: runaway processes, opaque internal state, no real parallelism, and fragile tool execution that silently drops exit codes. Like a high-displacement engine that refuses to redline without a reason, powerglide is engineered to run hard and run long — not by abstracting over those walls, but by addressing each one with a deliberate, inspectable mechanism. Every gear in the transmission has a purpose.

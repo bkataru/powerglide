@@ -3,7 +3,7 @@
 .layout = "page.shtml",
 .description = "Case studies and dogfooding reports: powerglide integrated with igllama and the full Qwen3.5 weight-class lineup",
 .author = "powerglide team",
-.date = @date("2026-03-04"),
+.date = @date("2026-03-06"),
 ---
 
 powerglide was built to run unattended, and it would be hollow to ship it without having actually taken it around the track. This page documents real triage sessions — powerglide driving itself with local Qwen3.5 models served through [igllama](https://github.com/bkataru/igllama), with no cloud API required. The goal: understand what each weight class can do inside the Ralph Loop, where they break down, and what engineering is needed to get reliable multi-turn tool use out of sub-10B parameter inference on local hardware.

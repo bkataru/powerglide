@@ -3,7 +3,7 @@
 .layout = "page.shtml",
 .description = "Complete CLI reference for powerglide commands and options",
 .author = "powerglide team",
-.date = @date("2026-03-02"),
+.date = @date("2026-03-06"),
 ---
 
 Complete reference for every powerglide command, subcommand, and flag. For conceptual explanations of what these do and why, see the <a href="/powerglide/features/">Features</a> and <a href="/powerglide/architecture/">Architecture</a> pages.
