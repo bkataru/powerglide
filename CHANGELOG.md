@@ -2,6 +2,25 @@
 
 All notable changes to the **powerglide** project will be documented in this file.
 
+## [0.3.2] - 2026-03-06
+
+### Added
+- **9B T01–T17 complete** — all 5 quant variants achieve **17/17** (Q4: 38t/9127s, Q5: 49t/14239s, Q6: 39t/8642s, Q8: 39t/17324s, BF16: 43t/15722s)
+- **igllama v0.3.11** — strip residual `</think>` tokens when `--no-think` is active; fixes JSON_ERR noise in trial harness
+
+### Fixed
+- **OAIResponse use-after-free** — `send()` now dupes all string fields before returning; previous code returned slices into freed JSON parse tree
+- **Config save malformed JSON** — `save()` now uses `std.fmt` instead of manual string concat with missing closing quotes
+- **getToolCalls page_allocator leak** — replaced ArrayList with allocator-based counted allocation
+- **SseParser.init** — removed unused `allocator` parameter from signature
+- **Auth header memory leak** — `Bearer {key}` string now freed after HTTP request
+- **MCP version strings** — server and client now report `0.3.2` (were `0.1.1` and `0.1.0`)
+- **Unused import** — removed `ToolFn` from `tool_bridge.zig`
+
+### Changed
+- **Showcase** — 9B table fully measured (17/17 across all quantizations); dogfooding verdict updated: 9B is now the gold standard, 4B is practical floor (15/17 at Q4)
+- **README.md** — updated showcase summary with 9B findings
+
 ## [0.3.1] - 2026-03-05
 
 ### Added

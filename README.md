@@ -156,7 +156,7 @@ External tools register as `mcp_filesystem_read_file` etc. and are indistinguish
 
 ## Local LLM Dogfooding
 
-powerglide ships with igllama integration for fully local inference. See the **[Showcase](https://bkataru.github.io/powerglide/showcase/)** for case studies across the full Qwen3.5 lineup — T01–T17 agentic task trials at Q4 and Q8 quantization, full-precision BF16 trials for all four weight classes (0.8B/2B/4B/9B), quantization sensitivity curve (Q4/Q5/Q6/Q8/BF16), tool-call triage, and honest per-model pass-rate tables.
+powerglide ships with igllama integration for fully local inference. See the **[Showcase](https://bkataru.github.io/powerglide/showcase/)** for case studies across the full Qwen3.5 lineup — T01–T17 agentic task trials, quantization sensitivity curve (Q4/Q5/Q6/Q8/BF16), throughput benchmarks, and honest per-model pass-rate tables. Key findings: **9B achieves 17/17 at all quantizations**, **4B passes 15/17 at Q4**, and **2B's sweet spot is Q6** (11/13).
 
 ```bash
 # Start the full Qwen3.5 lineup (Zig-based local inference via igllama)

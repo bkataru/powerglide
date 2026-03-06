@@ -93,7 +93,7 @@ pub const McpServer = struct {
         var server_info = json.ObjectMap.init(self.allocator);
         defer server_info.deinit();
         try server_info.put("name", .{ .string = "powerglide" });
-        try server_info.put("version", .{ .string = "0.1.1" });
+        try server_info.put("version", .{ .string = "0.3.2" });
         try result_obj.put("serverInfo", .{ .object = server_info });
 
         return try self.makeResponse(id, .{ .object = result_obj });

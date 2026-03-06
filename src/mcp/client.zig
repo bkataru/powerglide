@@ -152,7 +152,7 @@ pub const McpClient = struct {
         var client_info = json.ObjectMap.init(self.allocator);
         defer client_info.deinit();
         try client_info.put("name", .{ .string = "powerglide" });
-        try client_info.put("version", .{ .string = "0.1.0" });
+        try client_info.put("version", .{ .string = "0.3.2" });
         try params_obj.put("clientInfo", .{ .object = client_info });
 
         var capabilities = json.ObjectMap.init(self.allocator);

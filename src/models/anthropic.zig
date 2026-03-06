@@ -49,14 +49,20 @@ pub const ApiResponse = struct {
         return null;
     }
 
-    pub fn getToolCalls(self: *const ApiResponse) []const ContentBlock {
-        var tool_calls = std.ArrayList(ContentBlock){};
+    pub fn getToolCalls(self: *const ApiResponse, allocator: std.mem.Allocator) ![]const ContentBlock {
+        var count: usize = 0;
+        for (self.content) |block| {
+            if (block == .tool_use) count += 1;
+        }
+        const result = try allocator.alloc(ContentBlock, count);
+        var i: usize = 0;
         for (self.content) |block| {
             if (block == .tool_use) {
-                tool_calls.append(std.heap.page_allocator, block) catch {};
+                result[i] = block;
+                i += 1;
             }
         }
-        return tool_calls.items;
+        return result;
     }
 };
 
@@ -307,7 +313,8 @@ test "ApiResponse getToolCalls" {
     };
     defer response.deinit(allocator);
 
-    const tool_calls = response.getToolCalls();
+    const tool_calls = try response.getToolCalls(allocator);
+    defer allocator.free(tool_calls);
     try std.testing.expect(tool_calls.len == 2);
 }
 

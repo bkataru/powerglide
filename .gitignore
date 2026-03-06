@@ -44,5 +44,10 @@ test_*.zig
 test_env
 test_arraylist
 
+# Temp files from trial runs
+nonexistent_pg
+pg_fib
+gemini-*.md
+
 # Runtime session data written by powerglide run/agent
 .powerglide/

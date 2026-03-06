@@ -9,8 +9,7 @@ pub const StreamEvent = union(enum) {
 pub const SseParser = struct {
     buf: std.ArrayList(u8),
 
-    pub fn init(allocator: std.mem.Allocator) SseParser {
-        _ = allocator;
+    pub fn init() SseParser {
         return .{
             .buf = std.ArrayList(u8){},
         };
@@ -75,14 +74,14 @@ pub const SseParser = struct {
 
 test "SseParser init and deinit" {
     const allocator = std.testing.allocator;
-    var parser = SseParser.init(allocator);
+    var parser = SseParser.init();
     defer parser.deinit(allocator);
     try std.testing.expect(parser.buf.items.len == 0);
 }
 
 test "SseParser feed single text_delta" {
     const allocator = std.testing.allocator;
-    var parser = SseParser.init(allocator);
+    var parser = SseParser.init();
     defer parser.deinit(allocator);
 
     const events = try parser.feed(allocator, "data: hello\n");
@@ -95,7 +94,7 @@ test "SseParser feed single text_delta" {
 
 test "SseParser feed DONE event" {
     const allocator = std.testing.allocator;
-    var parser = SseParser.init(allocator);
+    var parser = SseParser.init();
     defer parser.deinit(allocator);
 
     const events = try parser.feed(allocator, "data: [DONE]\n");
@@ -107,7 +106,7 @@ test "SseParser feed DONE event" {
 
 test "SseParser feed multiple events" {
     const allocator = std.testing.allocator;
-    var parser = SseParser.init(allocator);
+    var parser = SseParser.init();
     defer parser.deinit(allocator);
 
     const events = try parser.feed(allocator, "data: foo\ndata: bar\ndata: [DONE]\n");
@@ -123,7 +122,7 @@ test "SseParser feed multiple events" {
 
 test "SseParser ignores non-data lines" {
     const allocator = std.testing.allocator;
-    var parser = SseParser.init(allocator);
+    var parser = SseParser.init();
     defer parser.deinit(allocator);
 
     const events = try parser.feed(allocator, "event: message\ndata: content\n");
@@ -135,7 +134,7 @@ test "SseParser ignores non-data lines" {
 
 test "SseParser handles CRLF line endings" {
     const allocator = std.testing.allocator;
-    var parser = SseParser.init(allocator);
+    var parser = SseParser.init();
     defer parser.deinit(allocator);
 
     const events = try parser.feed(allocator, "data: hello\r\n");
@@ -148,7 +147,7 @@ test "SseParser handles CRLF line endings" {
 
 test "SseParser multiple feeds accumulate correctly" {
     const allocator = std.testing.allocator;
-    var parser = SseParser.init(allocator);
+    var parser = SseParser.init();
     defer parser.deinit(allocator);
 
     // First feed: complete line

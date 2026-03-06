@@ -8,8 +8,6 @@ const mem = std.mem;
 const Tool = @import("../tools/tool.zig").Tool;
 const ToolInput = @import("../tools/tool.zig").ToolInput;
 const ToolOutput = @import("../tools/tool.zig").ToolOutput;
-const ToolFn = @import("../tools/tool.zig").ToolFn;
-
 const McpClient = @import("client.zig").McpClient;
 const McpTool = @import("client.zig").McpTool;
 

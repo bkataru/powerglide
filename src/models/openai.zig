@@ -89,8 +89,11 @@ pub const OpenAIClient = struct {
 
         try headers.append(allocator, .{ .name = "content-type", .value = "application/json" });
 
+        var auth_header: ?[]const u8 = null;
+        defer if (auth_header) |h| allocator.free(h);
         if (self.api_key) |key| {
-            try headers.append(allocator, .{ .name = "authorization", .value = try std.fmt.allocPrint(allocator, "Bearer {s}", .{key}) });
+            auth_header = try std.fmt.allocPrint(allocator, "Bearer {s}", .{key});
+            try headers.append(allocator, .{ .name = "authorization", .value = auth_header.? });
         }
 
         // Build URL
@@ -126,9 +129,9 @@ pub const OpenAIClient = struct {
         const completion_tokens: u32 = @intCast(usage_obj.get("completion_tokens").?.integer);
 
         return OAIResponse{
-            .id = id,
-            .text = text,
-            .finish_reason = finish_reason,
+            .id = try allocator.dupe(u8, id),
+            .text = if (text) |t| try allocator.dupe(u8, t) else null,
+            .finish_reason = try allocator.dupe(u8, finish_reason),
             .prompt_tokens = prompt_tokens,
             .completion_tokens = completion_tokens,
         };

@@ -140,34 +140,20 @@ pub fn deinit(self: *const Config, allocator: std.mem.Allocator) void {
         var buf = std.ArrayList(u8){};
         errdefer buf.deinit(allocator);
 
-        try buf.appendSlice(allocator, "{");
-        try buf.appendSlice(allocator, "\"model\":\"");
-        try buf.appendSlice(allocator, self.model);
-        try buf.appendSlice(allocator, ",\n");
-        try buf.appendSlice(allocator, "\"api_base_url\":\"");
-        try buf.appendSlice(allocator, self.api_base_url);
-        try buf.appendSlice(allocator, ",\n");
-        try buf.appendSlice(allocator, "\"max_steps\":");
-        try buf.writer(allocator).print("{}", .{self.max_steps});
-        try buf.appendSlice(allocator, ",\n");
-        try buf.appendSlice(allocator, "\"velocity\":");
-        try buf.writer(allocator).print("{d}", .{self.velocity});
-        try buf.appendSlice(allocator, ",\n");
-        try buf.appendSlice(allocator, "\"think_budget_ms\":");
-        try buf.writer(allocator).print("{}", .{self.think_budget_ms});
-        try buf.appendSlice(allocator, ",\n");
-        try buf.appendSlice(allocator, "\"shell\":\"");
-        try buf.appendSlice(allocator, self.shell);
-        try buf.appendSlice(allocator, ",\n");
-        try buf.appendSlice(allocator, "\"terminal_pool_size\":");
-        try buf.writer(allocator).print("{}", .{self.terminal_pool_size});
-        try buf.appendSlice(allocator, ",\n");
-        try buf.appendSlice(allocator, "\"max_agents\":");
-        try buf.writer(allocator).print("{}", .{self.max_agents});
-        try buf.appendSlice(allocator, ",\n");
-        try buf.appendSlice(allocator, "\"agent_heartbeat_ms\":");
-        try buf.writer(allocator).print("{}", .{self.agent_heartbeat_ms});
-        try buf.appendSlice(allocator, "}");
+        const w = buf.writer(allocator);
+        try w.print(
+            \\{{"model":"{s}","api_base_url":"{s}","max_steps":{d},"velocity":{d},"think_budget_ms":{d},"shell":"{s}","terminal_pool_size":{d},"max_agents":{d},"agent_heartbeat_ms":{d}}}
+        , .{
+            self.model,
+            self.api_base_url,
+            self.max_steps,
+            self.velocity,
+            self.think_budget_ms,
+            self.shell,
+            self.terminal_pool_size,
+            self.max_agents,
+            self.agent_heartbeat_ms,
+        });
 
         try file.writeAll(buf.items);
     }
