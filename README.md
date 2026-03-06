@@ -18,7 +18,9 @@
 
 ## What is powerglide?
 
-Like a finely tuned transmission at full throttle, **powerglide** swerves through your codebase with precision, force, and grace. It is the layer between you and a swarm of LLM-driven engineers working in parallel — written in [Zig 0.15.2](https://ziglang.org/), compiled to a single static binary with zero runtime dependencies, and built around one non-negotiable constraint: the agent loop must be reliable enough to run unattended.
+Like a finely tuned transmission at full throttle, **powerglide** swerves through your codebase with precision, force, and grace. It is the layer between you and a swarm of LLM-driven engineers working in parallel
+
+Written in [Zig 0.15.2](https://ziglang.org/), compiled to a single static binary with zero runtime dependencies, and built around one non-negotiable constraint: the agent loop must be reliable enough to run unattended.
 
 The foundation is the **Ralph Loop** — an explicit 11-state machine that sequences every agent action from task intake through tool execution to verified completion. No implicit flow, no silent exits. Every session terminates with `<POWERGLIDE_DONE>` or `<POWERGLIDE_ERROR>`. The loop drives the model; the model does not drive the loop.
 
@@ -205,7 +207,7 @@ powerglide synthesizes the strongest ideas from the AI coding agent ecosystem:
 
 Full docs at **[bkataru.github.io/powerglide](https://bkataru.github.io/powerglide)** — including [Architecture](https://bkataru.github.io/powerglide/architecture/), [CLI Reference](https://bkataru.github.io/powerglide/cli-reference/), [Configuration](https://bkataru.github.io/powerglide/configuration/), and the [Showcase](https://bkataru.github.io/powerglide/showcase/).
 
-For AI agents working with powerglide programmatically, see [AGENTS.md](AGENTS.md).
+powerglide has been designed and crafted to be wielded by other agents like a potent blade ⚔️, for AI agents working with powerglide programmatically, see [AGENTS.md](AGENTS.md).
 
 ## License
 
